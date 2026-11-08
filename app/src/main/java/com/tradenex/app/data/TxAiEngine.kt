@@ -31,6 +31,8 @@ data class TxAiReport(
     val bestSession: TxAiSlice?,
     val sessions: List<TxAiSlice>,
     val weekdays: List<TxAiSlice>,
+    val days: List<TxAiSlice>,
+    val personality: String,
     val weeks: List<TxAiSlice>,
     val bestStrategy: TxAiSlice?,
     val outsideStrategyCount: Int,
@@ -54,6 +56,7 @@ object TxAiEngine {
             .sortedByDescending { it.average }
         val weekdays = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value }
             .map { (day, rows) -> slice(dayName(day), rows) }.sortedByDescending { it.average }
+        val days = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay) }.toSortedMap().map { (date, rows) -> slice(date.toString(), rows) }
         val weeks = ordered.groupBy {
             val d = LocalDate.ofEpochDay(it.epochDay)
             d.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
@@ -93,7 +96,8 @@ object TxAiEngine {
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
-            bestSession = sessions.firstOrNull(), sessions = sessions, weekdays = weekdays, weeks = weeks,
+            bestSession = sessions.firstOrNull(), sessions = sessions, weekdays = weekdays, days = days, weeks = weeks,
+            days = days, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
