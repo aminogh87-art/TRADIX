@@ -106,17 +106,25 @@ fun MoreScreen(nav: NavController) {
                 }
             }
         }
-        items.chunked(2).forEachIndexed { r, row ->
-            Reveal(r + 1) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.forEach { m ->
-                        MenuTile(m, Modifier.weight(1f)) { if (m.route == "about") about = true else nav.navigate(m.route) }
+        val groups = listOf(
+            "معاملات و حساب‌ها" to items.take(6),
+            "تحلیل و پیشرفت" to items.drop(6).take(4),
+            "شخصی‌سازی و برنامه" to items.drop(10),
+        )
+        groups.forEachIndexed { groupIndex, group ->
+            Text(group.first, color = Tx.Gold, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+            group.second.chunked(2).forEachIndexed { rowIndex, row ->
+                Reveal(groupIndex * 4 + rowIndex + 1) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { item ->
+                            MenuTile(item, Modifier.weight(1f)) { if (item.route == "about") about = true else nav.navigate(item.route) }
+                        }
+                        if (row.size < 2) Spacer(Modifier.weight(1f))
                     }
-                    if (row.size < 2) Spacer(Modifier.weight(1f))
                 }
             }
         }
-        Reveal(6) {
+        Reveal(12) {
             GlassCard(Modifier.fillMaxWidth(), border = Tx.Gold) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("TRADIX Pro", color = Tx.Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
