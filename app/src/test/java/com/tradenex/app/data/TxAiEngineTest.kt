@@ -46,6 +46,17 @@ class TxAiEngineTest {
         assertEquals(1, report.outsideStrategyCount)
         assertEquals(100.0, report.withoutOutsideStrategyNet, 0.001)
         assertEquals(-80.0, report.outsideStrategyNet, 0.001)
+        assertEquals(80.0, report.withoutOutsideStrategyDelta, 0.001)
+    }
+
+    @Test
+    fun disciplineScoreIsWithheldWhenBehaviorTagCoverageIsLow() {
+        val rows = (1L..6L).map { id ->
+            trade(id, 10.0, tags = if (id <= 3) listOf("#discipline") else emptyList())
+        }
+        val report = TxAiEngine.analyze(rows, account, 1.0)
+        assertEquals(null, report.scores.discipline)
+        assertEquals(6, report.monthlyProgress.size)
     }
 
     @Test
