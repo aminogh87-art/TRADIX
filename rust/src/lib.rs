@@ -339,6 +339,25 @@ pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nStats<'l>(
     }
 }
 
+#[no_mangle]
+pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nPerformanceMetrics<'l>(
+    mut env: JNIEnv<'l>,
+    _this: JObject<'l>,
+    pnls: JDoubleArray<'l>,
+) -> JDoubleArray<'l> {
+    let len = env.get_array_length(&pnls).unwrap_or(0) as usize;
+    let mut values = vec![0.0f64; len];
+    let _ = env.get_double_array_region(&pnls, 0, &mut values);
+    let metrics = performance_metrics(&values);
+    match env.new_double_array(metrics.len() as i32) {
+        Ok(output) => {
+            let _ = env.set_double_array_region(&output, 0, &metrics);
+            output
+        }
+        Err(_) => unsafe { JDoubleArray::from_raw(std::ptr::null_mut()) },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
