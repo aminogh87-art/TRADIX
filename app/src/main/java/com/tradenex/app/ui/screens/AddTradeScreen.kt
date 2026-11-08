@@ -202,7 +202,7 @@ fun AddTradeScreen(nav: NavController) {
                     Spacer(Modifier.height(8.dp))
                     if (!usePriceCalculation) {
                         Stepper(
-                            valueText = "$" + String.format(java.util.Locale.US, "%,.2f", amount),
+                            valueText = AppState.selectedAccount.baseCurrency + " " + String.format(java.util.Locale.US, "%,.2f", amount),
                             onMinus = { amount = (amount - 25).coerceAtLeast(0.0) },
                             onPlus = { amount += 25 },
                             valueColor = resColor,
@@ -227,7 +227,7 @@ fun AddTradeScreen(nav: NavController) {
                     Column(Modifier.weight(1f)) {
                         RowLabelCompact("هر لات", Analytics.money(signed / lot), resColor)
                         RowLabelCompact("از بالانس", String.format(java.util.Locale.US, "%+.2f%%", signed / settings.startBalance * 100), resColor)
-                        RowLabelCompact("ریسک مجاز", "$" + String.format(java.util.Locale.US, "%,.0f", riskUsd), Tx.Muted)
+                        RowLabelCompact("ریسک مجاز", AppState.selectedAccount.baseCurrency + " " + String.format(java.util.Locale.US, "%,.0f", riskUsd), Tx.Muted)
                     }
                 }
             }
