@@ -4,29 +4,133 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tradenex.app.core.SessionState
 import com.tradenex.app.data.Candle
+import com.tradenex.app.data.TradeCandle
 import com.tradenex.app.ui.theme.Tx
 import kotlin.math.max
 import kotlin.math.min
 
-/** Equity candles that grow in from the middle line every time the data changes. */
+/** Compact one-candle-per-trade equity chart with selectable, named trade details. */
+@Composable
+fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
+    var selectedIndex by remember(series) { mutableStateOf((series.size - 1).coerceAtLeast(0)) }
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(series) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
+        selectedIndex = (series.size - 1).coerceAtLeast(0)
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(
+            Modifier.fillMaxWidth().weight(1f).pointerInput(series) {
+                detectTapGestures { tap ->
+                    if (series.isNotEmpty()) {
+                        val slot = size.width / series.size.toFloat()
+                        selectedIndex = (tap.x / slot).toInt().coerceIn(0, series.lastIndex)
+                    }
+                }
+            },
+        ) {
+            if (series.isEmpty()) return@Canvas
+            val candles = series.map { it.candle }
+            val hi = candles.maxOf { it.h }
+            val lo = candles.minOf { it.l }
+            val span = (hi - lo).coerceAtLeast(1e-6)
+            val slot = size.width / candles.size
+            // Keep candle bodies deliberately narrow even when the sample is small.
+            val bodyW = (slot * 0.30f).coerceIn(1.1.dp.toPx(), 4.dp.toPx())
+            val mid = size.height / 2f
+            val p = progress.value
+            fun y(v: Double): Float {
+                val raw = size.height - (((v - lo) / span) * 0.88 + 0.06).toFloat() * size.height
+                return mid + (raw - mid) * p
+            }
+            for (i in 1..3) {
+                val gy = size.height * i / 4f
+                drawLine(Color.White.copy(alpha = 0.07f), Offset(0f, gy), Offset(size.width, gy), 1f)
+            }
+            series.forEachIndexed { i, item ->
+                val candle = item.candle
+                val color = if (candle.c >= candle.o) Tx.Green else Tx.Red
+                val x = slot * i + slot / 2f
+                if (i == selectedIndex) {
+                    drawLine(Color.White.copy(alpha = 0.22f), Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
+                }
+                drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), 0.8.dp.toPx(), StrokeCap.Round)
+                val top = y(max(candle.o, candle.c))
+                val bottom = y(min(candle.o, candle.c))
+                drawRoundRect(
+                    color,
+                    Offset(x - bodyW / 2f, top),
+                    Size(bodyW, (bottom - top).coerceAtLeast(1.4.dp.toPx())),
+                    CornerRadius(1.dp.toPx()),
+                )
+            }
+        }
+        if (series.isNotEmpty()) {
+            val selected = series[selectedIndex.coerceIn(0, series.lastIndex)]
+            Text(
+                "${selected.tradeName} · ${selected.symbol} · ${selected.side} · ${selected.lot} lot · ${if (selected.pnl >= 0) "+" else ""}${String.format(java.util.Locale.US, "%.2f", selected.pnl)}",
+                color = if (selected.pnl >= 0) Tx.Green else Tx.Red,
+                fontSize = 10.sp,
+                maxLines = 1,
+            )
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                series.forEachIndexed { index, item ->
+                    Text(
+                        text = item.tradeName.ifBlank { item.symbol },
+                        color = if (index == selectedIndex) Tx.Gold else Tx.Muted,
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                        modifier = Modifier.clickable { selectedIndex = index }.padding(horizontal = 3.dp, vertical = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Legacy OHLC-only chart retained for callers without trade metadata. */
 @Composable
 fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
     val progress = remember { Animatable(0f) }
     LaunchedEffect(candles) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        progress.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
     }
     Canvas(modifier) {
         if (candles.isEmpty()) return@Canvas
@@ -34,31 +138,19 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         val lo = candles.minOf { it.l }
         val span = (hi - lo).coerceAtLeast(1e-6)
         val slot = size.width / candles.size
-        val bodyW = (slot * 0.28f).coerceAtLeast(2.dp.toPx())
+        val bodyW = (slot * 0.30f).coerceIn(1.1.dp.toPx(), 4.dp.toPx())
         val mid = size.height / 2f
-        val p = progress.value
-
         fun y(v: Double): Float {
-            val raw = size.height - (((v - lo) / span) * 0.9 + 0.05).toFloat() * size.height
-            return mid + (raw - mid) * p
+            val raw = size.height - (((v - lo) / span) * 0.88 + 0.06).toFloat() * size.height
+            return mid + (raw - mid) * progress.value
         }
-
-        for (i in 1..3) {
-            val gy = size.height * i / 4f
-            drawLine(Color.White.copy(alpha = 0.07f), Offset(0f, gy), Offset(size.width, gy), 1f)
-        }
-        candles.forEachIndexed { i, c ->
-            val color = if (c.c >= c.o) Tx.Green else Tx.Red
+        candles.forEachIndexed { i, candle ->
+            val color = if (candle.c >= candle.o) Tx.Green else Tx.Red
             val x = slot * i + slot / 2f
-            drawLine(color, Offset(x, y(c.h)), Offset(x, y(c.l)), 1.dp.toPx(), StrokeCap.Round)
-            val top = y(max(c.o, c.c))
-            val bottom = y(min(c.o, c.c))
-            drawRoundRect(
-                color,
-                Offset(x - bodyW / 2f, top),
-                Size(bodyW, (bottom - top).coerceAtLeast(2f)),
-                CornerRadius(2.dp.toPx()),
-            )
+            drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), 0.8.dp.toPx(), StrokeCap.Round)
+            val top = y(max(candle.o, candle.c))
+            val bottom = y(min(candle.o, candle.c))
+            drawRoundRect(color, Offset(x - bodyW / 2f, top), Size(bodyW, (bottom - top).coerceAtLeast(1.4.dp.toPx())), CornerRadius(1.dp.toPx()))
         }
     }
 }
@@ -67,6 +159,7 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
 @Composable
 fun SessionTimeline(states: List<SessionState>, nowLocalMinute: Int, modifier: Modifier = Modifier) {
     Canvas(modifier) {
+        if (states.isEmpty()) return@Canvas
         val rowH = size.height / states.size
         val barH = (rowH * 0.55f).coerceAtMost(8.dp.toPx())
         states.forEachIndexed { i, s ->
