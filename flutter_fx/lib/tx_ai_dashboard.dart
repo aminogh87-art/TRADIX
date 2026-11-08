@@ -165,12 +165,12 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final allowedRisk = account.startingBalance > 0
         ? account.startingBalance * account.riskPercent.clamp(0.1, 100) / 100
         : null;
-    final averageR = knownRisk.isEmpty
-        ? null
-        : knownRisk
+    final averageR = trades.length >= 5 && knownRisk.length >= 3
+        ? knownRisk
                 .map((trade) => trade.pnl / trade.plannedRisk!)
                 .reduce((a, b) => a + b) /
-            knownRisk.length;
+            knownRisk.length
+        : null;
     final expectancyAxis = averageR == null
         ? null
         : (50 + math.atan(averageR) * 100 / math.pi).clamp(0, 100).toDouble();
@@ -302,7 +302,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     }
 
     final heatmap = _heatmap(trades);
-    final processMonths = _processMonths(trades);
+    final processMonths = _processMonths(trades, account);
     final insights = _insights(account, analytics, weekTrades, monthTrades, monthDiscipline);
     final offPlanMask = trades.map(_isOffPlan).toList(growable: false);
 
@@ -560,7 +560,10 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         ),
       );
 
-  List<TxProcessMonth> _processMonths(List<TxAiTradeRecord> trades) {
+  List<TxProcessMonth> _processMonths(
+    List<TxAiTradeRecord> trades,
+    TxAiAccountSnapshot account,
+  ) {
     final grouped = <String, List<TxAiTradeRecord>>{};
     for (final trade in trades) {
       final key = trade.displayClosedMonthKey;
@@ -573,11 +576,32 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       final rows = grouped[key]!;
       final known = rows.where((trade) => trade.strategyFollowed != null).toList();
       final coverage = known.length / math.max(1, rows.length);
-      final score = rows.length >= 5 && known.length >= 3 && coverage >= 0.7
-          ? (known.where((trade) => trade.strategyFollowed == true).length /
-                  known.length *
-                  100)
-              .round()
+      final discipline = rows.length >= 5 && known.length >= 3 && coverage >= 0.7
+          ? known.where((trade) => trade.strategyFollowed == true).length /
+              known.length * 100
+          : null;
+      final riskRows = rows
+          .where((trade) => trade.plannedRisk != null && trade.plannedRisk! > 0)
+          .toList();
+      final allowedRisk = account.startingBalance > 0
+          ? account.startingBalance * account.riskPercent.clamp(0.1, 100) / 100
+          : null;
+      final risk = rows.length >= 5 &&
+              riskRows.length >= 3 &&
+              allowedRisk != null
+          ? riskRows.where((trade) => trade.plannedRisk! <= allowedRisk).length /
+              riskRows.length * 100
+          : null;
+      final decision = rows.length >= 5
+          ? rows.where((trade) =>
+                trade.entryPrice != null &&
+                trade.exitPrice != null &&
+                trade.stopLossPrice != null &&
+                trade.strategy.trim().isNotEmpty).length /
+              rows.length * 100
+          : null;
+      final score = discipline != null && risk != null && decision != null
+          ? ((discipline + risk + decision) / 3).round()
           : null;
       return TxProcessMonth(key, score);
     }).toList(growable: false);
