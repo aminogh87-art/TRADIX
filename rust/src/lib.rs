@@ -116,6 +116,72 @@ pub fn performance_metrics(pnls: &[f64]) -> [f64; 10] {
     ]
 }
 
+/// Explainable revenge-pattern detector. Classification codes:
+/// 0 = no event, 1 = loss-sequence-only, 2 = possible, 3 = strong evidence,
+/// 4 = explicitly tagged by the user. Evidence is not psychological probability.
+pub fn revenge_evidence(
+    gap_minutes: Option<i64>,
+    previous_was_loss: bool,
+    previous_risk: f64,
+    current_risk: f64,
+    previous_lot: f64,
+    current_lot: f64,
+    plan_violation: bool,
+    revenge_tag: bool,
+    emotional_signal: bool,
+    prior_loss_streak: u32,
+) -> [i32; 3] {
+    if !previous_was_loss { return [0, 0, 0]; }
+    let rapid = gap_minutes.map(|g| g >= 0 && g <= 15).unwrap_or(false);
+    let risk_up = previous_risk.is_finite() && current_risk.is_finite()
+        && previous_risk > 0.0 && current_risk > previous_risk * 1.25;
+    let size_up = previous_lot.is_finite() && current_lot.is_finite()
+        && previous_lot > 0.0 && current_lot > previous_lot * 1.25;
+    let loss_sequence = prior_loss_streak >= 2;
+    let behavioral = risk_up || size_up || plan_violation || revenge_tag || emotional_signal || loss_sequence;
+    if !behavioral { return [0, 0, 0]; }
+
+    let flags = (rapid as i32)
+        | ((risk_up as i32) << 1)
+        | ((size_up as i32) << 2)
+        | ((plan_violation as i32) << 3)
+        | ((revenge_tag as i32) << 4)
+        | ((emotional_signal as i32) << 5)
+        | ((loss_sequence as i32) << 6);
+    let score = ((rapid as i32) * 15 + (risk_up as i32) * 20 + (size_up as i32) * 10
+        + (plan_violation as i32) * 20 + (revenge_tag as i32) * 30
+        + (emotional_signal as i32) * 10 + (loss_sequence as i32) * 10).min(100);
+    let class = if revenge_tag { 4 } else if score >= 45 { 3 } else if score >= 15 { 2 } else { 1 };
+    [score, flags, class]
+}
+
+/// C ABI: output = [score, evidence_flags, classification]. Boolean inputs are 0/1.
+#[no_mangle]
+pub unsafe extern "C" fn tx_ai_revenge_evidence(
+    gap_minutes: i64,
+    has_gap: i32,
+    previous_was_loss: i32,
+    previous_risk: f64,
+    current_risk: f64,
+    previous_lot: f64,
+    current_lot: f64,
+    plan_violation: i32,
+    revenge_tag: i32,
+    emotional_signal: i32,
+    prior_loss_streak: u32,
+    output_ptr: *mut i32,
+    output_len: usize,
+) -> i32 {
+    if output_ptr.is_null() || output_len < 3 { return -1; }
+    let result = revenge_evidence(
+        if has_gap != 0 { Some(gap_minutes) } else { None },
+        previous_was_loss != 0, previous_risk, current_risk, previous_lot, current_lot,
+        plan_violation != 0, revenge_tag != 0, emotional_signal != 0, prior_loss_streak,
+    );
+    std::ptr::copy_nonoverlapping(result.as_ptr(), output_ptr, result.len());
+    0
+}
+
 /// C ABI for Dart FFI. Returns 0 on success, -1 for invalid pointers/length.
 /// The caller owns both buffers and guarantees they are valid for the supplied lengths.
 #[no_mangle]
@@ -263,6 +329,25 @@ mod tests {
     #[test]
     fn empty_performance_metrics_are_zero() {
         assert_eq!(performance_metrics(&[]), [0.0; 10]);
+    }
+
+    #[test]
+    fn planned_quick_reentry_is_not_revenge_evidence() {
+        assert_eq!(revenge_evidence(Some(5), true, 100.0, 100.0, 0.1, 0.1, false, false, false, 1), [0, 0, 0]);
+    }
+
+    #[test]
+    fn revenge_evidence_combines_quick_reentry_and_risk_increase() {
+        let result = revenge_evidence(Some(5), true, 100.0, 140.0, 0.1, 0.1, false, false, false, 1);
+        assert_eq!(result[0], 35);
+        assert_eq!(result[1] & 0b11, 0b11);
+        assert_eq!(result[2], 2);
+    }
+
+    #[test]
+    fn revenge_tag_is_separate_user_confirmed_classification() {
+        let result = revenge_evidence(None, true, 0.0, 0.0, 0.1, 0.1, false, true, false, 0);
+        assert_eq!(result[2], 4);
     }
 
     #[test]
