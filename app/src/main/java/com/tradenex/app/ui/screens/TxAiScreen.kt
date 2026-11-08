@@ -23,13 +23,24 @@ import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.SectionTitle
 import com.tradenex.app.ui.components.StatTile
 import com.tradenex.app.ui.theme.Tx
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 @Composable
 fun TxAiScreen(nav: NavController) {
     val trades = AppState.visibleTrades.toList()
     val account = AppState.selectedAccount
     val riskPercent = AppState.settings.riskPercent
-    val report = remember(trades, account, riskPercent) { TxAiEngine.analyze(trades, account, riskPercent) }
+    val localZone = remember(AppState.settings.tzMode) {
+        when (AppState.settings.tzMode) {
+            0 -> ZoneId.of("Asia/Tehran")
+            1 -> ZoneOffset.UTC
+            else -> ZoneId.systemDefault()
+        }
+    }
+    val report = remember(trades, account, riskPercent, localZone) {
+        TxAiEngine.analyze(trades, account, riskPercent, localZone)
+    }
     val performance = remember(trades) {
         NativeCore.performanceMetrics(trades.map { it.pnl }.toDoubleArray())
     }
@@ -91,6 +102,11 @@ fun TxAiScreen(nav: NavController) {
                     )
                     Text("پروفایل رفتاری فعلی: " + report.personality, color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای اعلام سشن برتر، حداقل ۵ معامله زمان‌دار در یک سشن لازم است.", color = Tx.Text, fontSize = 12.sp)
+                    Text(
+                        report.worstSession?.let { "سشن ضعیف‌تر: ${it.label} · ${it.trades} معامله" }
+                            ?: "برای تعیین سشن ضعیف‌تر نیز حداقل ۵ معامله زمان‌دار لازم است.",
+                        color = Tx.Muted, fontSize = 11.sp,
+                    )
                 }
             }
         }
@@ -113,6 +129,29 @@ fun TxAiScreen(nav: NavController) {
                     Text("عملکرد نمادها", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     report.symbols.take(8).forEach { AiSliceRow(it, money(it.net)) }
                     report.bestStrategy?.let { Text("استراتژی شاخص: " + it.label, color = Tx.Gold, fontSize = 12.sp) }
+                    Text("مقایسه نسخه‌های استراتژی", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (report.strategyVersions.isEmpty()) EmptyAi("برای مقایسه نسخه‌ها، نام و نسخه استراتژی باید هنگام ثبت معامله ذخیره شود.")
+                    report.strategyVersions.take(8).forEach { AiSliceRow(it, money(it.net)) }
+                    Text("عملکرد در بازه‌های ۱۵ دقیقه‌ای", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (report.timeOfDay.isEmpty()) EmptyAi("زمان ورود معامله‌ها ثبت نشده است.")
+                    report.timeOfDay.take(8).forEach { AiSliceRow(it, money(it.net)) }
+                    Text("مدت نگهداری و کیفیت خروج", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "میانگین نگهداری: ${report.averageHoldMinutes?.let { String.format(java.util.Locale.US, "%.1f دقیقه", it) } ?: "—"} · میانه: ${report.medianHoldMinutes?.let { String.format(java.util.Locale.US, "%.1f دقیقه", it) } ?: "—"}",
+                        color = Tx.Text, fontSize = 11.sp,
+                    )
+                    Text(
+                        "میانگین R ثبت‌شده: ${report.averageRMultiple?.let { String.format(java.util.Locale.US, "%+.2fR", it) } ?: "—"}",
+                        color = Tx.Text, fontSize = 11.sp,
+                    )
+                    Text(
+                        "بیشترین برد متوالی: ${report.maxWinStreak} · بیشترین باخت متوالی: ${report.maxLossStreak}",
+                        color = Tx.Text, fontSize = 11.sp,
+                    )
+                    Text(
+                        "بازه ۱۵ دقیقه‌ای بر اساس منطقه زمانی انتخاب‌شده در تنظیمات محاسبه می‌شود؛ داده بدون زمان ورود از این تحلیل کنار گذاشته شده است.",
+                        color = Tx.Muted, fontSize = 9.sp,
+                    )
                 }
             }
         }
