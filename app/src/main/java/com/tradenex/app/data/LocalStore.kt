@@ -247,7 +247,7 @@ internal object SnapshotCodec {
         snapshot.optJSONObject("settings")?.let { s ->
             target.settings = AppSettings(
                 language = s.optInt("language", 0), showGlobe = s.optBoolean("showGlobe", true),
-                tzMode = s.optInt("tzMode", 0), reminderOn = s.optBoolean("reminderOn", true),
+                tzMode = s.optInt("tzMode", 2), reminderOn = s.optBoolean("reminderOn", true),
                 reminderHour = s.optInt("reminderHour", 22).coerceIn(0, 23),
                 newsImpact = s.optInt("newsImpact", 0), startBalance = s.optDouble("startBalance", 10000.0),
                 defaultLot = s.optDouble("defaultLot", 0.1), riskPercent = s.optDouble("riskPercent", 1.0),
