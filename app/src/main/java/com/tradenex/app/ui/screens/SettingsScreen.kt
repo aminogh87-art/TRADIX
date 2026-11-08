@@ -1,6 +1,14 @@
 package com.tradenex.app.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +51,32 @@ private fun updateSelectedBalance(delta: Double) {
 @Composable
 fun SettingsScreen(nav: NavController) {
     val s = AppState.settings
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { it.write(AppState.exportSnapshotJson()) }
+                    ?: error("open failed")
+            }.onSuccess {
+                Toast.makeText(context, "پشتیبان ذخیره شد", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "خطا در ذخیره پشتیبان", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    ?: error("read failed")
+                if (!AppState.importSnapshotJson(raw)) error("invalid snapshot")
+            }.onSuccess {
+                Toast.makeText(context, "بازیابی موفق بود", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "فایل پشتیبان نامعتبر است", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Page(title = "تنظیمات", onBack = { nav.popBackStack() }) {
         Reveal(0) {
@@ -95,7 +129,16 @@ fun SettingsScreen(nav: NavController) {
         }
         Reveal(4) {
             SettingGroup("داده و پشتیبان") {
-                Text("پشتیبان‌گیری خودکار هنوز فعال نیست؛ خروجی CSV از بخش ژورنال قابل دریافت است.", color = Tx.Muted, fontSize = 11.sp)
+                Text("خروجی کامل ژورنال (JSON) همه معاملات، حساب‌ها، استراتژی‌ها و تنظیمات را ذخیره می‌کند. CSV فقط از صفحه ژورنال در دسترس است.", color = Tx.Muted, fontSize = 11.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GoldButton("خروجی پشتیبان JSON") { exportLauncher.launch("tradix-backup.json") }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GoldButton("بازیابی از پشتیبان") { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }
+                }
+                Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text("موتور محاسبات", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     Text(if (NativeCore.isNative) "Rust (JNI)" else "Kotlin", color = if (NativeCore.isNative) Tx.Green else Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -104,6 +147,7 @@ fun SettingsScreen(nav: NavController) {
                     Text("نسخه", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     Text("0.1.0", color = Tx.Text, fontSize = 12.sp)
                 }
+                Text("${AppState.trades.size} معامله · ${AppState.accounts.count { !it.archived }} حساب فعال", color = Tx.Muted, fontSize = 11.sp)
             }
         }
         Reveal(5) {
