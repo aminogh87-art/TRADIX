@@ -10,14 +10,14 @@ Forex trade journal, learning hub and live session clock. It never trades and ne
 | App + UI | Kotlin, Jetpack Compose (RTL, Persian first) | `app/` |
 | Fast core | Rust (JNI): session maths, trade statistics | `rust/` |
 | Animation kit | Dart / Flutter: globe, glow numbers | `flutter_fx/` |
-| CI | GitHub Actions: `cargo test` + `assembleDebug` | `.github/workflows/ci.yml` |
+| CI | GitHub Actions: `cargo test` + `testDebugUnitTest` + `assembleDebug` | `.github/workflows/ci.yml` |
 
 ## Screens
 
-Home dashboard, sessions (spinning globe or 24h timeline, overlap map), add trade (lot size + profit/loss amount),
-performance (equity candles daily/weekly/monthly/yearly + 5-week heatmap), strategies, education
-(text / image / video and the 4 mixed combinations), calendar (trades + sample news), More menu with
-`# هشتگ‌ها`, detailed settings.
+Home dashboard, trade history (filters, edit/delete), manual trade entry (manual P&L or price-based FX calculation),
+multi-account profiles (real/demo/prop, base currency, active account), performance (equity candles and heatmaps),
+strategies (create/edit/delete and version snapshots), DST-aware sessions (globe/timeline), education,
+calendar (personal trades + sample news), tags, and settings.
 
 ## Build
 
@@ -32,8 +32,10 @@ performance (equity candles daily/weekly/monthly/yearly + 5-week heatmap), strat
 
 - Core journal data now persists locally in an atomic SQLite snapshot; trade, strategy, lesson, tag and settings state are restored on app launch.
 - Synthetic trade fixtures were removed. The quick-add symbol list and domain validator are restricted to supported fiat FX pairs (no BTC, gold or index symbols).
-- Detailed trade model fields now include optional entry/exit, stop-loss/take-profit, costs, notes, account reference and planned risk. The current quick-add screen still records a manually entered realized P&L; full price/fill-based entry UI remains to be wired.
-- A first Forex calculation domain is present with pair-aware pip size, explicit quote-to-account conversion, net costs and R-multiple calculation; JUnit tests cover representative cases.
-- Calendar-aware daily/weekly/monthly/yearly bucket boundaries replace rough 30/365-day approximations.
-- Session timezone/DST integration into the existing globe/timeline, normalized multi-account screens, complete mixed-media lesson editor, news provider, scheduled reminders, import/export, and complete Persian/English localization remain to be implemented and validated.
-- The current UI/theme components remain unchanged. Run the Android and Rust CI jobs for the latest PR commit before considering this branch ready.
+- Trade records now carry optional entry/exit, stop-loss/take-profit, commission, swap, fees, notes, account reference, date, and strategy-version metadata. Quick-add supports manual realized P&L or price-derived Forex P&L.
+- The calculation engine uses pair-aware pip sizes, explicit quote-to-account conversion, costs, and optional R multiple. Unit tests cover major-pair, JPY, short-side, invalid-conversion, and FX-only validation cases.
+- Multiple account profiles can be created, selected, and archived. Home, performance, strategy comparisons, calendar, and tags are scoped to the selected account.
+- Strategy edits create revision snapshots and increment the active version; new trades retain the strategy version used.
+- Sydney, Tokyo, London, and New York session state and overlap use IANA market timezones with daylight-saving transitions, while the existing globe/timeline components are retained.
+- Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, local no-trade reminders, backup/import/export, and complete Persian/English localization.
+- Existing theme tokens, colors, reusable components, and navigation styling were preserved; screens were extended additively. Run the latest Android unit tests/build and Rust tests before considering this branch release-ready.
