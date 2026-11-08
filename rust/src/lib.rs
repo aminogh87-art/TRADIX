@@ -204,6 +204,55 @@ pub unsafe extern "C" fn tx_ai_performance_metrics(
     0
 }
 
+/// Deterministic counterfactual metrics. A zero mask entry excludes that trade;
+/// scale_factor is applied to every included realized P&L (e.g. 0.5 for half risk).
+pub fn scenario_metrics(pnls: &[f64], include_mask: Option<&[u8]>, scale_factor: f64) -> Option<[f64; 10]> {
+    if !scale_factor.is_finite() || scale_factor < 0.0 {
+        return None;
+    }
+    if let Some(mask) = include_mask {
+        if mask.len() != pnls.len() {
+            return None;
+        }
+    }
+    let selected: Vec<f64> = pnls.iter().enumerate().filter_map(|(index, value)| {
+        let included = include_mask.map(|mask| mask[index] != 0).unwrap_or(true);
+        if included && value.is_finite() { Some(*value * scale_factor) } else { None }
+    }).collect();
+    Some(performance_metrics(&selected))
+}
+
+/// C ABI for deterministic counterfactual calculations. mask_len=0 means include all trades.
+/// Returns -1 for invalid buffers/lengths and -2 for an invalid scale factor.
+#[no_mangle]
+pub unsafe extern "C" fn tx_ai_scenario_metrics(
+    pnls_ptr: *const f64,
+    pnls_len: usize,
+    include_mask_ptr: *const u8,
+    mask_len: usize,
+    scale_factor: f64,
+    output_ptr: *mut f64,
+    output_len: usize,
+) -> i32 {
+    if output_ptr.is_null() || output_len < 10 || (pnls_len > 0 && pnls_ptr.is_null()) {
+        return -1;
+    }
+    if mask_len != 0 && (mask_len != pnls_len || include_mask_ptr.is_null()) {
+        return -1;
+    }
+    if !scale_factor.is_finite() || scale_factor < 0.0 {
+        return -2;
+    }
+    let pnls = if pnls_len == 0 { &[] } else { std::slice::from_raw_parts(pnls_ptr, pnls_len) };
+    let mask = if mask_len == 0 { None } else { Some(std::slice::from_raw_parts(include_mask_ptr, mask_len)) };
+    let metrics = match scenario_metrics(pnls, mask, scale_factor) {
+        Some(value) => value,
+        None => return -1,
+    };
+    std::ptr::copy_nonoverlapping(metrics.as_ptr(), output_ptr, metrics.len());
+    0
+}
+
 /// [net, win_rate (0..1), profit_factor, max_drawdown (<= 0)]
 pub fn stats(pnls: &[f64]) -> [f64; 4] {
     if pnls.is_empty() {
@@ -370,6 +419,40 @@ mod tests {
             tx_ai_performance_metrics(input.as_ptr(), input.len(), output.as_mut_ptr(), output.len())
         };
         assert_eq!(status, -1);
+    }
+
+    #[test]
+    fn scenario_metrics_excludes_off_plan_and_scales_risk() {
+        let pnls = [100.0, -40.0, 60.0];
+        let include = [1u8, 0u8, 1u8];
+        let filtered = scenario_metrics(&pnls, Some(&include), 1.0).unwrap();
+        assert_eq!(filtered[0], 160.0);
+        assert_eq!(filtered[1], 1.0);
+        let half = scenario_metrics(&pnls, None, 0.5).unwrap();
+        assert_eq!(half[0], 60.0);
+        assert_eq!(half[4], 20.0);
+    }
+
+    #[test]
+    fn scenario_metrics_rejects_invalid_masks_and_scale() {
+        assert!(scenario_metrics(&[1.0, 2.0], Some(&[1u8]), 1.0).is_none());
+        assert!(scenario_metrics(&[1.0], None, f64::NAN).is_none());
+    }
+
+    #[test]
+    fn c_abi_scenario_metrics_returns_filtered_result() {
+        let pnls = [10.0, -5.0, 20.0];
+        let mask = [1u8, 0u8, 1u8];
+        let mut output = [0.0; 10];
+        let status = unsafe {
+            tx_ai_scenario_metrics(
+                pnls.as_ptr(), pnls.len(), mask.as_ptr(), mask.len(),
+                0.5, output.as_mut_ptr(), output.len(),
+            )
+        };
+        assert_eq!(status, 0);
+        assert_eq!(output[0], 15.0);
+        assert_eq!(output[1], 1.0);
     }
 
     #[test]
