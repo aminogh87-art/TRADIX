@@ -66,6 +66,9 @@ fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
     val start = weekStart(LocalDate.now()).plusWeeks(weekOffset.toLong())
     val tradingDays = (2..6).map { start.plusDays(it.toLong()) }
     val weekPlans = tradingDays.map { WeeklyPlannerStore.plan(it) }
+    val previousWeekStart = start.minusWeeks(1)
+    val previousWeekPlans = (2..6).map { WeeklyPlannerStore.plan(previousWeekStart.plusDays(it.toLong())) }
+    val previousWeekRecorded = previousWeekPlans.filter { it.confirmed }
     val confirmedCount = weekPlans.count { it.confirmed }
     val weekEnded = LocalDate.now().isAfter(start.plusDays(6))
     val recordedPlans = weekPlans.filter { it.confirmed }
@@ -122,8 +125,33 @@ fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
             }
         }
 
-        if (confirmedCount > 0) {
+        if (weekOffset == 0 && LocalDate.now().dayOfWeek.value in 6..7 && previousWeekRecorded.isNotEmpty()) {
             Reveal(2) {
+                GlassCard(Modifier.fillMaxWidth(), border = Tx.Green) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionTitle("گزارش خودکار هفته گذشته", "خلاصه عملکرد هفته به پایان رسیده")
+                        val prevTrades = previousWeekRecorded.sumOf { it.tradeCount }
+                        val prevProfit = previousWeekRecorded.sumOf { it.totalProfit }
+                        val prevLoss = previousWeekRecorded.sumOf { it.totalLoss }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SummaryValue("معاملات", prevTrades.toString(), Tx.Blue)
+                            SummaryValue("مجموع سود", money(prevProfit), Tx.Green)
+                            SummaryValue("مجموع ضرر", money(prevLoss), Tx.Red)
+                        }
+                        Text("نتیجه خالص: ${money(prevProfit - prevLoss)} · روزهای ثبت‌شده: ${previousWeekRecorded.size}/5",
+                            color = if (prevProfit >= prevLoss) Tx.Green else Tx.Red, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        if (previousWeekRecorded.any { !it.followedPlan }) {
+                            Text("پیشنهاد: روزهایی که از پلن خارج شدی را بررسی و علت را در یادداشت همان روز مرور کن.", color = Tx.Muted, fontSize = 11.sp)
+                        } else {
+                            Text("پیشنهاد: قوانین معاملاتی و کیفیت ستاپ‌های موفق را برای هفته جدید حفظ کن.", color = Tx.Muted, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (confirmedCount > 0) {
+            Reveal(3) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         SectionTitle(if (confirmedCount == 5 || weekEnded) "گزارش نهایی هفته" else "خلاصه تا این لحظه",
