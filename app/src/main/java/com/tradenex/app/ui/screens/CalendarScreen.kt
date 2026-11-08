@@ -49,7 +49,8 @@ import com.tradenex.app.data.ForexFactoryEvent
 import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
-import com.tradenex.app.ui.components.SectionTitle\nimport com.tradenex.app.ui.components.TxChip
+import com.tradenex.app.ui.components.SectionTitle
+import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
 import java.time.Instant
 import java.time.LocalDate
