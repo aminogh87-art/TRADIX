@@ -69,6 +69,52 @@ object Analytics {
     fun tradeCandles(trades: List<Trade>, startBalance: Double, limit: Int = 60): List<Candle> =
         tradeCandleSeries(trades, startBalance, limit).map { it.candle }
 
+    fun bucketTradeCandleSeries(
+        trades: List<Trade>,
+        period: Period,
+        startBalance: Double,
+    ): List<TradeCandle> {
+        require(startBalance.isFinite()) { "Starting balance must be finite." }
+        val ordered = trades.filter { it.pnl.isFinite() }
+            .sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
+        val groups = ordered.groupBy { period.bucket(it.epochDay) }.toSortedMap()
+        var equity = startBalance
+        return groups.map { (bucket, rows) ->
+            val open = equity
+            var high = open
+            var low = open
+            rows.forEach { trade ->
+                equity += trade.pnl
+                high = max(high, equity)
+                low = min(low, equity)
+            }
+            val date = when (period) {
+                Period.MONTH -> {
+                    val year = Math.floorDiv(bucket, 12L).toInt()
+                    val month = Math.floorMod(bucket, 12L).toInt() + 1
+                    LocalDate.of(year, month, 1)
+                }
+                Period.YEAR -> LocalDate.of(bucket.toInt(), 1, 1)
+                else -> LocalDate.ofEpochDay(bucket)
+            }
+            val label = when (period) {
+                Period.DAY -> date.toString()
+                Period.WEEK -> "هفتهٔ " + date.toString()
+                Period.MONTH -> "%04d-%02d".format(java.util.Locale.US, date.year, date.monthValue)
+                Period.YEAR -> date.year.toString()
+            }
+            TradeCandle(
+                tradeId = rows.last().id,
+                tradeName = label,
+                symbol = rows.size.toString() + " معامله",
+                side = period.name,
+                lot = rows.sumOf { it.lot },
+                pnl = rows.sumOf { it.pnl },
+                candle = Candle(open, high, low, equity),
+            )
+        }
+    }
+
     /** Legacy period aggregation retained for callers that explicitly need bucket candles. */
     fun candles(trades: List<Trade>, period: Period, startBalance: Double): List<Candle> {
         val groups = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
