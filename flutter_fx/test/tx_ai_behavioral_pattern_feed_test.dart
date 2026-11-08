@@ -32,6 +32,6 @@ void main() {
     await tester.pump();
 
     expect(selectedReview, TxBehavioralReview.notRevenge);
-    expect(find.text('مورد معتبر نیست'), findsOneWidget);
+    expect(find.text('بازبینی کاربر: مورد معتبر نیست'), findsOneWidget);
   });
 }
