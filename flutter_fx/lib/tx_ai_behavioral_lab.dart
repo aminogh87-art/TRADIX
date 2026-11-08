@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'tx_ai_data_bridge.dart';
+
 enum TxBehavioralReview { unreviewed, confirmed, notRevenge, unsure }
 enum TxBehavioralEvidenceLevel { lossSequence, possible, strong, userTagged }
 
@@ -235,6 +237,146 @@ class _TxBehavioralLabState extends State<TxBehavioralLab> {
             ),
           ]),
         ]),
+      ),
+    );
+  }
+}
+
+
+/// Additional explainable patterns computed from explicit journal fields.
+/// These are observable records, not diagnoses or causal conclusions.
+class TxBehavioralPatternFeed extends StatefulWidget {
+  const TxBehavioralPatternFeed({
+    super.key,
+    required this.patterns,
+    this.onReviewChanged,
+    this.onShowTrades,
+  });
+
+  final List<TxAiBehaviorPatternRecord> patterns;
+  final void Function(String patternId, TxBehavioralReview review)? onReviewChanged;
+  final void Function(List<int> tradeIds)? onShowTrades;
+
+  @override
+  State<TxBehavioralPatternFeed> createState() => _TxBehavioralPatternFeedState();
+}
+
+class _TxBehavioralPatternFeedState extends State<TxBehavioralPatternFeed> {
+  final Map<String, TxBehavioralReview> _localReviews = {};
+
+  TxBehavioralReview _reviewFor(TxAiBehaviorPatternRecord pattern) =>
+      _localReviews[pattern.id] ??
+      switch (pattern.reviewStatus) {
+        'confirmed' => TxBehavioralReview.confirmed,
+        'not_revenge' => TxBehavioralReview.notRevenge,
+        'unsure' => TxBehavioralReview.unsure,
+        _ => TxBehavioralReview.unreviewed,
+      };
+
+  void _setReview(TxAiBehaviorPatternRecord pattern, TxBehavioralReview review) {
+    setState(() => _localReviews[pattern.id] = review);
+    widget.onReviewChanged?.call(pattern.id, review);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unreviewed = widget.patterns
+        .where((pattern) => _reviewFor(pattern) == TxBehavioralReview.unreviewed)
+        .length;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 14),
+          const Text('سایر الگوهای رفتاری قابل مشاهده',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 5),
+          Text(
+            'تراکم معاملات پس از برد، افزایش حجم پس از برد، خروج ثبت‌شده پیش از حدسود و انحراف از سشن مجاز. هر کارت فقط بر پایه داده‌های موجود ساخته می‌شود.',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: [
+            _metric('الگوها', widget.patterns.length.toString()),
+            _metric('بازبینی‌نشده', unreviewed.toString()),
+          ]),
+          if (widget.patterns.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('برای این الگوها داده کافی یا قانون صریحی ثبت نشده است.',
+                  textAlign: TextAlign.center),
+            ),
+          for (final pattern in widget.patterns) _patternCard(pattern),
+        ],
+      ),
+    );
+  }
+
+  Widget _metric(String label, String value) => Chip(
+        label: Text('$label: $value'),
+        visualDensity: VisualDensity.compact,
+      );
+
+  Widget _patternCard(TxAiBehaviorPatternRecord pattern) {
+    final theme = Theme.of(context);
+    final review = _reviewFor(pattern);
+    final reviewLabel = switch (review) {
+      TxBehavioralReview.unreviewed => 'بازبینی نشده',
+      TxBehavioralReview.confirmed => 'تأیید شده',
+      TxBehavioralReview.notRevenge => 'مورد معتبر نیست',
+      TxBehavioralReview.unsure => 'نامشخص',
+    };
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              Expanded(
+                child: Text(pattern.title,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              ),
+              Text('Evidence ${pattern.evidenceScore}/100',
+                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800)),
+            ]),
+            const SizedBox(height: 5),
+            Text(
+              'معاملات: ${pattern.linkedTradeIds.map((id) => "#$id").join("، ")} · خالص ثبت‌شده: ${pattern.actualNetPnl.toStringAsFixed(2)}',
+              style: theme.textTheme.bodySmall,
+            ),
+            for (final reason in pattern.reasons)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('• $reason', style: theme.textTheme.bodySmall),
+              ),
+            TextButton.icon(
+              onPressed: widget.onShowTrades == null
+                  ? null
+                  : () => widget.onShowTrades!(pattern.linkedTradeIds),
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('نمایش معاملات مرتبط'),
+            ),
+            const Divider(height: 12),
+            Text('بازبینی کاربر: $reviewLabel', style: theme.textTheme.bodySmall),
+            Wrap(spacing: 6, runSpacing: 4, children: [
+              OutlinedButton(
+                onPressed: () => _setReview(pattern, TxBehavioralReview.confirmed),
+                child: const Text('تأیید'),
+              ),
+              OutlinedButton(
+                onPressed: () => _setReview(pattern, TxBehavioralReview.notRevenge),
+                child: const Text('مورد معتبر نیست'),
+              ),
+              OutlinedButton(
+                onPressed: () => _setReview(pattern, TxBehavioralReview.unsure),
+                child: const Text('نامشخص'),
+              ),
+            ]),
+          ],
+        ),
       ),
     );
   }
