@@ -77,6 +77,9 @@ class TxAiFlutterActivity : FlutterActivity() {
             Instant.ofEpochMilli(it).atZone(SessionEngine.displayZone(AppState.settings.tzMode))
         }
         val displayDate = displayTime?.toLocalDate()
+        val displayCloseMonth = trade.closedAtMillis.takeIf { it > 0L }?.let {
+            Instant.ofEpochMilli(it).atZone(SessionEngine.displayZone(AppState.settings.tzMode)).toLocalDate()
+        }
         return mapOf(
         "id" to trade.id,
         "accountId" to trade.accountId,
@@ -104,6 +107,7 @@ class TxAiFlutterActivity : FlutterActivity() {
         "displayMinute" to displayTime?.minute,
         "displayDateKey" to displayDate?.toString(),
         "displayMonthKey" to displayDate?.let { "%04d-%02d".format(java.util.Locale.US, it.year, it.monthValue) },
+        "displayClosedMonthKey" to displayCloseMonth?.let { "%04d-%02d".format(java.util.Locale.US, it.year, it.monthValue) },
     )
     }
 
