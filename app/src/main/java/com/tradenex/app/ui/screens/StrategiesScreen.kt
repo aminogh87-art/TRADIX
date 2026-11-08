@@ -20,6 +20,9 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,6 +57,9 @@ fun StrategiesScreen(nav: NavController) {
     var name by remember { mutableStateOf("") }
     var ruleInput by remember { mutableStateOf("") }
     val rules = remember { mutableStateListOf<String>() }
+    var editingStrategy by remember { mutableStateOf<Strategy?>(null) }
+    var editName by remember { mutableStateOf("") }
+    var editRules by remember { mutableStateOf("") }
     val n = AppState.trades.size
 
     Page(title = "استراتژی‌های من", onBack = { nav.popBackStack() }) {
@@ -84,7 +90,13 @@ fun StrategiesScreen(nav: NavController) {
         }
 
         AppState.strategies.forEachIndexed { idx, s ->
-            Reveal(idx + 1) { StrategyCard(s, n) }
+            Reveal(idx + 1) {
+                StrategyCard(s, n, onEdit = {
+                    editingStrategy = s
+                    editName = s.name
+                    editRules = s.rules.joinToString("\n")
+                })
+            }
         }
 
         Reveal(AppState.strategies.size + 1) {
@@ -124,10 +136,40 @@ fun StrategiesScreen(nav: NavController) {
         }
         Spacer(Modifier.height(12.dp))
     }
+
+    editingStrategy?.let { selected ->
+        AlertDialog(
+            onDismissRequest = { editingStrategy = null },
+            containerColor = Color(0xFF14141A),
+            title = { Text("ویرایش استراتژی", color = Tx.Text) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TxField(editName, { editName = it }, "نام استراتژی")
+                    TxField(editRules, { editRules = it }, "قوانین را با خط جدید جدا کن")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val index = AppState.strategies.indexOfFirst { it.id == selected.id }
+                    if (index >= 0 && editName.isNotBlank()) {
+                        AppState.strategies[index] = selected.copy(
+                            name = editName.trim(),
+                            rules = editRules.lines().map(String::trim).filter(String::isNotBlank),
+                        )
+                        AppState.persist()
+                    }
+                    editingStrategy = null
+                }) { Text("ذخیره", color = Tx.Gold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingStrategy = null }) { Text("انصراف", color = Tx.Muted) }
+            },
+        )
+    }
 }
 
 @Composable
-private fun StrategyCard(s: Strategy, tradeCount: Int) {
+private fun StrategyCard(s: Strategy, tradeCount: Int, onEdit: () -> Unit) {
     val mine = remember(s.name, tradeCount) { AppState.trades.filter { it.strategy == s.name } }
     val net = mine.sumOf { it.pnl }
     val win = if (mine.isEmpty()) 0.0 else mine.count { it.pnl > 0 }.toDouble() / mine.size
@@ -149,6 +191,12 @@ private fun StrategyCard(s: Strategy, tradeCount: Int) {
                 Text("برد ${(win * 100).toInt()}%", color = Tx.Muted, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    Icons.Rounded.Edit,
+                    "ویرایش استراتژی",
+                    tint = Tx.Gold,
+                    modifier = Modifier.size(20.dp).clickable(onClick = onEdit),
+                )
                 SwitchMini(s.active) {
                     val i = AppState.strategies.indexOfFirst { it.id == s.id }
                     if (i >= 0) AppState.strategies[i] = s.copy(active = !s.active)
