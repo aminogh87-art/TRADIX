@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -77,6 +79,7 @@ private fun stepLot(v: Double, dir: Int): Double {
 @Composable
 fun AddTradeScreen(nav: NavController) {
     val settings = AppState.settings
+    val haptic = LocalHapticFeedback.current
     var buy by remember { mutableStateOf(true) }
     var symbol by remember { mutableStateOf("EURUSD") }
     var lot by remember { mutableStateOf(settings.defaultLot) }
@@ -325,6 +328,7 @@ fun AddTradeScreen(nav: NavController) {
                         tradeName = tradeNameText.trim(),
                     ),
                     )
+                    if (settings.haptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     nav.popBackStack()
                 }
             }
