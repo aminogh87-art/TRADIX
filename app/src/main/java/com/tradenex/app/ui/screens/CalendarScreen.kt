@@ -21,6 +21,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +49,7 @@ import com.tradenex.app.data.ForexFactoryEvent
 import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
-import com.tradenex.app.ui.components.SectionTitle
+import com.tradenex.app.ui.components.SectionTitle\nimport com.tradenex.app.ui.components.RowLabel
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
 import java.time.Instant
@@ -80,6 +82,7 @@ fun CalendarScreen(nav: NavController) {
     var remind by remember { mutableStateOf(setOf<Int>()) }
     val context = LocalContext.current
     var refreshCounter by remember { mutableStateOf(0) }
+    var selectedNewsEvent by remember { mutableStateOf<ForexFactoryEvent?>(null) }
     var newsEvents by remember { mutableStateOf(emptyList<ForexFactoryEvent>()) }
     var newsLoading by remember { mutableStateOf(true) }
     var newsMessage by remember { mutableStateOf("در حال اتصال به Forex Factory…") }
@@ -218,6 +221,49 @@ fun CalendarScreen(nav: NavController) {
             }
         } else {
             Reveal(1) {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconBox(Icons.Rounded.KeyboardArrowRight, "ماه قبل") { moveMonth(-1) }
+                            Text(jalaliMonths[selectedJalaliMonth - 1] + " " + fa(selectedJalaliYear), color = Tx.Gold, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                            IconBox(Icons.Rounded.KeyboardArrowLeft, "ماه بعد") { moveMonth(1) }
+                        }
+                        Row(Modifier.fillMaxWidth()) {
+                            listOf("ش", "ی", "د", "س", "چ", "پ", "ج").forEachIndexed { i, label ->
+                                Text(label, color = if (i < 2) Tx.Muted.copy(alpha = 0.45f) else Tx.Muted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                            }
+                        }
+                        val firstNewsDay = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
+                        val newsDays = JalaliCalendar.daysInMonth(selectedJalaliYear, selectedJalaliMonth)
+                        val newsLead = Analytics.column(firstNewsDay.toEpochDay())
+                        val newsRows = (newsLead + newsDays + 6) / 7
+                        for (row in 0 until newsRows) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                for (col in 0..6) {
+                                    val day = row * 7 + col - newsLead + 1
+                                    if (day in 1..newsDays) {
+                                        val date = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, day)
+                                        val isWeekend = col < 2
+                                        val count = newsEvents.count { Instant.ofEpochMilli(it.timestampMillis).atZone(ZoneId.systemDefault()).toLocalDate() == date }
+                                        Column(
+                                            Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(9.dp))
+                                                .background(if (date == selectedDate) Tx.Gold.copy(alpha = 0.22f) else Color.Transparent)
+                                                .clickable { selectedDate = date }.padding(vertical = 3.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                        ) {
+                                            Text(fa(day), color = if (date == selectedDate) Tx.Gold else if (isWeekend) Tx.Muted.copy(alpha = 0.45f) else Tx.Text, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            if (isWeekend) Text("تعطیل", color = Tx.Muted.copy(alpha = 0.5f), fontSize = 7.sp)
+                                            else if (count > 0) Text("• $count", color = Tx.Green, fontSize = 8.sp)
+                                        }
+                                    } else Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Reveal(2) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf("همه", "High", "USD", "EUR", "GBP", "JPY").forEachIndexed { i, label ->
                         TxChip(label, filter == i, { filter = i }, Modifier.weight(1f))
@@ -244,8 +290,10 @@ fun CalendarScreen(nav: NavController) {
                             2 -> 2
                             else -> 0
                         }
+                        val weekendClosed = selectedDate.dayOfWeek.value == 6 || selectedDate.dayOfWeek.value == 7
                         val list = newsEvents.filter { event ->
-                            event.impact >= minImpact && when (filter) {
+                            Instant.ofEpochMilli(event.timestampMillis).atZone(ZoneId.systemDefault()).toLocalDate() == selectedDate &&
+                                !weekendClosed && event.impact >= minImpact && when (filter) {
                                 1 -> event.impact == 2
                                 2 -> event.currency == "USD"
                                 3 -> event.currency == "EUR"
@@ -282,7 +330,7 @@ fun CalendarScreen(nav: NavController) {
                                 val time = local.format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
                                 val dateLabel = jalaliText(local.toLocalDate())
                                 Row(
-                                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { selectedNewsEvent = event },
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
