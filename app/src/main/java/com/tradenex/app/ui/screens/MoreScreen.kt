@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
@@ -75,6 +76,7 @@ fun MoreScreen(nav: NavController) {
         MenuItem("استراتژی‌ها", "ثبت، حذف و مقایسه", Icons.Rounded.TrackChanges, "strategies", Tx.Gold),
         MenuItem("تقویم و اخبار", "معاملات + فارکس فکتوری", Icons.Rounded.CalendarMonth, "calendar", Tx.Green),
         MenuItem("# هشتگ‌ها", "برچسب‌گذاری معامله‌ها", Icons.Rounded.Tag, "tags", Tx.Purple),
+        MenuItem("TX AI", "شخصیت معاملاتی و مربی عملکرد", Icons.Rounded.AutoAwesome, "tx_ai", Tx.Gold),
         MenuItem("گزارش‌ها", "کندل، نقشه حرارتی", Icons.Rounded.BarChart, "perf", Tx.Gold),
         MenuItem("آموزش", "متن، عکس، ویدیو", Icons.Rounded.MenuBook, "edu", Tx.Green),
         MenuItem("تنظیمات", "همه جزئیات برنامه", Icons.Rounded.Settings, "settings", Tx.Muted),
