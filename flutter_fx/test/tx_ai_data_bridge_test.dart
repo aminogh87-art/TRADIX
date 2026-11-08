@@ -18,6 +18,17 @@ void main() {
       'pinnedInsights': [
         {'insightId': 'summary-win-rate', 'pinned': true},
       ],
+      'behavioralPatterns': [
+        {
+          'id': 'account-1:session-drift:1',
+          'title': 'معامله خارج از سشن مجاز استراتژی',
+          'triggerTradeId': 1,
+          'linkedTradeIds': [1],
+          'evidenceScore': 30,
+          'actualNetPnl': 12.5,
+          'reasons': ['قانون سشن صریح ثبت شده است.'],
+        },
+      ],
       'trades': [
         {
           'id': 1,
@@ -73,6 +84,9 @@ void main() {
     expect(snapshot.displayTimezone, 'Asia/Tehran');
     expect(snapshot.episodeReviews['a:1:2'], 'confirmed');
     expect(snapshot.pinnedInsights, contains('summary-win-rate'));
+    expect(snapshot.behavioralPatterns.single.id, 'account-1:session-drift:1');
+    expect(snapshot.behavioralPatterns.single.evidenceScore, 30);
+    expect(snapshot.behavioralPatterns.single.reviewStatus, 'confirmed');
   });
 
   test('invalid or non-finite trade values are not fabricated', () {
