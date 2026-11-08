@@ -66,6 +66,16 @@ class TxAiBehavioralPatternAnalyzerTest {
     }
 
     @Test
+    fun sizeIncreaseAfterLossIsRecordedWithoutCallingItRevenge() {
+        val previous = trade(1, -20.0, 1_000_000L, closed = 1_100_000L, lot = 0.1)
+        val current = trade(2, -10.0, 1_200_000L, lot = 0.14)
+        val episode = TxAiBehavioralPatternAnalyzer.analyze(listOf(previous, current))
+            .single { it.type == TxAiBehaviorPatternType.SIZE_UP_AFTER_LOSS }
+        assertEquals(listOf(1L, 2L), episode.linkedTradeIds)
+        assertTrue(episode.reasons.any { it.contains("اثبات‌کننده") })
+    }
+
+    @Test
     fun exitBeforeTargetRequiresExplicitEntryExitAndTargetPrices() {
         val early = trade(1, 10.0, 1_000_000L, entry = 1.1000, exit = 1.1050, target = 1.1100)
         val complete = trade(2, 10.0, 2_000_000L, entry = 1.1000, exit = 1.1100, target = 1.1100)
