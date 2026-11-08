@@ -43,21 +43,21 @@ import com.tradenex.app.ui.components.SessionTimeline
 import com.tradenex.app.ui.components.SpinningGlobe
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
+import java.time.Instant
 
 @Composable
 fun SessionsScreen(nav: NavController) {
     val settings = AppState.settings
     val utc by rememberUtcMinute()
-    val tz = SessionEngine.tzOffsetMinutes(settings.tzMode)
-    val states = SessionEngine.states(utc, tz)
+    val nowInstant = Instant.now()
+    val displayZone = SessionEngine.displayZone(settings.tzMode)
+    val states = SessionEngine.statesAt(nowInstant, displayZone)
     var mask = 0
     states.forEachIndexed { i, s -> if (s.open) mask = mask or (1 shl i) }
-    val nowLocal = (utc + tz) % 1440
-    val zoneName = when (settings.tzMode) {
-        0 -> "تهران"
-        1 -> "UTC"
-        else -> "ساعت دستگاه"
-    }
+    val localNow = nowInstant.atZone(displayZone)
+    val nowLocal = localNow.hour * 60 + localNow.minute
+    val zoneName = displayZone.id
+    val overlaps = SessionEngine.overlapsAt(nowInstant)
 
     Page(
         title = "سشن‌های بازار",
@@ -103,10 +103,10 @@ fun SessionsScreen(nav: NavController) {
         Reveal(3) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Venn(Modifier.width(120.dp).height(92.dp), SessionEngine.overlaps(utc)[2].minutes / 60)
+                    Venn(Modifier.width(120.dp).height(92.dp), overlaps[2].minutes / 60)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("نقشه همپوشانی", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-                        SessionEngine.overlaps(utc).forEach { OverlapRow(it) }
+                        overlaps.forEach { OverlapRow(it) }
                     }
                 }
             }
