@@ -347,6 +347,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
           onShowTrades: (ids) => ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('معاملات مرتبط: ${ids.map((id) => "#$id").join("، ")}')),
           ),
+          ),
         ),
         ListView(
           padding: const EdgeInsets.all(12),
