@@ -14,7 +14,7 @@ fi
 
 if [[ ! -f "$MODULE_DIR/.android/include_flutter.groovy" ]]; then
   mkdir -p "$MODULE_DIR"
-  flutter create --template module --project-name tradenex_tx_ai --platforms android "$MODULE_DIR"
+  flutter create --template module --project-name tradenex_tx_ai "$MODULE_DIR"
 fi
 
 mkdir -p "$MODULE_DIR/lib"
