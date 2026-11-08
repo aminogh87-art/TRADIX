@@ -1,5 +1,5 @@
 name: tradenex_fx
-description: Dart/Flutter animation kit for TRADENEX (globe, glow numbers).
+description: TX AI account-backed trading analytics UI and deterministic Rust FFI bridge for TRADIX.
 version: 0.1.0
 publish_to: none
 
