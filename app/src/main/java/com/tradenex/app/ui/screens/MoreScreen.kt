@@ -5,6 +5,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +48,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,6 +78,22 @@ private data class MenuItem(val title: String, val sub: String, val icon: ImageV
 @Composable
 fun MoreScreen(nav: NavController) {
     var about by remember { mutableStateOf(false) }
+    var profileOpen by remember { mutableStateOf(false) }
+    var firstName by remember { mutableStateOf(AppState.settings.profileFirstName) }
+    var lastName by remember { mutableStateOf(AppState.settings.profileLastName) }
+    var photoUri by remember { mutableStateOf(AppState.settings.profilePhotoUri) }
+    val context = LocalContext.current
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            photoUri = uri.toString()
+        }
+    }
+    val profileBitmap = remember(photoUri) {
+        if (photoUri.isBlank()) null else runCatching {
+            context.contentResolver.openInputStream(Uri.parse(photoUri))?.use(BitmapFactory::decodeStream)?.asImageBitmap()
+        }.getOrNull()
+    }
     val items = listOf(
         MenuItem("ژورنال معاملات", "تاریخچه، ویرایش و فیلتر", Icons.Rounded.ReceiptLong, "trades", Tx.Green),
         MenuItem("برنامه هفتگی", "هدف‌ها، نظم و گزارش هفتگی", Icons.Rounded.EventNote, "weekly", Tx.Gold),
@@ -91,13 +114,13 @@ fun MoreScreen(nav: NavController) {
     Page(title = "بیشتر") {
         Reveal(0) {
             GlassCard(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.padding(14.dp).clickable { profileOpen = true }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
                         Modifier.size(56.dp).clip(CircleShape).border(2.dp, Tx.Gold, CircleShape).background(Color.White.copy(alpha = 0.05f)),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Rounded.Person, null, tint = Tx.Gold, modifier = Modifier.size(30.dp)) }
+                    ) { if (profileBitmap != null) Image(profileBitmap, contentDescription = "تصویر پروفایل", modifier = Modifier.size(52.dp).clip(CircleShape)) else Icon(Icons.Rounded.Person, null, tint = Tx.Gold, modifier = Modifier.size(30.dp)) }
                     Column(Modifier.weight(1f)) {
-                        Text("فضای معاملاتی شخصی", color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "پروفایل معاملاتی من" }, color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             AppState.selectedAccount.name + " · " + AppState.visibleTrades.size + " معامله",
                             color = Tx.Muted,
@@ -153,6 +176,35 @@ fun MoreScreen(nav: NavController) {
             }
         }
         Spacer(Modifier.height(12.dp))
+    }
+
+    if (profileOpen) {
+        AlertDialog(
+            onDismissRequest = { profileOpen = false },
+            containerColor = Tx.Dialog,
+            title = { Text("پروفایل شخصی", color = Tx.Text, fontWeight = FontWeight.ExtraBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("اطلاعات فقط روی همین دستگاه ذخیره می‌شود.", color = Tx.Muted, fontSize = 10.sp)
+                    TxField(firstName, { firstName = it }, "نام")
+                    TxField(lastName, { lastName = it }, "نام خانوادگی")
+                    Text(if (photoUri.isBlank()) "هنوز عکسی انتخاب نشده" else "تصویر پروفایل انتخاب شده است", color = Tx.Muted, fontSize = 10.sp)
+                    Text("انتخاب تصویر", color = Tx.Gold, modifier = Modifier.clickable { photoPicker.launch(arrayOf("image/*")) }.padding(vertical = 6.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    AppState.settings = AppState.settings.copy(
+                        profileFirstName = firstName.trim(),
+                        profileLastName = lastName.trim(),
+                        profilePhotoUri = photoUri,
+                    )
+                    AppState.persist()
+                    profileOpen = false
+                }) { Text("ذخیره پروفایل", color = Tx.Gold) }
+            },
+            dismissButton = { TextButton(onClick = { profileOpen = false }) { Text("انصراف", color = Tx.Muted) } },
+        )
     }
 
     if (about) {
