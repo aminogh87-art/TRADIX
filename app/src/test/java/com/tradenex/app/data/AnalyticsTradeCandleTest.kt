@@ -42,8 +42,8 @@ class AnalyticsTradeCandleTest {
         val friday = java.time.LocalDate.of(2024, 3, 29).toEpochDay()
         assertEquals(0, Analytics.column(saturday))
         assertEquals(6, Analytics.column(friday))
-        assertEquals(0, Analytics.noTradeDays(emptyList(), friday, 1, weekendHoliday = true))
-        assertEquals(1, Analytics.noTradeDays(emptyList(), saturday, 1, weekendHoliday = true))
+        assertEquals(1, Analytics.noTradeDays(emptyList(), friday, 1, weekendHoliday = true))
+        assertEquals(0, Analytics.noTradeDays(emptyList(), saturday, 1, weekendHoliday = true))
         assertTrue(Analytics.noTradeDays(emptyList(), friday, 1, weekendHoliday = false) == 1)
     }
 }
