@@ -95,6 +95,10 @@ fun AddTradeScreen(nav: NavController) {
     var takeProfitText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
     var tradeDateText by remember { mutableStateOf(LocalDate.now().toString()) }
+    var tradeTimeText by remember { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0).toString()) }
+    var timeframe by remember { mutableStateOf("M15") }
+    var marketCondition by remember { mutableStateOf("رونددار") }
+    var plannedRiskText by remember { mutableStateOf("") }
     val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var emotion by remember { mutableStateOf("آرام") }
@@ -150,6 +154,8 @@ fun AddTradeScreen(nav: NavController) {
                     }
                     Text("تاریخ معامله", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
                     TxField(tradeDateText, { tradeDateText = it }, "YYYY-MM-DD")
+                    Text("ساعت بازشدن معامله", color = Tx.Muted, fontSize = 11.sp)
+                    TxField(tradeTimeText, { tradeTimeText = it }, "HH:mm")
                 }
             }
         }
@@ -246,6 +252,16 @@ fun AddTradeScreen(nav: NavController) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AppState.strategies.filter { it.active }.forEach { TxChip(it.name, strategy == it.name, { strategy = it.name }) }
                 }
+                Text("تایم‌فریم تحلیل", color = Tx.Muted, fontSize = 11.sp)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1").forEach { TxChip(it, timeframe == it, { timeframe = it }) }
+                }
+                Text("شرایط بازار", color = Tx.Muted, fontSize = 11.sp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("رونددار", "رنج", "پرنوسان", "کم‌نوسان", "نزدیک خبر", "شکست ساختار").forEach { TxChip(it, marketCondition == it, { marketCondition = it }) }
+                }
+                Text("ریسک برنامه‌ریزی‌شده به ارز حساب", color = Tx.Muted, fontSize = 11.sp)
+                TxField(plannedRiskText, { plannedRiskText = it }, "مثلاً 100")
                 Text("حال ذهنی هنگام معامله", color = Tx.Muted, fontSize = 11.sp)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     emotions.forEach { TxChip(it, emotion == it, { emotion = it }) }
@@ -278,7 +294,7 @@ fun AddTradeScreen(nav: NavController) {
                         epochDay = parsedTradeDate.toEpochDay(),
                         emotion = emotion,
                         accountId = AppState.selectedAccountId,
-                        openedAtMillis = parsedTradeDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                        openedAtMillis = runCatching { parsedTradeDate.atTime(java.time.LocalTime.parse(tradeTimeText.trim())).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() }.getOrDefault(0L),
                         closedAtMillis = parsedTradeDate.atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         entryPrice = entryText.trim().toDoubleOrNull(),
                         exitPrice = exitText.trim().toDoubleOrNull(),
@@ -288,6 +304,9 @@ fun AddTradeScreen(nav: NavController) {
                         stopLossPrice = stopLossText.trim().toDoubleOrNull(),
                         takeProfitPrice = takeProfitText.trim().toDoubleOrNull(),
                         notes = notesText.trim(),
+                        plannedRisk = plannedRiskText.trim().toDoubleOrNull(),
+                        timeframe = timeframe,
+                        marketCondition = marketCondition,
                     ),
                     )
                     nav.popBackStack()
