@@ -11,12 +11,32 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
       - run: cargo test --manifest-path rust/Cargo.toml
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager --install "ndk;27.0.12077973"
+      - name: Build Rust shared libraries for Android ABIs
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          cargo install cargo-ndk --locked
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o app/src/main/jniLibs build --manifest-path rust/Cargo.toml --release
+      - uses: actions/upload-artifact@v6
+        with:
+          name: tradenex-rust-android-libs
+          path: app/src/main/jniLibs
+          if-no-files-found: error
+          retention-days: 7
 
   android:
+    needs: rust
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
+        with:
+          name: tradenex-rust-android-libs
+          path: app/src/main/jniLibs
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
