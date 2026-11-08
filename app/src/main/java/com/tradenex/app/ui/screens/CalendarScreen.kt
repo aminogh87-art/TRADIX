@@ -39,13 +39,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
+import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
 import com.tradenex.app.ui.components.SectionTitle
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -53,20 +53,8 @@ private val jalaliMonths = listOf("فروردین", "اردیبهشت", "خرد�
 
 /** Gregorian -> Jalali (year, month, day). */
 fun toJalali(gy: Int, gm: Int, gd: Int): Triple<Int, Int, Int> {
-    val gdm = intArrayOf(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
-    val gy2 = if (gm > 2) gy + 1 else gy
-    var days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) + ((gy2 + 399) / 400) + gd + gdm[gm - 1]
-    var jy = -1595 + 33 * (days / 12053)
-    days %= 12053
-    jy += 4 * (days / 1461)
-    days %= 1461
-    if (days > 365) {
-        jy += (days - 1) / 365
-        days = (days - 1) % 365
-    }
-    val jm = if (days < 186) 1 + days / 31 else 7 + (days - 186) / 30
-    val jd = 1 + if (days < 186) days % 31 else (days - 186) % 30
-    return Triple(jy, jm, jd)
+    val value = JalaliCalendar.fromGregorian(LocalDate.of(gy, gm, gd))
+    return Triple(value.year, value.month, value.day)
 }
 
 private fun fa(n: Int): String = n.toString().map { if (it in '0'..'9') ('۰' + (it - '0')) else it }.joinToString("")
@@ -79,13 +67,7 @@ fun jalaliText(d: LocalDate): String {
 private data class NewsEvent(val id: Int, val time: String, val cur: String, val title: String, val impact: Int)
 
 // Sample data. The real feed (ForexFactory) will replace this.
-private val sampleNews = listOf(
-    NewsEvent(1, "17:00", "USD", "FOMC Meeting Minutes", 2),
-    NewsEvent(2, "18:30", "EUR", "ECB President Speaks", 1),
-    NewsEvent(3, "19:30", "GBP", "BoE Governor Speaks", 1),
-    NewsEvent(4, "21:30", "USD", "Non-Farm Payrolls", 2),
-    NewsEvent(5, "22:00", "XAU", "Gold Inventory Report", 0),
-)
+private val sampleNews = emptyList<NewsEvent>()
 
 @Composable
 fun CalendarScreen(nav: NavController) {
@@ -94,7 +76,10 @@ fun CalendarScreen(nav: NavController) {
     var filter by remember { mutableStateOf(0) }
     var remind by remember { mutableStateOf(setOf<Int>()) }
     val today = LocalDate.now()
-    val ym = YearMonth.from(today).plusMonths(offset.toLong())
+    val todayJalali = JalaliCalendar.fromGregorian(today)
+    val monthIndex = todayJalali.year * 12 + todayJalali.month - 1 + offset
+    val selectedJalaliYear = Math.floorDiv(monthIndex, 12)
+    val selectedJalaliMonth = Math.floorMod(monthIndex, 12) + 1
     val n = AppState.visibleTrades.size
     val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
     val settings = AppState.settings
@@ -116,8 +101,9 @@ fun CalendarScreen(nav: NavController) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconBox(Icons.Rounded.KeyboardArrowRight, "ماه قبل") { offset -= 1 }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(jalaliMonths[toJalali(ym.year, ym.monthValue, 15).second - 1] + " " + fa(toJalali(ym.year, ym.monthValue, 15).first), color = Tx.Text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                                Text(ym.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + ym.year, color = Tx.Muted, fontSize = 11.sp)
+                                Text(jalaliMonths[selectedJalaliMonth - 1] + " " + fa(selectedJalaliYear), color = Tx.Text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                                val firstGregorian = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
+                                Text(firstGregorian.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + firstGregorian.year, color = Tx.Muted, fontSize = 11.sp)
                             }
                             IconBox(Icons.Rounded.KeyboardArrowLeft, "ماه بعد") { offset += 1 }
                         }
@@ -126,15 +112,16 @@ fun CalendarScreen(nav: NavController) {
                                 Text(w, color = if (i < 2) Tx.Muted.copy(alpha = 0.6f) else Tx.Muted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                             }
                         }
-                        val first = ym.atDay(1)
+                        val first = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
+                        val daysInJalaliMonth = JalaliCalendar.daysInMonth(selectedJalaliYear, selectedJalaliMonth)
                         val lead = Analytics.column(first.toEpochDay())
-                        val rows = (lead + ym.lengthOfMonth() + 6) / 7
+                        val rows = (lead + daysInJalaliMonth + 6) / 7
                         for (r in 0 until rows) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 for (c in 0..6) {
                                     val day = r * 7 + c - lead + 1
-                                    if (day in 1..ym.lengthOfMonth()) {
-                                        val date = ym.atDay(day)
+                                    if (day in 1..daysInJalaliMonth) {
+                                        val date = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, day)
                                         DayCell(
                                             day = day,
                                             isToday = date == today,
@@ -200,7 +187,7 @@ fun CalendarScreen(nav: NavController) {
                                 )
                             }
                         }
-                        if (list.isEmpty()) Text("خبری با این فیلتر نیست", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 12.dp))
+                        if (list.isEmpty()) Text("فید زنده اخبار هنوز به برنامه متصل نشده است؛ برای جلوگیری از اطلاعات ساختگی، رویداد نمونه نمایش داده نمی‌شود.", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 12.dp))
                     }
                 }
             }
