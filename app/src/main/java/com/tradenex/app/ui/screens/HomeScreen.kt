@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -141,26 +142,32 @@ fun HomeScreen(nav: NavController) {
                         )
                     }
                     Column(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp), horizontalAlignment = Alignment.End) {
-                        Text("عملکرد ۳۰ روز اخیر", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("عملکرد ۳۰ روز اخیر", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val col = if (monthPct >= 0) Tx.Green else Tx.Red
                         val shown = if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", shownPct)
-                        Text(shown, color = col, fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(shown, color = col, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             if (settings.hideBalance) "••••" else Analytics.money(monthPnl),
                             color = col,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
 
             Reveal(1) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("نرخ برد", "%.1f%%".format(stats.winRate * 100), Tx.Gold, Modifier.weight(1f))
-                    StatTile("نرخ باخت", "%.1f%%".format((1 - stats.winRate) * 100), Tx.Red, Modifier.weight(1f))
-                    StatTile("مجموع سود", if (settings.hideBalance) "•••" else "+%,.0f".format(grossWin), Tx.Green, Modifier.weight(1f))
-                    StatTile("مجموع ضرر", if (settings.hideBalance) "•••" else "%,.0f".format(grossLoss), Tx.Red, Modifier.weight(1f))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile("نرخ برد", "%.1f%%".format(stats.winRate * 100), Tx.Gold, Modifier.weight(1f))
+                        StatTile("نرخ باخت", "%.1f%%".format((1 - stats.winRate) * 100), Tx.Red, Modifier.weight(1f))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile("مجموع سود", if (settings.hideBalance) "•••" else "+%,.0f".format(grossWin), Tx.Green, Modifier.weight(1f))
+                        StatTile("مجموع ضرر", if (settings.hideBalance) "•••" else "%,.0f".format(grossLoss), Tx.Red, Modifier.weight(1f))
+                    }
                 }
             }
 
@@ -248,15 +255,20 @@ fun HomeScreen(nav: NavController) {
 
             Reveal(5) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("دسترسی سریع", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Quick("ثبت معامله", Icons.Rounded.Add, Modifier.weight(1f)) { nav.navigate("add") }
                         Quick("استراتژی‌ها", Icons.Rounded.TrackChanges, Modifier.weight(1f)) { nav.navigate("strategies") }
-                        Quick("آموزش", Icons.Rounded.MenuBook, Modifier.weight(1f)) { nav.navigate("edu") }
-                        Quick("تقویم", Icons.Rounded.CalendarMonth, Modifier.weight(1f)) { nav.navigate("calendar") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Quick("سشن‌ها", Icons.Rounded.Public, Modifier.weight(1f)) { nav.navigate("sessions") }
                         Quick("گزارش‌ها", Icons.Rounded.BarChart, Modifier.weight(1f)) { nav.navigate("perf") }
+                        Quick("تقویم خبری", Icons.Rounded.CalendarMonth, Modifier.weight(1f)) { nav.navigate("calendar") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Quick("آموزش", Icons.Rounded.MenuBook, Modifier.weight(1f)) { nav.navigate("edu") }
+                        Quick("سشن‌ها", Icons.Rounded.Public, Modifier.weight(1f)) { nav.navigate("sessions") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Quick("هشتگ‌ها", Icons.Rounded.Tag, Modifier.weight(1f)) { nav.navigate("tags") }
                         Quick("تنظیمات", Icons.Rounded.Settings, Modifier.weight(1f)) { nav.navigate("settings") }
                     }
@@ -294,7 +306,7 @@ private fun Quick(label: String, icon: ImageVector, modifier: Modifier, onClick:
         verticalArrangement = Arrangement.Center,
     ) {
         Icon(icon, null, tint = Tx.Gold, modifier = Modifier.size(20.dp))
-        Text(label, color = Tx.Text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(label, color = Tx.Text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
