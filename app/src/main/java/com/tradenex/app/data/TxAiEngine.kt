@@ -79,6 +79,15 @@ object TxAiEngine {
         }
         val monthTrades = ordered.filter { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) == currentMonth }
         val scores = scoreMonth(monthTrades, account, riskPercent, currentMonth.toString())
+        val dominantSession = sessions.filter { it.label != "بین سشن‌ها" }.maxByOrNull { it.trades }
+        val dominantSessionShare = dominantSession?.trades?.toDouble()?.div(ordered.size.coerceAtLeast(1)) ?: 0.0
+        val recordedStrategyShare = monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1)
+        val personality = when {
+            ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"
+            dominantSession != null && dominantSession.trades >= 5 && dominantSessionShare >= 0.5 -> "معامله‌گر سشن‌محور"
+            recordedStrategyShare >= 0.8 -> "معامله‌گر استراتژی‌محور"
+            else -> "سبک ترکیبی و انعطاف‌پذیر"
+        }
         val halfRisk = ordered.sumOf { it.pnl * 0.5 }
         val insights = buildList {
             if (ordered.size < 10) add("برای تشخیص الگوی پایدار، حداقل ۱۰ معامله ثبت کن؛ نتیجه فعلی مقدماتی است.")
@@ -98,7 +107,7 @@ object TxAiEngine {
             emotions = emotions, symbols = symbols,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
             withoutOutsideStrategyDelta = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl } - ordered.sumOf { it.pnl },
-            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
+            weekdays = weekdays, days = days, weeks = weeks, personality = personality,
             bestStrategy = strategySlices.firstOrNull { it.trades >= 5 }, outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
