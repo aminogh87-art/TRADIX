@@ -168,7 +168,9 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final allowedRisk = account.startingBalance > 0
         ? account.startingBalance * account.riskPercent.clamp(0.1, 100) / 100
         : null;
-    final averageR = trades.length >= 5 && knownRisk.length >= 3
+    final averageR = trades.length >= 5 &&
+            knownRisk.length >= 3 &&
+            knownRisk.length / trades.length >= 0.70
         ? knownRisk
                 .map((trade) => trade.pnl / trade.plannedRisk!)
                 .reduce((a, b) => a + b) /
@@ -209,17 +211,20 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         .toList();
     final monthRiskScore = monthTrades.length >= 5 &&
             monthRiskTrades.length >= 3 &&
+            monthRiskTrades.length / monthTrades.length >= 0.70 &&
             allowedRisk != null
         ? monthRiskTrades.where((trade) => trade.plannedRisk! <= allowedRisk).length /
             monthRiskTrades.length * 100
         : null;
-    final monthDecisionScore = monthTrades.length >= 5
-        ? monthTrades.where((trade) =>
-              trade.entryPrice != null &&
-              trade.exitPrice != null &&
-              trade.stopLossPrice != null &&
-              trade.strategy.trim().isNotEmpty).length /
-            monthTrades.length * 100
+    final completeMonthDecisions = monthTrades.where((trade) =>
+        trade.entryPrice != null &&
+        trade.exitPrice != null &&
+        trade.stopLossPrice != null &&
+        trade.takeProfitPrice != null &&
+        trade.strategy.trim().isNotEmpty).length;
+    final monthDecisionScore = monthTrades.length >= 5 &&
+            completeMonthDecisions / monthTrades.length >= 0.70
+        ? completeMonthDecisions / monthTrades.length * 100
         : null;
     final processScore = monthDiscipline != null &&
             monthRiskScore != null &&
@@ -606,17 +611,19 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
           : null;
       final risk = rows.length >= 5 &&
               riskRows.length >= 3 &&
+              riskRows.length / rows.length >= 0.7 &&
               allowedRisk != null
           ? riskRows.where((trade) => trade.plannedRisk! <= allowedRisk).length /
               riskRows.length * 100
           : null;
-      final decision = rows.length >= 5
-          ? rows.where((trade) =>
-                trade.entryPrice != null &&
-                trade.exitPrice != null &&
-                trade.stopLossPrice != null &&
-                trade.strategy.trim().isNotEmpty).length /
-              rows.length * 100
+      final completeDecisions = rows.where((trade) =>
+          trade.entryPrice != null &&
+          trade.exitPrice != null &&
+          trade.stopLossPrice != null &&
+          trade.takeProfitPrice != null &&
+          trade.strategy.trim().isNotEmpty).length;
+      final decision = rows.length >= 5 && completeDecisions / rows.length >= 0.7
+          ? completeDecisions / rows.length * 100
           : null;
       final score = discipline != null && risk != null && decision != null
           ? ((discipline + risk + decision) / 3).round()
