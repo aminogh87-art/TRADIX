@@ -77,9 +77,30 @@ internal object SnapshotCodec {
         lessons: List<Lesson>,
         settings: AppSettings,
         selectedAccountId: String,
+        txAiEpisodeReviews: List<TxAiEpisodeReview> = emptyList(),
+        txAiInsightPins: List<TxAiInsightPin> = emptyList(),
     ): JSONObject = JSONObject().apply {
         put("version", 1)
         put("selectedAccountId", selectedAccountId)
+        put("txAiEpisodeReviews", JSONArray().apply {
+            txAiEpisodeReviews.forEach { review ->
+                put(JSONObject().apply {
+                    put("accountId", review.accountId)
+                    put("episodeId", review.episodeId)
+                    put("status", review.status.storageKey)
+                    put("updatedAtMillis", review.updatedAtMillis)
+                })
+            }
+        })
+        put("txAiInsightPins", JSONArray().apply {
+            txAiInsightPins.forEach { pin ->
+                put(JSONObject().apply {
+                    put("accountId", pin.accountId)
+                    put("insightId", pin.insightId)
+                    put("pinned", pin.pinned)
+                })
+            }
+        })
         put("accounts", JSONArray().apply {
             accounts.forEach { a ->
                 put(JSONObject().apply {
@@ -171,6 +192,29 @@ internal object SnapshotCodec {
         val requestedAccount = snapshot.optString("selectedAccountId", target.accounts.first().id)
         target.selectedAccountId = target.accounts.firstOrNull { it.id == requestedAccount && !it.archived }?.id
             ?: target.accounts.first { !it.archived }.id
+        target.txAiEpisodeReviews.clear()
+        val reviewRows = snapshot.optJSONArray("txAiEpisodeReviews") ?: JSONArray()
+        for (i in 0 until reviewRows.length()) {
+            val row = reviewRows.optJSONObject(i) ?: continue
+            val accountId = row.optString("accountId")
+            val episodeId = row.optString("episodeId")
+            val status = TxAiReviewStatus.fromStorageKey(row.optString("status"))
+            if (accountId.isNotBlank() && episodeId.isNotBlank() && status != null) {
+                target.txAiEpisodeReviews.add(
+                    TxAiEpisodeReview(accountId, episodeId, status, row.optLong("updatedAtMillis")),
+                )
+            }
+        }
+        target.txAiInsightPins.clear()
+        val pinRows = snapshot.optJSONArray("txAiInsightPins") ?: JSONArray()
+        for (i in 0 until pinRows.length()) {
+            val row = pinRows.optJSONObject(i) ?: continue
+            val accountId = row.optString("accountId")
+            val insightId = row.optString("insightId")
+            if (accountId.isNotBlank() && insightId.isNotBlank()) {
+                target.txAiInsightPins.add(TxAiInsightPin(accountId, insightId, row.optBoolean("pinned", false)))
+            }
+        }
         target.trades.clear()
         val tradeRows = snapshot.optJSONArray("trades") ?: JSONArray()
         for (i in 0 until tradeRows.length()) {
@@ -273,4 +317,6 @@ internal data class MutableSnapshot(
     val lessons: MutableList<Lesson>,
     var settings: AppSettings,
     var selectedAccountId: String,
+    val txAiEpisodeReviews: MutableList<TxAiEpisodeReview>,
+    val txAiInsightPins: MutableList<TxAiInsightPin>,
 )
