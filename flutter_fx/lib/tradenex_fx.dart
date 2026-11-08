@@ -456,3 +456,145 @@ class TxProcessMonth {
   /// Null means insufficient evidence, not zero.
   final int? score;
 }
+
+
+/// Immutable presentation contract. Values must come from the local Rust engine
+/// or the existing journal store; this package deliberately contains no sample trades.
+class TxAiSnapshot {
+  const TxAiSnapshot({
+    required this.accountLabel,
+    required this.tradeCount,
+    required this.netPnl,
+    required this.winRate,
+    required this.profitFactor,
+    required this.expectancy,
+    required this.consistency,
+    required this.discipline,
+    required this.sessionEdge,
+    required this.processScore,
+    required this.tiltEvidence,
+    required this.bestSession,
+    required this.worstSession,
+    required this.narratives,
+    this.currency = '',
+  });
+  final String accountLabel;
+  final int tradeCount;
+  final double? netPnl;
+  final double? winRate, profitFactor, expectancy, consistency, discipline, sessionEdge;
+  final int? processScore;
+  /// Evidence index, not a probability.
+  final int? tiltEvidence;
+  final String? bestSession, worstSession;
+  final List<String> narratives;
+  final String currency;
+}
+
+class TxAiCommandCenter extends StatelessWidget {
+  const TxAiCommandCenter({super.key, required this.snapshot, this.onAxisTap, this.onBehavioralLab});
+  final TxAiSnapshot snapshot;
+  final ValueChanged<int>? onAxisTap;
+  final VoidCallback? onBehavioralLab;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = snapshot.netPnl != null && snapshot.netPnl! >= 0;
+    final edgeScore = _edgeScore([
+      snapshot.winRate, snapshot.profitFactor == null ? null : (snapshot.profitFactor! / 2).clamp(0, 1).toDouble(),
+      snapshot.expectancy == null ? null : (snapshot.expectancy! > 0 ? .75 : .25),
+      snapshot.consistency, snapshot.discipline, snapshot.sessionEdge,
+    ]);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        color: const Color(0xFF060D1D),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Row(children: [
+              const Expanded(child: Text('TX AI · مرکز فرماندهی', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900))),
+              Text(snapshot.tradeCount.toString() + ' معامله', style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 11)),
+            ]),
+            const SizedBox(height: 4),
+            Text(snapshot.accountLabel, style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 11)),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: _metricPanel('EDGE SCORE', edgeScore == null ? '—' : edgeScore.toString(), const Color(0xFF55D9F5))),
+              const SizedBox(width: 8),
+              Expanded(child: _metricPanel('PROCESS SCORE', snapshot.processScore?.toString() ?? '—', const Color(0xFFFFD36E))),
+              const SizedBox(width: 8),
+              Expanded(child: _metricPanel('TILT EVIDENCE', snapshot.tiltEvidence?.toString() ?? '—', const Color(0xFFFF7B83))),
+            ]),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0x224CCBFF))),
+              child: Column(children: [
+                const Text('Performance Radar', style: TextStyle(color: Color(0xFFB7C9E8), fontSize: 11, fontWeight: FontWeight.w700)),
+                TxRadar(values: [
+                  _percent(snapshot.winRate), _normalizedProfitFactor(snapshot.profitFactor),
+                  _normalizedExpectancy(snapshot.expectancy), snapshot.consistency,
+                  snapshot.discipline, snapshot.sessionEdge,
+                ], onAxisTap: onAxisTap),
+              ]),
+            ),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _metricPanel('NET P&L', snapshot.netPnl == null ? '—' : '${snapshot.netPnl!.toStringAsFixed(2)} ${snapshot.currency}', positive ? const Color(0xFF36D6A0) : const Color(0xFFFF7B83))),
+              const SizedBox(width: 8),
+              Expanded(child: _metricPanel('WIN RATE', snapshot.winRate == null ? '—' : '${(snapshot.winRate! * 100).toStringAsFixed(1)}%', const Color(0xFFFFD36E))),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _metricPanel('BEST SESSION', snapshot.bestSession ?? 'داده ناکافی', const Color(0xFF36D6A0))),
+              const SizedBox(width: 8),
+              Expanded(child: _metricPanel('WEAKEST SESSION', snapshot.worstSession ?? 'داده ناکافی', const Color(0xFFFF7B83))),
+            ]),
+            if (snapshot.tiltEvidence != null && snapshot.tiltEvidence! >= 45) ...[
+              const SizedBox(height: 12),
+              TxInsightCard(
+                title: 'نشانه‌های رفتاری نیازمند مرور',
+                metric: 'Evidence ${snapshot.tiltEvidence}/100',
+                description: 'این شاخص خلاصه شواهد ثبت‌شده است، نه احتمال روان‌شناختی یا تشخیص قطعی.',
+                severity: TxInsightSeverity.warning,
+                actionLabel: 'مشاهده Behavioral Lab',
+                onAction: onBehavioralLab,
+              ),
+            ],
+            const SizedBox(height: 12),
+            for (var i = 0; i < snapshot.narratives.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TxInsightCard(
+                  title: 'بینش ${i + 1}',
+                  metric: '',
+                  description: snapshot.narratives[i],
+                  severity: TxInsightSeverity.info,
+                ),
+              ),
+            const SizedBox(height: 16),
+            const Text('شاخص‌ها فقط از داده‌های موجود حساب محاسبه می‌شوند؛ مقدار «—» یعنی داده کافی نیست.', style: TextStyle(color: Color(0xFF7185A5), fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static int? _edgeScore(List<double?> values) {
+    final available = values.whereType<double>().where((v) => v.isFinite).toList();
+    if (available.length < 4) return null;
+    return (available.map((v) => v.clamp(0, 1)).reduce((a, b) => a + b) / available.length * 100).round();
+  }
+  static double? _percent(double? value) => value == null ? null : (value * 100).clamp(0, 100).toDouble();
+  static double? _normalizedProfitFactor(double? value) => value == null ? null : (value / 2 * 100).clamp(0, 100).toDouble();
+  static double? _normalizedExpectancy(double? value) => value == null ? null : (value > 0 ? 75 : 25);
+  Widget _metricPanel(String label, String value, Color accent) => Container(
+    padding: const EdgeInsets.all(11),
+    decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(14), border: Border.all(color: accent.withOpacity(.2))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 9, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 5),
+      Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: accent, fontSize: 15, fontWeight: FontWeight.w900)),
+    ]),
+  );
+}
