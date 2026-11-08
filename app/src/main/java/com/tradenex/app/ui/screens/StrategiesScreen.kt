@@ -46,6 +46,7 @@ import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Strategy
+import com.tradenex.app.data.StrategyRevision
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.GoldButton
 import com.tradenex.app.ui.components.IconBox
@@ -152,9 +153,20 @@ fun StrategiesScreen(nav: NavController) {
                 TextButton(onClick = {
                     val index = AppState.strategies.indexOfFirst { it.id == selected.id }
                     if (index >= 0 && editName.isNotBlank()) {
+                        AppState.strategyRevisions.add(
+                            StrategyRevision(
+                                id = System.currentTimeMillis(),
+                                strategyId = selected.id,
+                                version = selected.version,
+                                name = selected.name,
+                                rules = selected.rules,
+                                createdAt = System.currentTimeMillis(),
+                            ),
+                        )
                         AppState.strategies[index] = selected.copy(
                             name = editName.trim(),
                             rules = editRules.lines().map(String::trim).filter(String::isNotBlank),
+                            version = selected.version + 1,
                         )
                         AppState.persist()
                     }
@@ -182,7 +194,7 @@ private fun StrategyCard(s: Strategy, tradeCount: Int, onEdit: () -> Unit) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(s.name, color = if (s.active) Tx.Text else Tx.Muted, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                Text("${s.rules.size} قانون · ${mine.size} معامله", color = Tx.Muted, fontSize = 11.sp)
+                Text("نسخه V${s.version} · ${s.rules.size} قانون · ${mine.size} معامله", color = Tx.Muted, fontSize = 11.sp)
                 Text(s.rules.take(2).joinToString(" · "), color = Tx.Muted, fontSize = 10.sp, maxLines = 1)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
