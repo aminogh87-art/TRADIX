@@ -16,6 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Flutter add-to-app engine artifacts (io.flutter:*).
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
 }
 rootProject.name = "TRADENEX"
