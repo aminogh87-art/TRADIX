@@ -510,12 +510,9 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     }
     final slices = grouped.entries.map((entry) {
       final values = entry.value;
-      return _TxSessionSlice(
-        entry.key,
-        values.length,
-        values.fold<double>(0, (sum, trade) => sum + trade.pnl),
-        values.fold<double>(0, (sum, trade) => sum + trade.pnl) / values.length,
-      );
+      final average =
+          values.fold<double>(0, (sum, trade) => sum + trade.pnl) / values.length;
+      return _TxSessionSlice(entry.key, values.length, average);
     }).toList()
       ..sort((a, b) => b.average.compareTo(a.average));
     return slices;
@@ -743,9 +740,8 @@ void _showLinkedTrades(
 }
 
 class _TxSessionSlice {
-  const _TxSessionSlice(this.label, this.trades, this.net, this.average);
+  const _TxSessionSlice(this.label, this.trades, this.average);
   final String label;
   final int trades;
-  final double net;
   final double average;
 }
