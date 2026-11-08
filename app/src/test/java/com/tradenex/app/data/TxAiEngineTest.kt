@@ -68,6 +68,27 @@ class TxAiEngineTest {
     }
 
     @Test
+    fun strategyScoreUsesExplicitComplianceAndOffPlanCounterfactual() {
+        val rows = (1L..6L).map { id ->
+            trade(id, if (id <= 4) 25.0 else -30.0).copy(strategyFollowed = id <= 4)
+        }
+        val report = TxAiEngine.analyze(rows, account, 1.0)
+        assertEquals(67, report.scores.strategy)
+        assertEquals(2, report.outsideStrategyCount)
+        assertEquals(100.0, report.withoutOutsideStrategyNet, 0.001)
+        assertEquals(60.0, report.withoutOutsideStrategyDelta, 0.001)
+    }
+
+    @Test
+    fun strategyScoreIsWithheldWithoutEnoughExplicitComplianceData() {
+        val rows = (1L..6L).map { id ->
+            trade(id, 10.0).copy(strategyFollowed = if (id <= 3) true else null)
+        }
+        val report = TxAiEngine.analyze(rows, account, 1.0)
+        assertEquals(null, report.scores.strategy)
+    }
+
+    @Test
     fun reportIncludesEmotionalAndSymbolBreakdowns() {
         val report = TxAiEngine.analyze((1L..6L).map { trade(it, 12.0) }, account, 1.0)
         assertEquals("آرام", report.emotions.single().label)
