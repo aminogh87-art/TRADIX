@@ -102,6 +102,7 @@ fun AddTradeScreen(nav: NavController) {
     val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
     val parsedTradeTime = remember(tradeTimeText) { runCatching { java.time.LocalTime.parse(tradeTimeText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
+    var strategyFollowed by remember { mutableStateOf<Boolean?>(null) }
     var emotion by remember { mutableStateOf("آرام") }
     var tags by remember { mutableStateOf(setOf<String>()) }
 
@@ -253,6 +254,12 @@ fun AddTradeScreen(nav: NavController) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AppState.strategies.filter { it.active }.forEach { TxChip(it.name, strategy == it.name, { strategy = it.name }) }
                 }
+                Text("پایبندی واقعی به پلن (برای امتیاز دقیق TX AI)", color = Tx.Muted, fontSize = 11.sp)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TxChip("طبق پلن", strategyFollowed == true, { strategyFollowed = true })
+                    TxChip("خارج از پلن", strategyFollowed == false, { strategyFollowed = false })
+                    TxChip("ثبت نشده", strategyFollowed == null, { strategyFollowed = null })
+                }
                 Text("تایم‌فریم تحلیل (اختیاری؛ فقط اگر واقعاً ثبتش کرده‌ای)", color = Tx.Muted, fontSize = 11.sp)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1").forEach { TxChip(it, timeframe == it, { timeframe = it }) }
@@ -307,6 +314,7 @@ fun AddTradeScreen(nav: NavController) {
                         plannedRisk = plannedRiskText.trim().toDoubleOrNull(),
                         timeframe = timeframe,
                         marketCondition = marketCondition,
+                        strategyFollowed = strategyFollowed,
                     ),
                     )
                     nav.popBackStack()
