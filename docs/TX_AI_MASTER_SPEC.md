@@ -190,3 +190,21 @@ Added three account-scoped, deterministic journal pattern detectors:
 - Exit before recorded target: requires a positive realized result and explicit entry, exit and take-profit prices; direction-aware logic checks whether the exit price is between entry and target. The UI explicitly states that without intratrade market path data it cannot know whether the target was touched earlier.
 
 All three detectors include linked trade IDs, evidence reasons and account-scoped user review controls. They do not infer stop widening because no stop-edit audit trail exists. CI tests cover timestamp requirements, thresholds, long/short target direction and missing-data behavior.
+
+
+## Implementation update — advanced performance slices
+
+
+
+## Implementation update — advanced performance slices
+
+The local Kotlin analytics report now additionally provides:
+
+- Strategy-version comparisons keyed by the recorded strategy name and version.
+- 15-minute entry-time buckets using the timezone selected in app settings (Tehran, UTC, or device zone).
+- Average and median holding duration only when both open and close timestamps are present and ordered.
+- Average realized R-multiple only for trades with a finite, positive recorded planned-risk amount.
+- Maximum consecutive win/loss streaks ordered by close time, falling back to journal date only when close time is unavailable.
+- Both best and weakest session summaries require at least five timestamped trades in the session.
+
+Unit tests cover timezone buckets, strategy version grouping, hold-time calculations, R-multiple and streaks. These are descriptive journal metrics, not market replay or predictive claims.
