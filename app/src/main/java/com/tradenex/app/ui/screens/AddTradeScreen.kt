@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
+import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.data.Trade
 import com.tradenex.app.domain.FxInstrument
 import com.tradenex.app.domain.FxPnlInput
@@ -100,7 +101,14 @@ fun AddTradeScreen(nav: NavController) {
     var timeframe by remember { mutableStateOf("") }
     var marketCondition by remember { mutableStateOf("") }
     var plannedRiskText by remember { mutableStateOf("") }
-    val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
+    val parsedTradeDate = remember(tradeDateText) {
+        val raw = tradeDateText.trim().replace('/', '-')
+        val parts = raw.split('-')
+        val year = parts.getOrNull(0)?.toIntOrNull()
+        if (parts.size == 3 && year != null && year in 1200..1600) {
+            runCatching { JalaliCalendar.toGregorian(year, parts[1].toInt(), parts[2].toInt()) }.getOrNull()
+        } else runCatching { LocalDate.parse(raw) }.getOrNull()
+    }
     val parsedTradeTime = remember(tradeTimeText) { runCatching { java.time.LocalTime.parse(tradeTimeText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var strategyFollowed by remember { mutableStateOf<Boolean?>(null) }
@@ -156,7 +164,7 @@ fun AddTradeScreen(nav: NavController) {
                         lotPresets.forEach { TxChip(it.toString(), lot == it, { lot = it }) }
                     }
                     Text("تاریخ معامله", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
-                    TxField(tradeDateText, { tradeDateText = it }, "YYYY-MM-DD")
+                    TxField(tradeDateText, { tradeDateText = it }, "میلادی YYYY-MM-DD یا شمسی 1405/08/17")
                     Text("ساعت بازشدن معامله", color = Tx.Muted, fontSize = 11.sp)
                     TxField(tradeTimeText, { tradeTimeText = it }, "HH:mm")
                     Text("نام معامله یا ستاپ (اختیاری)", color = Tx.Muted, fontSize = 11.sp)
