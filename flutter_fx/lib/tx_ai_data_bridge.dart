@@ -31,6 +31,7 @@ class TxAiTradeRecord {
     this.displayMinute,
     this.displayDateKey,
     this.displayMonthKey,
+    this.displayClosedMonthKey,
   });
 
   final int id;
@@ -59,6 +60,7 @@ class TxAiTradeRecord {
   final int? displayMinute;
   final String? displayDateKey;
   final String? displayMonthKey;
+  final String? displayClosedMonthKey;
 
   static TxAiTradeRecord? fromMap(
     Map<Object?, Object?> map, {
@@ -105,6 +107,7 @@ class TxAiTradeRecord {
       displayMinute: map['displayMinute'] is int ? map['displayMinute'] as int : null,
       displayDateKey: map['displayDateKey'] is String ? map['displayDateKey'] as String : null,
       displayMonthKey: map['displayMonthKey'] is String ? map['displayMonthKey'] as String : null,
+      displayClosedMonthKey: map['displayClosedMonthKey'] is String ? map['displayClosedMonthKey'] as String : null,
     );
   }
 }
