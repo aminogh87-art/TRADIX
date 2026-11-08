@@ -61,12 +61,13 @@ fun TradesScreen(nav: NavController) {
         if (uri != null) {
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                    writer.appendLine("id,date,symbol,side,lots,net_pnl,currency,strategy,strategy_version,emotion,entry,exit,stop_loss,take_profit,commission,swap,fees,notes")
+                    writer.appendLine("id,date,symbol,side,lots,net_pnl,currency,strategy,strategy_version,strategy_followed,emotion,timeframe,market_condition,planned_risk,entry,exit,stop_loss,take_profit,commission,swap,fees,notes")
                     AppState.visibleTrades.sortedBy { it.epochDay }.forEach { t ->
                         val values = listOf(
                             t.id.toString(), t.epochDay.toString(), t.symbol, if (t.buy) "BUY" else "SELL",
                             t.lot.toString(), t.pnl.toString(), AppState.selectedAccount.baseCurrency,
-                            t.strategy, t.strategyVersion.toString(), t.emotion,
+                            t.strategy, t.strategyVersion.toString(), t.strategyFollowed?.let { if (it) "YES" else "NO" }.orEmpty(), t.emotion,
+                            t.timeframe, t.marketCondition, t.plannedRisk?.toString().orEmpty(),
                             t.entryPrice?.toString().orEmpty(), t.exitPrice?.toString().orEmpty(),
                             t.stopLossPrice?.toString().orEmpty(), t.takeProfitPrice?.toString().orEmpty(),
                             t.commission.toString(), t.swap.toString(), t.otherFees.toString(), t.notes,
@@ -123,6 +124,7 @@ fun TradesScreen(nav: NavController) {
                             Text(if (trade.buy) "  BUY" else "  SELL", color = if (trade.buy) Tx.Green else Tx.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · روز ${trade.epochDay}", color = Tx.Muted, fontSize = 10.sp)
+                        Text("پایبندی: " + when (trade.strategyFollowed) { true -> "طبق پلن"; false -> "خارج از پلن"; null -> "ثبت نشده" }, color = when (trade.strategyFollowed) { true -> Tx.Green; false -> Tx.Red; null -> Tx.Muted }, fontSize = 10.sp)
                         if (trade.notes.isNotBlank()) Text(trade.notes, color = Tx.Muted, fontSize = 11.sp, maxLines = 2)
                     }
                     Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 13.sp, fontWeight = FontWeight.Bold)
