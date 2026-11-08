@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.EventNote
@@ -77,6 +78,7 @@ fun MoreScreen(nav: NavController) {
         MenuItem("سشن‌ها", "کره زمین و همپوشانی", Icons.Rounded.Public, "sessions", Tx.Blue),
         MenuItem("استراتژی‌ها", "ثبت، حذف و مقایسه", Icons.Rounded.TrackChanges, "strategies", Tx.Gold),
         MenuItem("تقویم و اخبار", "معاملات + فارکس فکتوری", Icons.Rounded.CalendarMonth, "calendar", Tx.Green),
+        MenuItem("ماشین حساب", "محاسبات عمومی، لات و ریسک فارکس", Icons.Rounded.Calculate, "calculator", Tx.Blue),
         MenuItem("# هشتگ‌ها", "برچسب‌گذاری معامله‌ها", Icons.Rounded.Tag, "tags", Tx.Purple),
         MenuItem("TX AI", "شخصیت معاملاتی و مربی عملکرد", Icons.Rounded.AutoAwesome, "tx_ai", Tx.Gold),
         MenuItem("گزارش‌ها", "کندل، نقشه حرارتی", Icons.Rounded.BarChart, "perf", Tx.Gold),
@@ -111,9 +113,9 @@ fun MoreScreen(nav: NavController) {
             }
         }
         val groups = listOf(
-            "معاملات و حساب‌ها" to items.take(6),
-            "تحلیل و پیشرفت" to items.drop(6).take(4),
-            "شخصی‌سازی و برنامه" to items.drop(10),
+            "معاملات و حساب‌ها" to items.take(7),
+            "تحلیل و پیشرفت" to items.drop(7).take(4),
+            "شخصی‌سازی و برنامه" to items.drop(11),
         )
         groups.forEachIndexed { groupIndex, group ->
             Text(group.first, color = Tx.Gold, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
