@@ -49,7 +49,7 @@ class TxAiTradeRecord {
     final isBuy = map['isBuy'];
     final pnl = _finiteNumber(map['pnl']);
     final lot = _finiteNumber(map['lot']);
-    if (id is! int || symbol is! String || isBuy is! bool || pnl == null || lot == null) {
+    if (id is! int || symbol is! String || isBuy is! bool || pnl == null || lot == null || lot <= 0) {
       return null;
     }
     final rawTags = map['tags'];
