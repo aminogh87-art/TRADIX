@@ -166,83 +166,66 @@ fun CalendarScreen(nav: NavController) {
                                             onClick = { selectedDate = date },
                                         )
                                     } else {
-                                        Spacer(Modifier.weight(1f))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                GlassCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("معاملات ${jalaliText(selectedDate)}", color = Tx.Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        if (selectedTrades.isEmpty()) {
-                            Text("برای این روز معامله‌ای ثبت نشده است.", color = Tx.Muted, fontSize = 11.sp)
-                        } else {
-                            selectedTrades.forEach { trade ->
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(trade.tradeName.ifBlank { trade.symbol } + " · " + trade.symbol + " · " + if (trade.buy) "خرید" else "فروش", color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                                    Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
             Reveal(1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("All", "High", "USD", "EUR", "GBP").forEachIndexed { i, f -> TxChip(f, filter == i, { filter = i }) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf("همه", "High", "USD", "EUR", "GBP", "JPY").forEachIndexed { i, label ->
+                        TxChip(label, filter == i, { filter = i }, Modifier.weight(1f))
+                    }
                 }
             }
             Reveal(2) {
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        SectionTitle("اخبار مهم امروز", "ساعت‌ها به وقت تهران")
-                        val minImpact = when (settings.newsImpact) {
-                            1 -> 1
-                            2 -> 2
-                            else -> 0
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionTitle("تقویم اقتصادی Forex Factory", "هفته جاری · ساعت محلی")
+                        Text(newsMessage, color = if (newsEvents.isNotEmpty()) Tx.Muted else Tx.Gold, fontSize = 10.sp)
+                        if (newsFetchedAt > 0L) {
+                            val updated = Instant.ofEpochMilli(newsFetchedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
+                            Text("آخرین دریافت: " + updated, color = Tx.Muted, fontSize = 10.sp)
                         }
-                        val list = sampleNews.filter { e ->
-                            e.impact >= minImpact && when (filter) {
-                                1 -> e.impact == 2
-                                2 -> e.cur == "USD"
-                                3 -> e.cur == "EUR"
-                                4 -> e.cur == "GBP"
+                        val minImpact = when (settings.newsImpact) { 1 -> 1; 2 -> 2; else -> 0 }
+                        val list = newsEvents.filter { event ->
+                            event.impact >= minImpact && when (filter) {
+                                1 -> event.impact == 2
+                                2 -> event.currency == "USD"
+                                3 -> event.currency == "EUR"
+                                4 -> event.currency == "GBP"
+                                5 -> event.currency == "JPY"
                                 else -> true
                             }
                         }
-                        list.forEach { e ->
-                            val col = when (e.impact) {
-                                2 -> Tx.Red
-                                1 -> Tx.Gold
-                                else -> Tx.Muted
-                            }
-                            Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.width(4.dp).height(36.dp).clip(RoundedCornerShape(2.dp)).background(col))
-                                Text(e.time, color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(54.dp).padding(start = 10.dp))
-                                Box(Modifier.width(44.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = 0.08f)).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
-                                    Text(e.cur, color = Tx.Text, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                        if (newsLoading && newsEvents.isEmpty()) {
+                            Text("در حال دریافت رویدادهای اقتصادی…", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
+                        } else if (list.isEmpty()) {
+                            Text(if (newsEvents.isEmpty()) "داده‌ای دریافت نشد؛ اینترنت را بررسی و دوباره تازه‌سازی کن." else "برای این فیلتر رویدادی پیدا نشد.", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 14.dp))
+                        } else {
+                            list.forEach { event ->
+                                val color = when (event.impact) { 2 -> Tx.Red; 1 -> Tx.Gold; -1 -> Tx.Blue; else -> Tx.Muted }
+                                val local = Instant.ofEpochMilli(event.timestampMillis).atZone(ZoneId.systemDefault())
+                                val time = local.format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
+                                val dateLabel = jalaliText(local.toLocalDate())
+                                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(Modifier.width(66.dp)) {
+                                        Text(time, color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text(dateLabel, color = Tx.Muted, fontSize = 9.sp)
+                                    }
+                                    Box(Modifier.width(42.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.07f)).padding(vertical = 5.dp), contentAlignment = Alignment.Center) {
+                                        Text(event.currency, color = Tx.Text, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(event.title, color = Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                                        Text(when (event.impact) { 2 -> "تأثیر بالا"; 1 -> "تأثیر متوسط"; -1 -> "تعطیلی"; else -> "تأثیر کم" }, color = color, fontSize = 10.sp)
+                                        Text("قبلی: " + event.previous.ifBlank { "—" } + " · پیش‌بینی: " + event.forecast.ifBlank { "—" } + " · واقعی: " + event.actual.ifBlank { "—" }, color = Tx.Muted, fontSize = 9.sp, maxLines = 2)
+                                    }
+                                    val on = event.id in remind
+                                    Icon(if (on) Icons.Rounded.Notifications else Icons.Rounded.NotificationsNone, "یادآور", tint = if (on) Tx.Gold else Tx.Muted, modifier = Modifier.size(22.dp).clickable { remind = if (on) remind - event.id else remind + event.id })
                                 }
-                                Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                                    Text(e.title, color = Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text(listOf("Low", "Medium", "High")[e.impact] + " impact", color = col, fontSize = 11.sp)
-                                }
-                                val on = e.id in remind
-                                Icon(
-                                    if (on) Icons.Rounded.Notifications else Icons.Rounded.NotificationsNone,
-                                    "یادآور",
-                                    tint = if (on) Tx.Gold else Tx.Muted,
-                                    modifier = Modifier.size(24.dp).clickable { remind = if (on) remind - e.id else remind + e.id },
-                                )
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.05f)))
                             }
                         }
-                        if (list.isEmpty()) Text("فید زنده اخبار هنوز به برنامه متصل نشده است؛ برای جلوگیری از اطلاعات ساختگی، رویداد نمونه نمایش داده نمی‌شود.", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 12.dp))
                     }
                 }
             }
-            Text("برای نمایش رویدادهای اقتصادی واقعی، اتصال به منبع خبری معتبر لازم است.", color = Tx.Muted, fontSize = 11.sp)
+            Text("منبع: فید هفتگی Forex Factory؛ داده‌ها محلی ذخیره می‌شوند و ساعت رویدادها با منطقه زمانی دستگاه نمایش داده می‌شود.", color = Tx.Muted, fontSize = 10.sp)
         }
         Spacer(Modifier.height(12.dp))
     }
