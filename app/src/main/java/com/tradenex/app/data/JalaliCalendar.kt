@@ -46,21 +46,8 @@ object JalaliCalendar {
             gy += (days - 1) / 365
             days = (days - 1) % 365
         }
-        val gd = days + 1
-        return LocalDate.of(gy, 1, 1).plusDays(
-            (intArrayOf(0, 31, if (java.time.Year.isLeap(gy.toLong())) 29 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-                .take(monthOfGregorian(gy, gd) - 1).sum() + gd - 1).toLong()
-        )
-    }
-
-    private fun monthOfGregorian(year: Int, dayOfYear: Int): Int {
-        val monthLengths = intArrayOf(31, if (java.time.Year.isLeap(year.toLong())) 29 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-        var remaining = dayOfYear
-        for (i in monthLengths.indices) {
-            if (remaining <= monthLengths[i]) return i + 1
-            remaining -= monthLengths[i]
-        }
-        return 12
+        val dayOfYear = days + 1
+        return LocalDate.of(gy, 1, 1).plusDays((dayOfYear - 1).toLong())
     }
 
     fun daysInMonth(year: Int, month: Int): Int {
