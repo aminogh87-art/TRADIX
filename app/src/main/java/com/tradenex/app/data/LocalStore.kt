@@ -82,6 +82,12 @@ internal object SnapshotCodec {
                     put("id", t.id); put("symbol", t.symbol); put("buy", t.buy)
                     put("lot", t.lot); put("pnl", t.pnl); put("strategy", t.strategy)
                     put("tags", JSONArray(t.tags)); put("epochDay", t.epochDay); put("emotion", t.emotion)
+                    put("accountId", t.accountId); put("openedAtMillis", t.openedAtMillis)
+                    put("closedAtMillis", t.closedAtMillis)
+                    t.entryPrice?.let { put("entryPrice", it) }; t.exitPrice?.let { put("exitPrice", it) }
+                    t.stopLossPrice?.let { put("stopLossPrice", it) }; t.takeProfitPrice?.let { put("takeProfitPrice", it) }
+                    put("commission", t.commission); put("swap", t.swap); put("otherFees", t.otherFees)
+                    put("notes", t.notes); t.plannedRisk?.let { put("plannedRisk", it) }
                 })
             }
         })
@@ -133,6 +139,18 @@ internal object SnapshotCodec {
                     tags = (0 until tags.length()).mapNotNull { tags.optString(it).takeIf(String::isNotBlank) },
                     epochDay = row.optLong("epochDay"),
                     emotion = row.optString("emotion", ""),
+                    accountId = row.optString("accountId", "default"),
+                    openedAtMillis = row.optLong("openedAtMillis", 0L),
+                    closedAtMillis = row.optLong("closedAtMillis", 0L),
+                    entryPrice = row.optDouble("entryPrice").takeIf { row.has("entryPrice") },
+                    exitPrice = row.optDouble("exitPrice").takeIf { row.has("exitPrice") },
+                    stopLossPrice = row.optDouble("stopLossPrice").takeIf { row.has("stopLossPrice") },
+                    takeProfitPrice = row.optDouble("takeProfitPrice").takeIf { row.has("takeProfitPrice") },
+                    commission = row.optDouble("commission", 0.0),
+                    swap = row.optDouble("swap", 0.0),
+                    otherFees = row.optDouble("otherFees", 0.0),
+                    notes = row.optString("notes", ""),
+                    plannedRisk = row.optDouble("plannedRisk").takeIf { row.has("plannedRisk") },
                 ),
             )
         }
