@@ -35,7 +35,7 @@ void main() {
     expect(find.text('افت عملکرد در سشن آسیا'), findsOneWidget);
     expect(find.text('پایبندی بهتر به پلن'), findsOneWidget);
 
-    await tester.tap(find.text('روزانه'));
+    await tester.tap(find.text('روزانه').first);
     await tester.pump();
 
     expect(find.text('افت عملکرد در سشن آسیا'), findsOneWidget);
