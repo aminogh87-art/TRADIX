@@ -36,7 +36,8 @@ fun TxAiScreen(nav: NavController) {
                         StatTile("نرخ برد", (report.winRate * 100).toInt().toString() + "%", Tx.Gold, Modifier.weight(1f))
                         StatTile("معاملات", report.totalTrades.toString(), Tx.Blue, Modifier.weight(1f))
                     }
-                    Text("پروفایل رفتاری فعلی: " + report.personality, color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)\n                    Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای تشخیص سشن برتر، زمان بازشدن معامله لازم است.", color = Tx.Text, fontSize = 12.sp)
+                    Text("پروفایل رفتاری فعلی: " + report.personality, color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای تشخیص سشن برتر، زمان بازشدن معامله لازم است.", color = Tx.Text, fontSize = 12.sp)
                 }
             }
         }
