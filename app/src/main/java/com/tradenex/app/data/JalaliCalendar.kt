@@ -5,6 +5,24 @@ import java.time.LocalDate
 data class JalaliDate(val year: Int, val month: Int, val day: Int)
 
 object JalaliCalendar {
+    /** Accepts ISO Gregorian dates or Jalali dates (1405/08/17), including Persian digits. */
+    fun parseDateInput(value: String): LocalDate? {
+        val normalized = buildString {
+            value.trim().forEach { char ->
+                val digit = "۰۱۲۳۴۵۶۷۸۹".indexOf(char)
+                append(if (digit >= 0) ('0' + digit) else char)
+            }
+        }.replace('/', '-')
+        val parts = normalized.split('-')
+        val year = parts.getOrNull(0)?.toIntOrNull()
+        if (parts.size == 3 && year != null && year in 1200..1600) {
+            val month = parts[1].toIntOrNull() ?: return null
+            val day = parts[2].toIntOrNull() ?: return null
+            return runCatching { toGregorian(year, month, day) }.getOrNull()
+        }
+        return runCatching { LocalDate.parse(normalized) }.getOrNull()
+    }
+
     fun fromGregorian(date: LocalDate): JalaliDate {
         val gdm = intArrayOf(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
         val gy = date.year
