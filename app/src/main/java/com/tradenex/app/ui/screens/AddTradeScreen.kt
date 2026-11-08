@@ -46,6 +46,8 @@ import com.tradenex.app.domain.FxPnlInput
 import com.tradenex.app.domain.FxSide
 import com.tradenex.app.domain.ForexPnlCalculator
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.ZoneId
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.GoldButton
 import com.tradenex.app.ui.components.TxChip
@@ -85,6 +87,11 @@ fun AddTradeScreen(nav: NavController) {
     var commissionText by remember { mutableStateOf("0") }
     var swapText by remember { mutableStateOf("0") }
     var feeText by remember { mutableStateOf("0") }
+    var stopLossText by remember { mutableStateOf("") }
+    var takeProfitText by remember { mutableStateOf("") }
+    var notesText by remember { mutableStateOf("") }
+    var tradeDateText by remember { mutableStateOf(LocalDate.now().toString()) }
+    val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var emotion by remember { mutableStateOf("آرام") }
     var tags by remember { mutableStateOf(setOf<String>()) }
@@ -137,6 +144,8 @@ fun AddTradeScreen(nav: NavController) {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         lotPresets.forEach { TxChip(it.toString(), lot == it, { lot = it }) }
                     }
+                    Text("تاریخ معامله", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
+                    TxField(tradeDateText, { tradeDateText = it }, "YYYY-MM-DD")
                 }
             }
         }
@@ -160,6 +169,10 @@ fun AddTradeScreen(nav: NavController) {
                             TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
                             TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
                             TxField(feeText, { feeText = it }, "Other fees", Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TxField(stopLossText, { stopLossText = it }, "Stop Loss", Modifier.weight(1f))
+                            TxField(takeProfitText, { takeProfitText = it }, "Take Profit", Modifier.weight(1f))
                         }
                         Text(
                             if (priceResult == null) "برای محاسبه، قیمت ورود، خروج و نرخ تبدیل معتبر وارد کن."
@@ -242,8 +255,12 @@ fun AddTradeScreen(nav: NavController) {
             }
         }
         Reveal(7) {
+            TxField(notesText, { notesText = it }, "یادداشت معامله (اختیاری)")
+            if (parsedTradeDate == null) {
+                Text("تاریخ باید با قالب YYYY-MM-DD وارد شود.", color = Tx.Red, fontSize = 11.sp)
+            }
             GoldButton("ذخیره معامله در دفترچه") {
-                if (!usePriceCalculation || priceResult != null) {
+                if (parsedTradeDate != null && (!usePriceCalculation || priceResult != null)) {
                     AppState.addTrade(
                     Trade(
                         id = System.currentTimeMillis(),
@@ -253,15 +270,18 @@ fun AddTradeScreen(nav: NavController) {
                         pnl = signed,
                         strategy = strategy,
                         tags = tags.toList(),
-                        epochDay = AppState.today(),
+                        epochDay = parsedTradeDate.toEpochDay(),
                         emotion = emotion,
-                        openedAtMillis = System.currentTimeMillis(),
-                        closedAtMillis = System.currentTimeMillis(),
+                        openedAtMillis = parsedTradeDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                        closedAtMillis = parsedTradeDate.atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         entryPrice = entryText.trim().toDoubleOrNull(),
                         exitPrice = exitText.trim().toDoubleOrNull(),
                         commission = commissionText.trim().toDoubleOrNull() ?: 0.0,
                         swap = swapText.trim().toDoubleOrNull() ?: 0.0,
                         otherFees = feeText.trim().toDoubleOrNull() ?: 0.0,
+                        stopLossPrice = stopLossText.trim().toDoubleOrNull(),
+                        takeProfitPrice = takeProfitText.trim().toDoubleOrNull(),
+                        notes = notesText.trim(),
                     ),
                     )
                     nav.popBackStack()
