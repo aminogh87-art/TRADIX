@@ -63,3 +63,14 @@ The feature review used public project documentation as design references, not a
 - No intratrade OHLC is available from manual journal entries. A future broker/MT connector could supply that data.
 - TX AI is local deterministic analytics, not an LLM-based coach. This keeps current analysis offline and reproducible.
 - Historical trades without explicit strategy compliance remain unclassified; no inferred compliance score is created.
+
+
+## Behavioral Lab — Revenge Trading (initial implementation)
+
+The first local detector is implemented in `RevengeTradingAnalyzer`. It is account-scoped and creates a linked pair consisting of the prior losing trade and the subsequent trigger trade. It records the time gap, whether planned risk or lot size increased by more than 25%, explicit off-plan status, Revenge/FOMO/anger tags or emotion text, and the consecutive-loss count before the re-entry.
+
+The evidence score uses deterministic rule weights: rapid re-entry (15), risk increase (20), size increase (10), explicit plan violation (20), explicit Revenge tag (30), anger/FOMO signal (10), and two or more prior consecutive losses (10), capped at 100. This is an evidence index, not a psychological probability. A user-entered Revenge tag is labeled separately as `USER_TAGGED`; algorithmic evidence is never represented as user confirmation.
+
+The TX AI screen currently shows the linked previous-loss and trigger trades, their recorded P&L, the observed time gap, the evidence reasons and the evidence score. It does not aggregate episode P&L into an account-level cost because overlapping pairs could double-count a trade. The current detector is intentionally conservative: missing timestamps, risk or emotion are not inferred.
+
+Not yet implemented in this first slice: persisted user review states, dedicated episode filtering/drill-down, overlapping-episode consolidation, and the remaining Behavioral Lab detectors (overtrading after wins, early exit, widened stop, session drift and overconfidence). See [TX_AI_MASTER_SPEC.md](TX_AI_MASTER_SPEC.md) for the full target inventory and delivery gates.
