@@ -471,6 +471,7 @@ class TxAiSnapshot {
     required this.consistency,
     required this.discipline,
     required this.sessionEdge,
+    required this.radarValues,
     required this.processScore,
     required this.tiltEvidence,
     required this.bestSession,
@@ -482,6 +483,8 @@ class TxAiSnapshot {
   final int tradeCount;
   final double? netPnl;
   final double? winRate, profitFactor, expectancy, consistency, discipline, sessionEdge;
+  /// Six normalized 0..100 dimensions produced by the analytics engine; null means unavailable.
+  final List<double?> radarValues;
   final int? processScore;
   /// Evidence index, not a probability.
   final int? tiltEvidence;
@@ -499,11 +502,7 @@ class TxAiCommandCenter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final positive = snapshot.netPnl != null && snapshot.netPnl! >= 0;
-    final edgeScore = _edgeScore([
-      snapshot.winRate, snapshot.profitFactor == null ? null : (snapshot.profitFactor! / 2).clamp(0, 1).toDouble(),
-      snapshot.expectancy == null ? null : (snapshot.expectancy! > 0 ? .75 : .25),
-      snapshot.consistency, snapshot.discipline, snapshot.sessionEdge,
-    ]);
+    final edgeScore = _edgeScore(snapshot.radarValues);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
@@ -531,11 +530,7 @@ class TxAiCommandCenter extends StatelessWidget {
               decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0x224CCBFF))),
               child: Column(children: [
                 const Text('Performance Radar', style: TextStyle(color: Color(0xFFB7C9E8), fontSize: 11, fontWeight: FontWeight.w700)),
-                TxRadar(values: [
-                  _percent(snapshot.winRate), _normalizedProfitFactor(snapshot.profitFactor),
-                  _normalizedExpectancy(snapshot.expectancy), snapshot.consistency,
-                  snapshot.discipline, snapshot.sessionEdge,
-                ], onAxisTap: onAxisTap),
+                TxRadar(values: snapshot.radarValues, onAxisTap: onAxisTap),
               ]),
             ),
             const SizedBox(height: 10),
@@ -581,13 +576,11 @@ class TxAiCommandCenter extends StatelessWidget {
   }
 
   static int? _edgeScore(List<double?> values) {
+    if (values.length != 6) return null;
     final available = values.whereType<double>().where((v) => v.isFinite).toList();
     if (available.length < 4) return null;
     return (available.map((v) => v.clamp(0, 1)).reduce((a, b) => a + b) / available.length * 100).round();
   }
-  static double? _percent(double? value) => value == null ? null : (value * 100).clamp(0, 100).toDouble();
-  static double? _normalizedProfitFactor(double? value) => value == null ? null : (value / 2 * 100).clamp(0, 100).toDouble();
-  static double? _normalizedExpectancy(double? value) => value == null ? null : (value > 0 ? 75 : 25);
   Widget _metricPanel(String label, String value, Color accent) => Container(
     padding: const EdgeInsets.all(11),
     decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(14), border: Border.all(color: accent.withOpacity(.2))),
