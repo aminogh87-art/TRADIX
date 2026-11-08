@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.tradenex.app.core.NativeCore
 import com.tradenex.app.core.TradeStats
+import com.tradenex.app.domain.FxInstrument
 import java.time.LocalDate
 
 data class Trade(
@@ -104,7 +105,7 @@ object AppState {
     fun stats(): TradeStats = NativeCore.stats(trades.map { it.pnl }.toDoubleArray())
 
     fun addTrade(t: Trade) {
-        require(t.symbol.matches(Regex("[A-Z]{6}"))) { "Only Forex currency pairs are supported." }
+        FxInstrument.standard(t.symbol)
         require(t.lot > 0.0 && t.pnl.isFinite()) { "Trade volume and P&L must be valid." }
         trades.add(t)
         persist()
