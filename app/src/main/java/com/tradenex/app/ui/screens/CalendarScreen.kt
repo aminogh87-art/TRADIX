@@ -73,8 +73,7 @@ fun jalaliText(d: LocalDate): String {
 
 
 
-// Sample data. The real feed (ForexFactory) will replace this.
-private val sampleNews = emptyList<NewsEvent>()
+
 
 @Composable
 fun CalendarScreen(nav: NavController) {
