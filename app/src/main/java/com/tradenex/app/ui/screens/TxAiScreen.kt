@@ -103,6 +103,10 @@ fun TxAiScreen(nav: NavController) {
                     ScoreRow("پایبندی به استراتژی", report.scores.strategy, "بر اساس ثبت نام استراتژی؛ نه اثبات اجرای قوانین")
                     ScoreRow("کیفیت تصمیم‌گیری", report.scores.decision, "کامل‌بودن ورود، خروج، حدضرر و استراتژی")
                     Text("نمونه این ماه: " + report.scores.sampleSize + " معامله", color = Tx.Muted, fontSize = 10.sp)
+                    Text("روند امتیازها در ماه‌های ثبت‌شده", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    report.monthlyProgress.forEach { month ->
+                        Text(month.monthLabel + "  ·  نظم " + (month.discipline?.toString() ?: "—") + "  ·  ریسک " + (month.risk?.toString() ?: "—") + "  ·  استراتژی " + (month.strategy?.toString() ?: "—") + "  ·  تصمیم " + (month.decision?.toString() ?: "—"), color = Tx.Text, fontSize = 10.sp)
+                    }
                 }
             }
         }
