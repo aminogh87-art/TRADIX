@@ -60,7 +60,7 @@ fun StrategiesScreen(nav: NavController) {
     var editingStrategy by remember { mutableStateOf<Strategy?>(null) }
     var editName by remember { mutableStateOf("") }
     var editRules by remember { mutableStateOf("") }
-    val n = AppState.trades.size
+    val n = AppState.visibleTrades.size
 
     Page(title = "استراتژی‌های من", onBack = { nav.popBackStack() }) {
         // comparison
@@ -68,7 +68,7 @@ fun StrategiesScreen(nav: NavController) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("کدام استراتژی برایت کار می‌کند؟")
-                    val nets = AppState.strategies.map { s -> s to AppState.trades.filter { it.strategy == s.name }.sumOf { it.pnl } }
+                    val nets = AppState.strategies.map { s -> s to AppState.visibleTrades.filter { it.strategy == s.name }.sumOf { it.pnl } }
                     val maxAbs = nets.maxOfOrNull { kotlin.math.abs(it.second) }?.coerceAtLeast(1.0) ?: 1.0
                     nets.forEach { (s, net) ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -170,7 +170,7 @@ fun StrategiesScreen(nav: NavController) {
 
 @Composable
 private fun StrategyCard(s: Strategy, tradeCount: Int, onEdit: () -> Unit) {
-    val mine = remember(s.name, tradeCount) { AppState.trades.filter { it.strategy == s.name } }
+    val mine = remember(s.name, tradeCount) { AppState.visibleTrades.filter { it.strategy == s.name } }
     val net = mine.sumOf { it.pnl }
     val win = if (mine.isEmpty()) 0.0 else mine.count { it.pnl > 0 }.toDouble() / mine.size
     val curve = remember(s.name, tradeCount) {
