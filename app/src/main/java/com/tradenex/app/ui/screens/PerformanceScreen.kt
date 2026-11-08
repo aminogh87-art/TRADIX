@@ -35,7 +35,7 @@ import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
 import com.tradenex.app.data.JalaliCalendar
-import com.tradenex.app.ui.components.CandleChart
+import com.tradenex.app.ui.components.TradeCandleChart
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.SectionTitle
 import com.tradenex.app.ui.components.StatTile
@@ -62,7 +62,7 @@ fun PerformanceScreen(nav: NavController) {
     val windowed = remember(period, trades) { trades.filter { it.epochDay > today - windowDays } }
     val stats = remember(period, windowed) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
     val openingEquity = accountStartBalance + trades.filter { it.epochDay <= today - windowDays }.sumOf { it.pnl }
-    val candles = remember(period, windowed, accountStartBalance, openingEquity) { Analytics.tradeCandles(windowed, openingEquity, 60) }
+    val candles = remember(period, windowed, accountStartBalance, openingEquity) { Analytics.tradeCandleSeries(windowed, openingEquity, 60) }
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
     val heatScale = (dayPnl.filterKeys { it > today - 35 && it <= today }.values.maxOfOrNull { abs(it) } ?: 0.0).coerceAtLeast(1.0)
@@ -96,8 +96,8 @@ fun PerformanceScreen(nav: NavController) {
                     if (candles.isEmpty()) {
                         Text("برای ساخت نمودار، ابتدا معامله‌ای در این بازه ثبت کن.", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 28.dp))
                     } else {
-                        CandleChart(candles, Modifier.fillMaxWidth().height(140.dp))
-                        Text("هر کندل = یک معامله ثبت‌شده · نمایش ${candles.size} معامله اخیر در بازه انتخابی", color = Tx.Muted, fontSize = 9.sp)
+                        TradeCandleChart(candles, Modifier.fillMaxWidth().height(190.dp))
+                        Text("هر کندل کوچک = یک معامله ثبت‌شده؛ انتخاب کندل، نام و P&L همان معامله را نمایش می‌دهد.", color = Tx.Muted, fontSize = 9.sp)
                     }
                 }
             }
@@ -132,7 +132,7 @@ fun PerformanceScreen(nav: NavController) {
                                     day = JalaliCalendar.fromGregorian(LocalDate.ofEpochDay(d)).day,
                                     pnl = pnl,
                                     strength = if (pnl == null) 0f else (abs(pnl) / heatScale).toFloat().coerceIn(0f, 1f),
-                                    holiday = settings.weekendHoliday && c < 2,
+                                    holiday = settings.weekendHoliday && c == 6,
                                     future = d > today,
                                     index = r * 7 + c,
                                     modifier = Modifier.weight(1f),
