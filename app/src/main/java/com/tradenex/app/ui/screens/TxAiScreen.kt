@@ -45,8 +45,12 @@ fun TxAiScreen(nav: NavController) {
         NativeCore.performanceMetrics(trades.map { it.pnl }.toDoubleArray())
     }
     val revengeEpisodes = remember(trades) { com.tradenex.app.data.RevengeTradingAnalyzer.analyze(trades) }
-    val behavioralPatterns = remember(trades) {
-        com.tradenex.app.data.TxAiBehavioralPatternAnalyzer.analyze(trades)
+    val strategyRules = AppState.strategies.toList()
+    val strategyRevisions = AppState.strategyRevisions.toList()
+    val behavioralPatterns = remember(trades, strategyRules, strategyRevisions) {
+        com.tradenex.app.data.TxAiBehavioralPatternAnalyzer.analyze(
+            trades, strategyRules, strategyRevisions,
+        )
     }
     fun money(v: Double) = Analytics.money(v)
     Page(title = "TX AI", onBack = { nav.popBackStack() }) {
