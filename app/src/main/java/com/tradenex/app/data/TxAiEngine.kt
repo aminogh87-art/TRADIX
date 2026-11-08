@@ -30,6 +30,8 @@ data class TxAiReport(
     val sessions: List<TxAiSlice>,
     val timeframes: List<TxAiSlice>,
     val marketConditions: List<TxAiSlice>,
+    val emotions: List<TxAiSlice>,
+    val symbols: List<TxAiSlice>,
     val withoutOutsideStrategyNet: Double,
     val withoutOutsideStrategyDelta: Double,
     val weekdays: List<TxAiSlice>,
@@ -57,6 +59,8 @@ object TxAiEngine {
             .sortedByDescending { it.average }
         val timeframes = ordered.filter { it.timeframe.isNotBlank() }.groupBy { it.timeframe }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
         val marketConditions = ordered.filter { it.marketCondition.isNotBlank() }.groupBy { it.marketCondition }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
+        val emotions = ordered.filter { it.emotion.isNotBlank() }.groupBy { it.emotion }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
+        val symbols = ordered.filter { it.symbol.isNotBlank() }.groupBy { it.symbol.uppercase() }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
         val weekdays = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value }
             .map { (day, rows) -> slice(dayName(day), rows) }.sortedByDescending { it.average }
         val days = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay) }.toSortedMap().map { (date, rows) -> slice(date.toString(), rows) }
@@ -81,6 +85,7 @@ object TxAiEngine {
             sessions.firstOrNull { it.trades >= 5 && it.label != "بین سشن‌ها" }?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }
             timeframes.firstOrNull { it.trades >= 5 }?.let { add("بهترین تایم‌فریم ثبت‌شده: ${it.label}؛ این نتیجه فقط از معاملات دارای برچسب تایم‌فریم محاسبه شده است.") }
             marketConditions.firstOrNull { it.trades >= 5 }?.let { add("بهترین شرایط بازار ثبت‌شده: ${it.label}؛ نمونه ${it.trades} معامله.") }
+            emotions.firstOrNull { it.trades >= 5 }?.let { add("بهترین نتیجه در حالت ذهنی «${it.label}» ثبت شده؛ نمونه ${it.trades} معامله.") }
             weekdays.firstOrNull { it.trades >= 3 }?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}؛ نمونه ${it.trades} معامله.") }
             strategySlices.firstOrNull { it.trades >= 5 }?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ نمونه ${it.trades} معامله.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
@@ -90,6 +95,7 @@ object TxAiEngine {
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
             bestSession = sessions.firstOrNull { it.trades >= 5 && it.label != "بین سشن‌ها" }, sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
+            emotions = emotions, symbols = symbols,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
             withoutOutsideStrategyDelta = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl } - ordered.sumOf { it.pnl },
             weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
@@ -137,7 +143,7 @@ object TxAiEngine {
 
     private fun isOutsideStrategy(t: Trade): Boolean {
         val tags = t.tags.map { it.lowercase() }
-        return t.strategy.isBlank() || tags.any {
+        return tags.any {
             it.contains("fomo") || it.contains("revenge") || it.contains("no-plan") ||
                 it.contains("off-strategy") || it.contains("خارج از استراتژی") || it.contains("بدون پلن")
         }
@@ -146,7 +152,7 @@ object TxAiEngine {
     private fun hasBehaviorFlag(t: Trade): Boolean = t.tags.any {
         val tag = it.lowercase()
         tag.contains("fomo") || tag.contains("revenge") || tag.contains("overtrade") ||
-            tag.contains("no-plan") || tag.contains("خارج از استراتژی")
+            tag.contains("no-plan") || tag.contains("off-strategy") || tag.contains("خارج از استراتژی") || tag.contains("بدون پلن")
     }
 
     private fun slice(label: String, rows: List<Trade>) = TxAiSlice(
