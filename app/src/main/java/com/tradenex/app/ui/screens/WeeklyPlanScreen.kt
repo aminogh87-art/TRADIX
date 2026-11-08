@@ -42,6 +42,7 @@ import com.tradenex.app.data.WeeklyPlannerStore
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
 import com.tradenex.app.ui.components.SectionTitle
+import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
 import java.time.DayOfWeek
 import java.time.LocalDate
