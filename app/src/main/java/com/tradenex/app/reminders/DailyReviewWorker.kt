@@ -67,9 +67,15 @@ class DailyReviewWorker(context: Context, params: WorkerParameters) : Worker(con
 object ReminderScheduler {
     const val CHANNEL = "tradix_daily_review"
 
-    fun schedule(context: Context) {
+    fun schedule(context: Context, reminderOn: Boolean? = null, reminderHour: Int? = null) {
         val manager = WorkManager.getInstance(context)
         val settings = context.getSharedPreferences("tradix_local_settings", Context.MODE_PRIVATE)
+        if (reminderOn != null || reminderHour != null) {
+            settings.edit()
+                .putBoolean("reminderOn", reminderOn ?: settings.getBoolean("reminderOn", true))
+                .putInt("reminderHour", (reminderHour ?: settings.getInt("reminderHour", 22)).coerceIn(0, 23))
+                .apply()
+        }
         if (!settings.getBoolean("reminderOn", true)) {
             manager.cancelUniqueWork("tradix_daily_review")
             return
