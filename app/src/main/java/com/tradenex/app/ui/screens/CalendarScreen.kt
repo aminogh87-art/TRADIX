@@ -157,7 +157,7 @@ fun CalendarScreen(nav: NavController) {
                         } else {
                             selectedTrades.forEach { trade ->
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(trade.symbol + " · " + if (trade.buy) "خرید" else "فروش", color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                                    Text(trade.tradeName.ifBlank { trade.symbol } + " · " + trade.symbol + " · " + if (trade.buy) "خرید" else "فروش", color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f))
                                     Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
