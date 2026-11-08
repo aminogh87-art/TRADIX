@@ -54,14 +54,15 @@ fun PerformanceScreen(nav: NavController) {
     val n = trades.size
     val today = AppState.today()
     val windowDays = when (period) {
-        Period.DAY -> 7
-        Period.WEEK -> 30
-        Period.MONTH -> 90
+        Period.DAY -> 1
+        Period.WEEK -> 7
+        Period.MONTH -> 30
         Period.YEAR -> 365
     }
-    val windowed = remember(period, trades) { trades.filter { it.epochDay > today - windowDays } }
+    val windowStartDay = today - (windowDays - 1L)
+    val windowed = remember(period, trades) { trades.filter { it.epochDay >= windowStartDay } }
     val stats = remember(period, windowed) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
-    val openingEquity = accountStartBalance + trades.filter { it.epochDay <= today - windowDays }.sumOf { it.pnl }
+    val openingEquity = accountStartBalance + trades.filter { it.epochDay < windowStartDay }.sumOf { it.pnl }
     val candles = remember(period, windowed, accountStartBalance, openingEquity) { Analytics.tradeCandleSeries(windowed, openingEquity, 60) }
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
