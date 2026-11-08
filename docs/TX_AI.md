@@ -74,3 +74,26 @@ The evidence score uses deterministic rule weights: rapid re-entry (15), risk in
 The TX AI screen currently shows the linked previous-loss and trigger trades, their recorded P&L, the observed time gap, the evidence reasons and the evidence score. It does not aggregate episode P&L into an account-level cost because overlapping pairs could double-count a trade. The current detector is intentionally conservative: missing timestamps, risk or emotion are not inferred.
 
 Not yet implemented in this first slice: persisted user review states, dedicated episode filtering/drill-down, overlapping-episode consolidation, and the remaining Behavioral Lab detectors (overtrading after wins, early exit, widened stop, session drift and overconfidence). See [TX_AI_MASTER_SPEC.md](TX_AI_MASTER_SPEC.md) for the full target inventory and delivery gates.
+
+
+## Extended metrics and user review persistence
+
+
+## Extended metrics and user review persistence
+
+The Android TX AI summary reads the extended metric vector from the Rust native core (with a parity Kotlin fallback):
+
+1. Net realized P&L.
+2. Win rate over finite realized P&L records.
+3. Profit factor (gross profit / gross loss; capped display sentinel 99 when there are no losses).
+4. Maximum peak-to-trough drawdown over the ordered realized-P&L sequence, starting from zero.
+5. Expectancy (mean realized P&L per valid trade).
+6. Average winning trade.
+7. Average losing trade as an absolute amount (the UI displays it as a negative amount).
+8. Recovery factor (net / absolute maximum drawdown; unavailable-like zero when drawdown is zero).
+9. Largest winning trade as a share of gross winning P&L.
+10. Largest losing trade as a share of gross losing P&L.
+
+Non-finite P&L values are excluded. These metrics describe the order supplied by the journal and do not represent intratrade equity or market OHLC.
+
+Behavioral episode reviews and pinned insights are stored locally with account-scoped keys. Review values are user annotations and never rewrite source trade fields. Legacy snapshots without these arrays restore with no reviews or pins.
