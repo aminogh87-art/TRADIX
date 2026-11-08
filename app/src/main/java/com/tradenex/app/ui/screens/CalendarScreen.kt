@@ -136,7 +136,7 @@ fun CalendarScreen(nav: NavController) {
                                             day = day,
                                             isToday = date == today,
                                             selected = date == selectedDate,
-                                            holiday = settings.weekendHoliday && c == 6,
+                                            holiday = settings.weekendHoliday && c < 2,
                                             pnl = dayPnl[date.toEpochDay()],
                                             modifier = Modifier.weight(1f),
                                             onClick = { selectedDate = date },
