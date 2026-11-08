@@ -51,7 +51,7 @@ class DailyReviewWorker(context: Context, params: WorkerParameters) : Worker(con
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = NotificationCompat.Builder(applicationContext, ReminderScheduler.CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("امروز معامله‌ای نداشتی؟")
             .setContentText("وارد TRADIX شو و دلیل نداشتن معامله را در برنامه هفتگی ثبت کن.")
             .setStyle(NotificationCompat.BigTextStyle().bigText("اگر بازار ستاپ مناسبی نداشت یا تصمیم گرفتی معامله نکنی، دلیلش را ثبت کن تا گزارش هفتگی دقیق‌تری داشته باشی."))
