@@ -74,6 +74,9 @@ object RevengeTradingAnalyzer {
                         it.contains("عصبان") || it.contains("fomo")
                 } || tags.any { it.contains("fomo") || it.contains("anger") || it.contains("خشم") }
 
+                val hasBehavioralEvidence = riskUp || sizeUp || planViolation || revengeTag || emotion || priorLossStreak >= 2
+                if (!hasBehavioralEvidence) continue
+
                 val reasons = buildList {
                     if (rapid) add("ورود مجدد در فاصله $gap دقیقه پس از معامله زیان‌ده")
                     if (riskUp) add("افزایش ریسک برنامه‌ریزی‌شده بیش از ۲۵٪")
