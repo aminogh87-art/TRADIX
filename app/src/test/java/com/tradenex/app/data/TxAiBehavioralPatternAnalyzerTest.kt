@@ -42,7 +42,7 @@ class TxAiBehavioralPatternAnalyzerTest {
         val episodes = TxAiBehavioralPatternAnalyzer.analyze(listOf(winner) + next)
         val episode = episodes.single { it.type == TxAiBehaviorPatternType.OVERTRADING_AFTER_WIN }
         assertEquals(listOf(1L, 2L, 3L, 4L), episode.linkedTradeIds)
-        assertTrue(episode.reasons.any { it.contains("۳ معامله") })
+        assertTrue(episode.reasons.any { it.contains("3 معامله") })
     }
 
     @Test
