@@ -97,10 +97,14 @@ fun MoreScreen(nav: NavController) {
                     Column(Modifier.weight(1f)) {
                         Text("فضای معاملاتی شخصی", color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            "${AppState.visibleTrades.size} معامله · " + if (NativeCore.isNative) "هسته Rust فعال" else "هسته Kotlin",
+                            AppState.selectedAccount.name + " · " + AppState.visibleTrades.size + " معامله",
                             color = Tx.Muted,
                             fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
+                        val netPnl = AppState.visibleTrades.sumOf { it.pnl }
+                        Text("خالص: " + Analytics.money(netPnl), color = if (netPnl >= 0) Tx.Green else Tx.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                     Icon(Icons.Rounded.EmojiEvents, null, tint = Tx.Gold, modifier = Modifier.size(30.dp))
                 }
@@ -125,17 +129,24 @@ fun MoreScreen(nav: NavController) {
             }
         }
         Reveal(12) {
-            GlassCard(Modifier.fillMaxWidth(), border = Tx.Gold) {
-                Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("TRADIX Pro", color = Tx.Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("تحلیل عمیق‌تر، پشتیبان‌گیری و بدون محدودیت", color = Tx.Muted, fontSize = 12.sp)
-                    Spacer(Modifier.height(10.dp))
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Brush.verticalGradient(listOf(Tx.GoldHi, Tx.GoldDeep)))
-                            .padding(horizontal = 24.dp, vertical = 10.dp),
-                    ) { Text("ارتقا به نسخه حرفه‌ای", color = Tx.Ink, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("خلاصه فضای کاری", color = Tx.Gold, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text("حساب‌ها", color = Tx.Muted, fontSize = 10.sp)
+                            Text(AppState.accounts.count { !it.archived }.toString(), color = Tx.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("استراتژی‌های فعال", color = Tx.Muted, fontSize = 10.sp)
+                            Text(AppState.strategies.count { it.active }.toString(), color = Tx.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("هشتگ‌ها", color = Tx.Muted, fontSize = 10.sp)
+                            Text(AppState.hashtags.size.toString(), color = Tx.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                    Text(if (NativeCore.isNative) "هسته محاسباتی Rust فعال است" else "هسته محاسباتی Kotlin فعال است", color = Tx.Muted, fontSize = 10.sp)
                 }
             }
         }
