@@ -96,8 +96,8 @@ fun AddTradeScreen(nav: NavController) {
     var notesText by remember { mutableStateOf("") }
     var tradeDateText by remember { mutableStateOf(LocalDate.now().toString()) }
     var tradeTimeText by remember { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0).toString()) }
-    var timeframe by remember { mutableStateOf("M15") }
-    var marketCondition by remember { mutableStateOf("رونددار") }
+    var timeframe by remember { mutableStateOf("") }
+    var marketCondition by remember { mutableStateOf("") }
     var plannedRiskText by remember { mutableStateOf("") }
     val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
     val parsedTradeTime = remember(tradeTimeText) { runCatching { java.time.LocalTime.parse(tradeTimeText.trim()) }.getOrNull() }
@@ -253,11 +253,11 @@ fun AddTradeScreen(nav: NavController) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AppState.strategies.filter { it.active }.forEach { TxChip(it.name, strategy == it.name, { strategy = it.name }) }
                 }
-                Text("تایم‌فریم تحلیل", color = Tx.Muted, fontSize = 11.sp)
+                Text("تایم‌فریم تحلیل (اختیاری؛ فقط اگر واقعاً ثبتش کرده‌ای)", color = Tx.Muted, fontSize = 11.sp)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1").forEach { TxChip(it, timeframe == it, { timeframe = it }) }
                 }
-                Text("شرایط بازار", color = Tx.Muted, fontSize = 11.sp)
+                Text("شرایط بازار (اختیاری؛ بدون حدس)", color = Tx.Muted, fontSize = 11.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("رونددار", "رنج", "پرنوسان", "کم‌نوسان", "نزدیک خبر", "شکست ساختار").forEach { TxChip(it, marketCondition == it, { marketCondition = it }) }
                 }
