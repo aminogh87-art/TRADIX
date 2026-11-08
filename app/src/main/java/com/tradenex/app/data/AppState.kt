@@ -70,7 +70,7 @@ data class Lesson(val id: Long, val title: String, val kind: ContentKind, val pr
 data class AppSettings(
     val language: Int = 0, // 0 fa, 1 en (UI picker only for now)
     val showGlobe: Boolean = true,
-    val tzMode: Int = 0, // 0 Tehran, 1 UTC, 2 device
+    val tzMode: Int = 2, // 0 Tehran, 1 UTC, 2 device (default: local device time)
     val reminderOn: Boolean = true,
     val reminderHour: Int = 22,
     val newsImpact: Int = 0, // 0 all, 1 medium+, 2 high
