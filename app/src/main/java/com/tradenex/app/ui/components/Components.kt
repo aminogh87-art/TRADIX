@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tradenex.app.ui.theme.Tx
 
-/** Animated aurora background shared by every screen. */
 @Composable
 fun TxBackground(content: @Composable BoxScope.() -> Unit) {
     val t = rememberInfiniteTransition(label = "aurora")
@@ -216,7 +215,7 @@ fun PulseDot(color: Color, modifier: Modifier = Modifier) {
 
 @Composable
 fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
-    val moreRoutes = setOf("more", "sessions", "strategies", "calendar", "settings", "tags")
+    val moreRoutes = setOf("more", "sessions", "strategies", "calendar", "settings", "tags", "accounts", "trades", "weekly", "weekly_reminder", "tx_ai", "tx_ai_legacy")
     val shape = RoundedCornerShape(26.dp)
     val t = rememberInfiniteTransition(label = "fab")
     val pulse by t.animateFloat(
