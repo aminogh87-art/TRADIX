@@ -27,8 +27,28 @@ enum class Period(val label: String, val count: Int) {
 }
 
 object Analytics {
+    /**
+     * One equity candle per recorded trade, ordered by execution time.
+     * With journal-only data the high/low are the two observable equity points
+     * (before and after the trade); intratrade excursions are intentionally not invented.
+     */
+    fun tradeCandles(trades: List<Trade>, startBalance: Double, limit: Int = 60): List<Candle> {
+        var equity = startBalance
+        val out = ArrayList<Candle>(trades.size)
+        val ordered = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
+        for (trade in ordered) {
+            val open = equity
+            val close = equity + trade.pnl
+            out += Candle(open, max(open, close), min(open, close), close)
+            equity = close
+        }
+        return out.takeLast(limit.coerceAtLeast(1))
+    }
+
+    /** Legacy period aggregation retained for callers that explicitly need bucket candles. */
     fun candles(trades: List<Trade>, period: Period, startBalance: Double): List<Candle> {
-        val groups = trades.sortedBy { it.epochDay }.groupBy { period.bucket(it.epochDay) }
+        val groups = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
+            .groupBy { period.bucket(it.epochDay) }
         var equity = startBalance
         val out = ArrayList<Candle>()
         for ((_, list) in groups) {
