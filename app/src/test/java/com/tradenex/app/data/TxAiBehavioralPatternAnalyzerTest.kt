@@ -25,7 +25,7 @@ class TxAiBehavioralPatternAnalyzerTest {
         pnl = pnl,
         strategy = "ICT",
         tags = emptyList(),
-        epochDay = 20_000,
+        epochDay = 20_000L,
         emotion = "",
         accountId = account,
         openedAtMillis = opened,
