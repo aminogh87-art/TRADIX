@@ -175,3 +175,18 @@ Still not release-complete:
 - CI for the latest commit and real-device install/launch/RTL verification must pass before release claims.
 
 Do not fabricate missing stop history, market excursion data, live news, or broker data. Keep this PR Draft and do not merge it.
+
+
+## Implementation update — conservative Behavioral Lab expansion
+
+
+
+## Implementation update — conservative Behavioral Lab expansion
+
+Added three account-scoped, deterministic journal pattern detectors:
+
+- Post-win activity cluster: requires a timestamped winning trade followed by at least three timestamped entries within two hours. The UI calls it an activity-density signal, not proof of overtrading.
+- Size increase after a win: requires the immediately following journal trade to be opened after the previous winning trade closed and its recorded lot size to exceed the prior lot by more than 25%. It does not infer overconfidence or motivation.
+- Exit before recorded target: requires a positive realized result and explicit entry, exit and take-profit prices; direction-aware logic checks whether the exit price is between entry and target. The UI explicitly states that without intratrade market path data it cannot know whether the target was touched earlier.
+
+All three detectors include linked trade IDs, evidence reasons and account-scoped user review controls. They do not infer stop widening because no stop-edit audit trail exists. CI tests cover timestamp requirements, thresholds, long/short target direction and missing-data behavior.
