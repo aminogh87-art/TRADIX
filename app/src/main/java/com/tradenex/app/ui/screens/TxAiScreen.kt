@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +24,10 @@ import com.tradenex.app.ui.theme.Tx
 
 @Composable
 fun TxAiScreen(nav: NavController) {
-    val report = TxAiEngine.analyze(AppState.visibleTrades.toList(), AppState.selectedAccount, AppState.settings.riskPercent)
+    val trades = AppState.visibleTrades.toList()
+    val account = AppState.selectedAccount
+    val riskPercent = AppState.settings.riskPercent
+    val report = remember(trades, account, riskPercent) { TxAiEngine.analyze(trades, account, riskPercent) }
     fun money(v: Double) = Analytics.money(v)
     Page(title = "TX AI", onBack = { nav.popBackStack() }) {
         Reveal(0) {
