@@ -88,6 +88,9 @@ data class AppSettings(
     val newsAlerts: Boolean = true,
     val autoBackup: Boolean = false,
     val hideBalance: Boolean = false,
+    val profileFirstName: String = "",
+    val profileLastName: String = "",
+    val profilePhotoUri: String = "",
 )
 
 object AppState {
