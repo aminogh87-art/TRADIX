@@ -101,20 +101,7 @@ fun AddTradeScreen(nav: NavController) {
     var timeframe by remember { mutableStateOf("") }
     var marketCondition by remember { mutableStateOf("") }
     var plannedRiskText by remember { mutableStateOf("") }
-    val parsedTradeDate = remember(tradeDateText) {
-        val normalized = buildString {
-            tradeDateText.trim().forEach { char ->
-                val digit = "۰۱۲۳۴۵۶۷۸۹".indexOf(char)
-                append(if (digit >= 0) ('0' + digit) else char)
-            }
-        }
-        val raw = normalized.replace('/', '-')
-        val parts = raw.split('-')
-        val year = parts.getOrNull(0)?.toIntOrNull()
-        if (parts.size == 3 && year != null && year in 1200..1600) {
-            runCatching { JalaliCalendar.toGregorian(year, parts[1].toInt(), parts[2].toInt()) }.getOrNull()
-        } else runCatching { LocalDate.parse(raw) }.getOrNull()
-    }
+    val parsedTradeDate = remember(tradeDateText) { JalaliCalendar.parseDateInput(tradeDateText) }
     val parsedTradeTime = remember(tradeTimeText) { runCatching { java.time.LocalTime.parse(tradeTimeText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var strategyFollowed by remember { mutableStateOf<Boolean?>(null) }
