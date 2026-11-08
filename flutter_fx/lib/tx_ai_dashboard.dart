@@ -123,7 +123,14 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     TxRustAnalytics analytics,
   ) {
     final trades = account.trades.where((trade) => trade.pnl.isFinite).toList()
-      ..sort((a, b) => (a.openedAtMillis ?? 0).compareTo(b.openedAtMillis ?? 0));
+      ..sort((a, b) {
+        final aTime = (a.openedAtMillis ?? 0) > 0 ? a.openedAtMillis! : 0x7fffffffffffffff;
+        final bTime = (b.openedAtMillis ?? 0) > 0 ? b.openedAtMillis! : 0x7fffffffffffffff;
+        final timeOrder = aTime.compareTo(bTime);
+        if (timeOrder != 0) return timeOrder;
+        final dayOrder = a.epochDay.compareTo(b.epochDay);
+        return dayOrder != 0 ? dayOrder : a.id.compareTo(b.id);
+      });
     final pnls = trades.map((trade) => trade.pnl).toList(growable: false);
     final metrics = analytics.calculate(pnls);
     final revengeEpisodes = _revengeEpisodes(account, analytics, trades);
@@ -379,9 +386,12 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       for (var cursor = index - 1; cursor >= 0 && trades[cursor].pnl < 0; cursor--) {
         lossStreak++;
       }
-      final gap = previous.openedAtMillis == null || current.openedAtMillis == null
+      final previousOpened = previous.openedAtMillis;
+      final currentOpened = current.openedAtMillis;
+      final gap = previousOpened == null || currentOpened == null ||
+              previousOpened <= 0 || currentOpened <= 0 || currentOpened < previousOpened
           ? null
-          : ((current.openedAtMillis! - previous.openedAtMillis!) / 60000).floor();
+          : ((currentOpened - previousOpened) / 60000).floor();
       final tags = current.tags.map((tag) => tag.toLowerCase()).toList();
       final emotion = current.emotion.toLowerCase();
       final evidence = analytics.revengeEvidence(
@@ -394,9 +404,11 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         planViolation: current.strategyFollowed == false,
         revengeTag: tags.any((tag) => tag.contains('revenge') || tag.contains('انتقام')),
         emotionalSignal: emotion.contains('anger') ||
+            emotion.contains('angry') ||
             emotion.contains('خشم') ||
+            emotion.contains('عصبان') ||
             emotion.contains('fomo') ||
-            tags.any((tag) => tag.contains('fomo') || tag.contains('anger')),
+            tags.any((tag) => tag.contains('fomo') || tag.contains('anger') || tag.contains('خشم')),
         priorLossStreak: lossStreak,
       );
       if (evidence.classificationCode == 0) continue;
