@@ -162,6 +162,9 @@ internal object SnapshotCodec {
             put("weekendHoliday", settings.weekendHoliday); put("sessionAlerts", settings.sessionAlerts)
             put("newsAlerts", settings.newsAlerts); put("autoBackup", settings.autoBackup)
             put("hideBalance", settings.hideBalance)
+            put("profileFirstName", settings.profileFirstName)
+            put("profileLastName", settings.profileLastName)
+            put("profilePhotoUri", settings.profilePhotoUri)
         })
     }
 
@@ -304,6 +307,9 @@ internal object SnapshotCodec {
                 accent = s.optInt("accent", 0), weekendHoliday = s.optBoolean("weekendHoliday", true),
                 sessionAlerts = s.optBoolean("sessionAlerts", true), newsAlerts = s.optBoolean("newsAlerts", true),
                 autoBackup = s.optBoolean("autoBackup", false), hideBalance = s.optBoolean("hideBalance", false),
+                profileFirstName = s.optString("profileFirstName", ""),
+                profileLastName = s.optString("profileLastName", ""),
+                profilePhotoUri = s.optString("profilePhotoUri", ""),
             )
         }
     }
