@@ -6,7 +6,13 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(
+        if (file("flutter_module/.android/include_flutter.groovy").exists()) {
+            RepositoriesMode.PREFER_SETTINGS
+        } else {
+            RepositoriesMode.FAIL_ON_PROJECT_REPOS
+        }
+    )
     repositories {
         google()
         mavenCentral()
