@@ -115,11 +115,15 @@ fun PerformanceScreen(nav: NavController) {
             }
         }
         Reveal(2) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("معاملات", windowed.size.toString(), Tx.Text, Modifier.weight(1f))
-                StatTile("نرخ برد", String.format(java.util.Locale.US, "%.0f%%", stats.winRate * 100), Tx.Gold, Modifier.weight(1f))
-                StatTile("ضریب سود", String.format(java.util.Locale.US, "%.2f", stats.profitFactor), Tx.Green, Modifier.weight(1f))
-                StatTile("افت سرمایه", String.format(java.util.Locale.US, "%,.0f", stats.maxDrawdown), Tx.Red, Modifier.weight(1f))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("معاملات", windowed.size.toString(), Tx.Text, Modifier.weight(1f))
+                    StatTile("نرخ برد", String.format(java.util.Locale.US, "%.0f%%", stats.winRate * 100), Tx.Gold, Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("ضریب سود", String.format(java.util.Locale.US, "%.2f", stats.profitFactor), Tx.Green, Modifier.weight(1f))
+                    StatTile("افت سرمایه", String.format(java.util.Locale.US, "%,.0f", stats.maxDrawdown), Tx.Red, Modifier.weight(1f))
+                }
             }
         }
         Reveal(3) {
