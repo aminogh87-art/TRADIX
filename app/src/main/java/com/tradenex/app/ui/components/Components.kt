@@ -62,15 +62,16 @@ import com.tradenex.app.ui.theme.Tx
 @Composable
 fun TxBackground(content: @Composable BoxScope.() -> Unit) {
     val t = rememberInfiniteTransition(label = "aurora")
+    val highMotion = AppState.settings.animations >= 2
     val a by t.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
+        targetValue = if (highMotion) 1f else 0f,
         animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Reverse),
         label = "a",
     )
     val shimmer: State<Float> = t.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
+        targetValue = if (highMotion) 1f else 0f,
         animationSpec = infiniteRepeatable(tween(4800, easing = LinearEasing)),
         label = "shimmer",
     )
@@ -99,7 +100,7 @@ fun TxBackground(content: @Composable BoxScope.() -> Unit) {
                 ),
             )
         }
-        if (Tx.isGilded && ThemeController.particles && AppState.settings.animations > 0) {
+        if (Tx.isGilded && ThemeController.particles && AppState.settings.animations >= 2) {
             AmbientDust(Modifier.fillMaxSize(), count = if (AppState.settings.animations == 2) 80 else 48)
         }
         CompositionLocalProvider(LocalShimmerPhase provides shimmer) {
@@ -180,7 +181,7 @@ fun GoldButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit)
     val t = rememberInfiniteTransition(label = "btn")
     val glow by t.animateFloat(
         initialValue = 0.25f,
-        targetValue = 0.6f,
+        targetValue = if (AppState.settings.animations >= 2) 0.6f else 0.25f,
         animationSpec = infiniteRepeatable(tween(1600), RepeatMode.Reverse),
         label = "glow",
     )
@@ -224,7 +225,7 @@ fun PulseDot(color: Color, modifier: Modifier = Modifier) {
     val t = rememberInfiniteTransition(label = "dot")
     val s by t.animateFloat(
         initialValue = 0.8f,
-        targetValue = 2.2f,
+        targetValue = if (AppState.settings.animations >= 2) 2.2f else 0.8f,
         animationSpec = infiniteRepeatable(tween(1600, easing = LinearEasing)),
         label = "s",
     )
