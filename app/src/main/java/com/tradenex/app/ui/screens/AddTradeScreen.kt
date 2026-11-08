@@ -108,9 +108,9 @@ fun AddTradeScreen(nav: NavController) {
     }
     val signed = if (usePriceCalculation) priceResult?.netAccountCurrency?.toDouble() ?: 0.0 else if (win) amount else -amount
     val animated by animateFloatAsState(signed.toFloat(), tween(450), label = "net")
-    val resColor = if (win) Tx.Green else Tx.Red
+    val resColor = if (signed >= 0.0) Tx.Green else Tx.Red
     val riskUsd = settings.startBalance * settings.riskPercent / 100.0
-    val overRisk = !win && amount > riskUsd
+    val overRisk = if (usePriceCalculation) signed < -riskUsd else !win && amount > riskUsd
 
     Page(title = "ثبت معامله", onBack = { nav.popBackStack() }) {
         Reveal(0) {
