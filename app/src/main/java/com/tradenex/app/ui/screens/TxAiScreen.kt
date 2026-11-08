@@ -37,7 +37,7 @@ fun TxAiScreen(nav: NavController) {
                         StatTile("معاملات", report.totalTrades.toString(), Tx.Blue, Modifier.weight(1f))
                     }
                     Text("پروفایل رفتاری فعلی: " + report.personality, color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای تشخیص سشن برتر، زمان بازشدن معامله لازم است.", color = Tx.Text, fontSize = 12.sp)
+                    Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای اعلام سشن برتر، حداقل ۵ معامله زمان‌دار در یک سشن لازم است.", color = Tx.Text, fontSize = 12.sp)
                 }
             }
         }
@@ -54,6 +54,11 @@ fun TxAiScreen(nav: NavController) {
                     Text("شرایط بازار", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     if (report.marketConditions.isEmpty()) EmptyAi("هنوز شرایط بازار برای معامله‌ها ثبت نشده است.")
                     report.marketConditions.forEach { AiSliceRow(it, money(it.net)) }
+                    Text("عملکرد بر اساس حالت ذهنی", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (report.emotions.isEmpty()) EmptyAi("حالت ذهنی برای معاملات ثبت نشده است.")
+                    report.emotions.take(5).forEach { AiSliceRow(it, money(it.net)) }
+                    Text("عملکرد نمادها", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    report.symbols.take(8).forEach { AiSliceRow(it, money(it.net)) }
                     report.bestStrategy?.let { Text("استراتژی شاخص: " + it.label, color = Tx.Gold, fontSize = 12.sp) }
                 }
             }
@@ -90,7 +95,7 @@ fun TxAiScreen(nav: NavController) {
                     Text("سود/زیان کل اگر معاملات خارج از پلن حذف می‌شد: " + money(report.withoutOutsideStrategyNet), color = if (report.withoutOutsideStrategyNet >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("تغییر نسبت به عملکرد واقعی: " + money(report.withoutOutsideStrategyDelta), color = if (report.withoutOutsideStrategyDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("تغییر سناریوی ریسک نصف: " + money(report.halfRiskDelta), color = if (report.halfRiskDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن بر اساس تگ‌های رفتاری یا خالی‌بودن نام استراتژی است.", color = Tx.Muted, fontSize = 10.sp)
+                    Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن فقط بر اساس تگ‌های صریح FOMO، Revenge، No-plan یا Off-strategy است؛ خالی‌بودن نام استراتژی به‌تنهایی تخلف محسوب نمی‌شود.", color = Tx.Muted, fontSize = 10.sp)
                 }
             }
         }
