@@ -140,9 +140,10 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       final ageDays = currentDay.difference(DateTime.utc(date.year, date.month, date.day)).inDays;
       return ageDays >= 0 && ageDays < 7;
     }).toList(growable: false);
-    final monthTrades = trades
-        .where((trade) => trade.displayClosedMonthKey == account.currentMonthKey)
-        .toList(growable: false);
+    final monthTrades = account.currentMonthKey == null
+        ? const <TxAiTradeRecord>[]
+        : trades.where((trade) => trade.displayClosedMonthKey == account.currentMonthKey)
+            .toList(growable: false);
     final metrics = analytics.calculate(pnls);
     final revengeEpisodes = _revengeEpisodes(account, analytics, trades);
     final sessionSlices = _sessionSlices(trades);
@@ -163,23 +164,6 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         .toList();
     final allowedRisk = account.startingBalance > 0
         ? account.startingBalance * account.riskPercent.clamp(0.1, 100) / 100
-        : null;
-    final riskScore = trades.length >= 5 &&
-            knownRisk.length >= 3 &&
-            allowedRisk != null
-        ? knownRisk
-                .where((trade) => trade.plannedRisk! <= allowedRisk)
-                .length /
-            knownRisk.length *
-            100
-        : null;
-    final completeDecisions = trades.where((trade) =>
-        trade.entryPrice != null &&
-        trade.exitPrice != null &&
-        trade.stopLossPrice != null &&
-        trade.strategy.trim().isNotEmpty).length;
-    final decisionScore = trades.length >= 5
-        ? completeDecisions / trades.length * 100
         : null;
     final averageR = knownRisk.isEmpty
         ? null
