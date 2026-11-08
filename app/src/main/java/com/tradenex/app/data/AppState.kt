@@ -33,6 +33,16 @@ data class Trade(
     val plannedRisk: Double? = null,
 )
 
+data class TradingAccount(
+    val id: String,
+    val name: String,
+    val broker: String,
+    val type: String,
+    val baseCurrency: String,
+    val startingBalance: Double,
+    val archived: Boolean = false,
+)
+
 data class Strategy(val id: Long, val name: String, val rules: List<String>, val active: Boolean)
 
 enum class ContentKind(val label: String) {
@@ -69,6 +79,14 @@ data class AppSettings(
 
 object AppState {
     val trades = mutableStateListOf<Trade>()
+    val accounts = mutableStateListOf(
+        TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10_000.0),
+    )
+    var selectedAccountId by mutableStateOf("default")
+    val selectedAccount: TradingAccount
+        get() = accounts.firstOrNull { it.id == selectedAccountId && !it.archived }
+            ?: accounts.firstOrNull { !it.archived }
+            ?: TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10_000.0)
     val strategies = mutableStateListOf(
         Strategy(1, "ICT", listOf("تایید ساختار بازار", "ریسک حداکثر ۱٪", "فقط سشن لندن/نیویورک"), true),
         Strategy(2, "Supply & Demand", listOf("ناحیه تازه", "تایید کندلی"), true),
@@ -91,14 +109,14 @@ object AppState {
         if (snapshot != null) {
             SnapshotCodec.restore(
                 snapshot,
-                MutableSnapshot(trades, strategies, hashtags, lessons, settings),
+                MutableSnapshot(trades, accounts, strategies, hashtags, lessons, settings, selectedAccountId),
             )
         }
     }
 
     /** Atomic save called after mutations and whenever the activity leaves the foreground. */
     fun persist() {
-        val payload = SnapshotCodec.encode(trades, strategies, hashtags, lessons, settings)
+        val payload = SnapshotCodec.encode(trades, accounts, strategies, hashtags, lessons, settings, selectedAccountId)
         localStore?.writeSnapshot(payload)
     }
 
