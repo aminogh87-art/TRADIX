@@ -86,7 +86,7 @@ fun Reveal(index: Int, content: @Composable () -> Unit) {
         visible = shown,
         enter = fadeIn(tween(450)) + slideInVertically(tween(450)) { it / 6 },
     ) {
-        content()
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
     }
 }
 

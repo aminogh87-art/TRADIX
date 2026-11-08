@@ -69,7 +69,6 @@ import com.tradenex.app.ui.theme.Tx
 fun HomeScreen(nav: NavController) {
     val settings = AppState.settings
     val utc by rememberUtcMinute()
-    val tz = SessionEngine.tzOffsetMinutes(settings.tzMode)
     val visibleTrades = AppState.visibleTrades.toList()
     val accountStartBalance = AppState.selectedAccount.startingBalance.coerceAtLeast(1.0)
     val tradeCount = visibleTrades.size
@@ -83,8 +82,11 @@ fun HomeScreen(nav: NavController) {
     var period by remember { mutableStateOf(Period.WEEK) }
 
     val shownPct by animateFloatAsState(monthPct.toFloat(), tween(1200), label = "pct")
-    val sessions = SessionEngine.states(utc, tz)
-    val nowLocal = (utc + tz) % 1440
+    val nowInstant = remember(utc) { java.time.Instant.now() }
+    val displayZone = SessionEngine.displayZone(settings.tzMode)
+    val sessions = remember(utc, settings.tzMode) { SessionEngine.statesAt(nowInstant, displayZone) }
+    val nowLocal = remember(utc, settings.tzMode) { nowInstant.atZone(displayZone).let { it.hour * 60 + it.minute } }
+    val activeOverlap = remember(utc) { SessionEngine.overlapsAt(nowInstant).firstOrNull { it.activeNow } }
     val openCount = sessions.count { it.open }
     val activity = listOf(15, 45, 72, 95)[minOf(openCount, 3)]
 
@@ -139,7 +141,7 @@ fun HomeScreen(nav: NavController) {
                         val shown = if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", shownPct)
                         Text(shown, color = col, fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
                         Text(
-                            if (settings.hideBalance) "••••" else Analytics.money(monthPnl) + " USD",
+                            if (settings.hideBalance) "••••" else Analytics.money(monthPnl),
                             color = col,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -168,7 +170,7 @@ fun HomeScreen(nav: NavController) {
                             Spacer(Modifier.height(8.dp))
                             SessionTimeline(sessions, nowLocal, Modifier.fillMaxWidth().height(40.dp))
                             Spacer(Modifier.height(6.dp))
-                            val overlap = SessionEngine.overlaps(utc).firstOrNull { it.activeNow }
+                            val overlap = activeOverlap
                             Text(
                                 if (overlap != null) "همپوشانی فعال: ${overlap.a} + ${overlap.b}"
                                 else sessions.firstOrNull { it.open }?.let { "${it.def.name} باز · ${SessionEngine.duration(it.minutesToChange)} تا بسته‌شدن" }

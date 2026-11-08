@@ -181,10 +181,11 @@ fun StrategiesScreen(nav: NavController) {
 
 @Composable
 private fun StrategyCard(s: Strategy, tradeCount: Int, onEdit: () -> Unit) {
-    val mine = remember(s.name, tradeCount) { AppState.visibleTrades.filter { it.strategy == s.name } }
+    val visible = AppState.visibleTrades
+    val mine = remember(s.name, visible) { visible.filter { it.strategy == s.name }.sortedWith(compareBy({ it.epochDay }, { it.id })) }
     val net = mine.sumOf { it.pnl }
     val win = if (mine.isEmpty()) 0.0 else mine.count { it.pnl > 0 }.toDouble() / mine.size
-    val curve = remember(s.name, tradeCount) {
+    val curve = remember(mine) {
         var eq = 0.0
         mine.takeLast(24).map { eq += it.pnl; eq }
     }

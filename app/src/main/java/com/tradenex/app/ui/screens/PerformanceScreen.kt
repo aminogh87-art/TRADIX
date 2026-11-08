@@ -220,6 +220,7 @@ fun PerformanceScreen(nav: NavController) {
                 StatTile("بدون معامله", "$noTrade روز", Tx.Gold, Modifier.weight(1f), sub = "۵ هفته اخیر")
             }
         }
+        Reveal(6) { HeatmapPeriods(trades) }
         Spacer(Modifier.height(12.dp))
     }
 }
