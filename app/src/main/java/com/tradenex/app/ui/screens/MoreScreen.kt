@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.EventNote
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Person
@@ -68,6 +69,7 @@ fun MoreScreen(nav: NavController) {
     var about by remember { mutableStateOf(false) }
     val items = listOf(
         MenuItem("ژورنال معاملات", "تاریخچه، ویرایش و فیلتر", Icons.Rounded.ReceiptLong, "trades", Tx.Green),
+        MenuItem("برنامه هفتگی", "هدف‌ها، نظم و گزارش هفتگی", Icons.Rounded.EventNote, "weekly", Tx.Gold),
         MenuItem("حساب‌ها", "دمو، ریل و پراپ", Icons.Rounded.AccountBalance, "accounts", Tx.Blue),
         MenuItem("سشن‌ها", "کره زمین و همپوشانی", Icons.Rounded.Public, "sessions", Tx.Blue),
         MenuItem("استراتژی‌ها", "ثبت، حذف و مقایسه", Icons.Rounded.TrackChanges, "strategies", Tx.Gold),
