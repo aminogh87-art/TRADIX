@@ -95,8 +95,8 @@ fun CalendarScreen(nav: NavController) {
     var remind by remember { mutableStateOf(setOf<Int>()) }
     val today = LocalDate.now()
     val ym = YearMonth.from(today).plusMonths(offset.toLong())
-    val n = AppState.trades.size
-    val dayPnl = remember(n) { Analytics.dayPnl(AppState.trades) }
+    val n = AppState.visibleTrades.size
+    val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
     val settings = AppState.settings
 
     Page(title = "تقویم", onBack = { nav.popBackStack() }, trailing = {
