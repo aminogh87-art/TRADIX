@@ -31,6 +31,7 @@ data class TxAiReport(
     val timeframes: List<TxAiSlice>,
     val marketConditions: List<TxAiSlice>,
     val withoutOutsideStrategyNet: Double,
+    val withoutOutsideStrategyDelta: Double,
     val weekdays: List<TxAiSlice>,
     val days: List<TxAiSlice>,
     val personality: String,
@@ -51,7 +52,7 @@ data class TxAiReport(
 object TxAiEngine {
     fun analyze(trades: List<Trade>, account: TradingAccount, riskPercent: Double): TxAiReport {
         val ordered = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis })
-        val sessions = ordered.filter { it.openedAtMillis > 0L && Instant.ofEpochMilli(it.openedAtMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime() != java.time.LocalTime.MIDNIGHT }.groupBy { sessionOf(it.openedAtMillis) }
+        val sessions = ordered.filter { it.openedAtMillis > 0L }.groupBy { sessionOf(it.openedAtMillis) }
             .filterKeys { it != "نامشخص" }.map { (name, rows) -> slice(name, rows) }
             .sortedByDescending { it.average }
         val timeframes = ordered.filter { it.timeframe.isNotBlank() }.groupBy { it.timeframe }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
@@ -66,12 +67,12 @@ object TxAiEngine {
         val strategySlices = ordered.filter { it.strategy.isNotBlank() }.groupBy { it.strategy }
             .map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
         val outside = ordered.filter { isOutsideStrategy(it) }
-        val monthlyProgress = ordered.groupBy { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) }
-            .toSortedMap().values.map { rows ->
-                val monthKey = java.time.YearMonth.from(LocalDate.ofEpochDay(rows.first().epochDay))
-                scoreMonth(rows, account, riskPercent, monthKey.toString())
-            }.takeLast(6)
         val currentMonth = java.time.YearMonth.now()
+        val monthlyProgress = (5 downTo 0).map { monthsAgo ->
+            val monthKey = currentMonth.minusMonths(monthsAgo.toLong())
+            val rows = ordered.filter { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) == monthKey }
+            scoreMonth(rows, account, riskPercent, monthKey.toString())
+        }
         val monthTrades = ordered.filter { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) == currentMonth }
         val scores = scoreMonth(monthTrades, account, riskPercent, currentMonth.toString())
         val halfRisk = ordered.sumOf { it.pnl * 0.5 }
@@ -80,8 +81,8 @@ object TxAiEngine {
             sessions.firstOrNull { it.trades >= 3 }?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }
             timeframes.firstOrNull { it.trades >= 3 }?.let { add("بهترین تایم‌فریم ثبت‌شده: ${it.label}؛ این نتیجه فقط از معاملات دارای برچسب تایم‌فریم محاسبه شده است.") }
             marketConditions.firstOrNull { it.trades >= 3 }?.let { add("بهترین شرایط بازار ثبت‌شده: ${it.label}؛ نمونه ${it.trades} معامله.") }
-            weekdays.firstOrNull()?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}.") }
-            strategySlices.firstOrNull()?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ قبل از نتیجه‌گیری تعداد نمونه را بررسی کن.") }
+            weekdays.firstOrNull { it.trades >= 3 }?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}؛ نمونه ${it.trades} معامله.") }
+            strategySlices.firstOrNull { it.trades >= 3 }?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ نمونه ${it.trades} معامله.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
             if (monthTrades.count { it.plannedRisk != null && it.plannedRisk > 0.0 } < 3) add("برای امتیاز دقیق مدیریت ریسک، ریسک برنامه‌ریزی‌شده را هنگام ثبت هر معامله وارد کن.")
         }
@@ -90,19 +91,24 @@ object TxAiEngine {
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
             bestSession = sessions.firstOrNull { it.trades >= 3 }, sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
+            withoutOutsideStrategyDelta = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl } - ordered.sumOf { it.pnl },
             weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull { it.trades >= 3 }, outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
             scores = scores,
             insights = insights, monthlyProgress = monthlyProgress,
+            timeframeDataAvailable = timeframes.isNotEmpty(),
+            marketRegimeDataAvailable = marketConditions.isNotEmpty(),
         )
     }
 
 
     private fun scoreMonth(rows: List<Trade>, account: TradingAccount, riskPercent: Double, label: String): TxAiScores {
         val tagged = rows.filter { it.tags.isNotEmpty() }
-        val discipline = if (rows.size >= 5 && tagged.size >= 3) {
+        // Do not award a high discipline score when most trades have no behavioral review.
+        val tagCoverage = tagged.size.toDouble() / rows.size.coerceAtLeast(1)
+        val discipline = if (rows.size >= 5 && tagged.size >= 3 && tagCoverage >= 0.70) {
             val violations = tagged.count { hasBehaviorFlag(it) }
             ((1.0 - violations.toDouble() / tagged.size) * 100).roundToInt().coerceIn(0, 100)
         } else null
@@ -111,7 +117,7 @@ object TxAiEngine {
         } else null
         val knownRisk = rows.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
         val risk = if (knownRisk.size >= 3) {
-            val allowed = account.startingBalance * riskPercent.coerceAtLeast(0.1) / 100.0 * 1.25
+            val allowed = account.startingBalance * riskPercent.coerceIn(0.1, 100.0) / 100.0
             (knownRisk.count { it.plannedRisk!! <= allowed }.toDouble() / knownRisk.size * 100).roundToInt()
         } else null
         val decision = if (rows.size >= 5) {
