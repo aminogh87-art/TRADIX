@@ -240,7 +240,8 @@ object ThemeController {
     fun init(context: Context) {
         val p = context.applicationContext.getSharedPreferences("tradenex_theme", Context.MODE_PRIVATE)
         prefs = p
-        goldAvailable = p.getBoolean("gold_available", true)\n        theme = ThemeId.values().firstOrNull { it.key == p.getString("theme", null) && (it != ThemeId.GOLD || goldAvailable) } ?: ThemeId.DEFAULT
+        goldAvailable = p.getBoolean("gold_available", true)
+        theme = ThemeId.values().firstOrNull { it.key == p.getString("theme", null) && (it != ThemeId.GOLD || goldAvailable) } ?: ThemeId.DEFAULT
         accent = p.getInt("accent", 0).coerceIn(0, 2)
         glow = p.getInt("glow", 2).coerceIn(0, 3)
         particles = p.getBoolean("particles", true)
@@ -251,7 +252,8 @@ object ThemeController {
 
     private fun save() {
         prefs?.edit()
-            ?.putString("theme", theme.key)\n            ?.putBoolean("gold_available", goldAvailable)
+            ?.putString("theme", theme.key)
+            ?.putBoolean("gold_available", goldAvailable)
             ?.putInt("accent", accent)
             ?.putInt("glow", glow)
             ?.putBoolean("particles", particles)
@@ -267,7 +269,14 @@ object ThemeController {
         save()
     }
 
-    fun removeGoldTheme() {\n        if (!goldAvailable) return\n        goldAvailable = false\n        if (theme == ThemeId.GOLD) { theme = ThemeId.DEFAULT; switchTick++ }\n        save()\n    }\n\n    @JvmName("updateAccentValue")
+    fun removeGoldTheme() {
+        if (!goldAvailable) return
+        goldAvailable = false
+        if (theme == ThemeId.GOLD) { theme = ThemeId.DEFAULT; switchTick++ }
+        save()
+    }
+
+    @JvmName("updateAccentValue")
     fun setAccent(v: Int) {
         accent = v.coerceIn(0, 2)
         save()
