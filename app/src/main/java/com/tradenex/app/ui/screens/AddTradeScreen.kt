@@ -273,6 +273,7 @@ fun AddTradeScreen(nav: NavController) {
                         lot = lot,
                         pnl = signed,
                         strategy = strategy,
+                        strategyVersion = AppState.strategies.firstOrNull { it.name == strategy }?.version ?: 1,
                         tags = tags.toList(),
                         epochDay = parsedTradeDate.toEpochDay(),
                         emotion = emotion,
