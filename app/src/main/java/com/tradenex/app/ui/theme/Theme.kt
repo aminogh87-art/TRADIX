@@ -265,26 +265,31 @@ object ThemeController {
         save()
     }
 
+    @JvmName("updateAccentValue")
     fun setAccent(v: Int) {
         accent = v.coerceIn(0, 2)
         save()
     }
 
+    @JvmName("updateGlowValue")
     fun setGlow(v: Int) {
         glow = v.coerceIn(0, 3)
         save()
     }
 
+    @JvmName("updateParticlesValue")
     fun setParticles(v: Boolean) {
         particles = v
         save()
     }
 
+    @JvmName("updateShimmerValue")
     fun setShimmer(v: Boolean) {
         shimmer = v
         save()
     }
 
+    @JvmName("updateCrownValue")
     fun setCrown(v: Boolean) {
         crown = v
         save()
