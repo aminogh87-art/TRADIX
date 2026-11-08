@@ -11,6 +11,7 @@ class TxAiTradeRecord {
     required this.isBuy,
     required this.pnl,
     required this.lot,
+    required this.epochDay,
     required this.strategy,
     required this.tags,
     required this.emotion,
@@ -40,6 +41,7 @@ class TxAiTradeRecord {
   final bool isBuy;
   final double pnl;
   final double lot;
+  final int epochDay;
   final String strategy;
   final List<String> tags;
   final String emotion;
@@ -87,6 +89,7 @@ class TxAiTradeRecord {
       isBuy: isBuy,
       pnl: pnl,
       lot: lot,
+      epochDay: map['epochDay'] is int ? map['epochDay'] as int : 0,
       strategy: map['strategy'] is String ? map['strategy'] as String : '',
       tags: tags,
       emotion: map['emotion'] is String ? map['emotion'] as String : '',
