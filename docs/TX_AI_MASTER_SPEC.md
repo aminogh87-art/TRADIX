@@ -208,3 +208,36 @@ The local Kotlin analytics report now additionally provides:
 - Both best and weakest session summaries require at least five timestamped trades in the session.
 
 Unit tests cover timezone buckets, strategy version grouping, hold-time calculations, R-multiple and streaks. These are descriptive journal metrics, not market replay or predictive claims.
+
+
+## Implementation update — Flutter add-to-app and live account bridge
+
+
+
+## Implementation update — Flutter add-to-app and live account bridge
+
+The integration path is now implemented in source:
+
+- `scripts/bootstrap_flutter_module.sh` generates the Android Flutter module from the canonical `flutter_fx/lib` Dart sources; generated output is ignored and reproducible.
+- The Android navigation launches the Flutter TX AI Activity when the module is bootstrapped, and retains the existing Compose TX AI screen as a native-only fallback.
+- The Flutter host MethodChannel exposes only the selected account's journal records, account risk settings, session/timezone fields and account-scoped review/pin preferences. It does not expose broker passwords or connection credentials.
+- Flutter can persist episode reviews and insight pins through host methods that validate the selected account before writing.
+- The Dart dashboard now composes Command Center, Edge Explorer, strategy/emotion matrix, selected-timezone weekday/hour heatmap, Behavioral Lab, Rust-backed counterfactuals, process timeline and period-scoped Insight Feed.
+- Dart FFI consumes the packaged Rust shared library; the Android host also calls Rust performance metrics through JNI. The Rust build workflow produces arm64-v8a, armeabi-v7a and x86_64 libraries.
+
+Verification status at this update:
+
+- Rust unit tests and Android-ABI Rust library build have passed in the latest observed completed run.
+- Flutter analyzer previously caught one redundant null assertion; that code was corrected. The newest branch-head Flutter analysis and widget tests are still pending.
+- Flutter module bootstrap succeeded in the latest observed Android job. Android Gradle compilation, unit tests and APK packaging were still running at the last check.
+- No real-device install, activity launch, RTL screenshot, process-death persistence or ABI-by-ABI runtime test has yet been confirmed.
+
+Remaining work before calling TX AI complete:
+
+- Resolve any remaining Flutter analyzer, Android Gradle or unit-test failures and verify the latest PR head specifically.
+- Verify real device launch and FFI symbol loading on each supported ABI.
+- Add the remaining Behavioral Lab detectors and complete review persistence for all event types; stop widening requires stop-change audit history that is not currently stored.
+- Finish saved views, full multi-dimensional matrix and interactive 3D heatmap, complete counterfactual controls, insight scheduling, export/QR/voice-note workflows and localization.
+- Validate account switching, large-history pagination/performance and database migration/backup recovery.
+
+All changes remain on `feature/tradix-forex-journal`; keep PR #1 Draft and unmerged. Do not alter `main`.
