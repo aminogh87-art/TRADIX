@@ -8,6 +8,21 @@ data class TradeStats(
     val maxDrawdown: Double,
 )
 
+/** Extended deterministic metrics from realized P&L only. */
+data class ExtendedTradeStats(
+    val net: Double,
+    val winRate: Double,
+    val profitFactor: Double,
+    val maxDrawdown: Double,
+    val expectancy: Double,
+    val averageWin: Double,
+    val averageLoss: Double,
+    val recoveryFactor: Double,
+    val largestWinShare: Double,
+    val largestLossShare: Double,
+    val sampleSize: Int,
+)
+
 /**
  * Bridge to the Rust library `libtradenex_core.so` (see /rust).
  * When the library is not bundled the identical Kotlin fallback is used,
@@ -27,6 +42,7 @@ object NativeCore {
     private external fun nOverlapMinutes(a: Int, b: Int): Int
     private external fun nMinutesToChange(minuteUtc: Int, session: Int): Int
     private external fun nStats(pnls: DoubleArray): DoubleArray
+    private external fun nPerformanceMetrics(pnls: DoubleArray): DoubleArray
 
     fun sessionMask(minuteUtc: Int): Int =
         if (loaded) nSessionMask(minuteUtc) else Fallback.sessionMask(minuteUtc)
@@ -40,6 +56,23 @@ object NativeCore {
     fun stats(pnls: DoubleArray): TradeStats {
         val r = if (loaded) nStats(pnls) else Fallback.stats(pnls)
         return TradeStats(r[0], r[1], r[2], r[3])
+    }
+
+    fun performanceMetrics(pnls: DoubleArray): ExtendedTradeStats {
+        val values = if (loaded) nPerformanceMetrics(pnls) else Fallback.performanceMetrics(pnls)
+        return ExtendedTradeStats(
+            net = values[0],
+            winRate = values[1],
+            profitFactor = values[2],
+            maxDrawdown = values[3],
+            expectancy = values[4],
+            averageWin = values[5],
+            averageLoss = values[6],
+            recoveryFactor = values[7],
+            largestWinShare = values[8],
+            largestLossShare = values[9],
+            sampleSize = pnls.count { it.isFinite() },
+        )
     }
 }
 
@@ -75,6 +108,36 @@ internal object Fallback {
             if (isOpen((now + step) % 1440, sessions[session][0], sessions[session][1]) != open) return step
         }
         return 0
+    }
+
+    fun performanceMetrics(pnls: DoubleArray): DoubleArray {
+        val values = pnls.filter { it.isFinite() }
+        if (values.isEmpty()) return DoubleArray(10)
+        val net = values.sum()
+        val wins = values.filter { it > 0.0 }
+        val losses = values.filter { it < 0.0 }
+        val grossWin = wins.sum()
+        val grossLoss = losses.sumOf { -it }
+        var equity = 0.0
+        var peak = 0.0
+        var maxDrawdown = 0.0
+        values.forEach { value ->
+            equity += value
+            peak = maxOf(peak, equity)
+            maxDrawdown = minOf(maxDrawdown, equity - peak)
+        }
+        return doubleArrayOf(
+            net,
+            wins.size.toDouble() / values.size,
+            if (grossLoss > 0.0) grossWin / grossLoss else if (grossWin > 0.0) 99.0 else 0.0,
+            maxDrawdown,
+            net / values.size,
+            if (wins.isEmpty()) 0.0 else grossWin / wins.size,
+            if (losses.isEmpty()) 0.0 else grossLoss / losses.size,
+            if (maxDrawdown < 0.0) net / -maxDrawdown else 0.0,
+            if (grossWin > 0.0) (wins.maxOrNull() ?: 0.0) / grossWin else 0.0,
+            if (grossLoss > 0.0) (losses.minOrNull()?.let { -it } ?: 0.0) / grossLoss else 0.0,
+        )
     }
 
     fun stats(pnls: DoubleArray): DoubleArray {
