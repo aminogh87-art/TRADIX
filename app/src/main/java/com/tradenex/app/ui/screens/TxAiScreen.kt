@@ -34,6 +34,9 @@ fun TxAiScreen(nav: NavController) {
         NativeCore.performanceMetrics(trades.map { it.pnl }.toDoubleArray())
     }
     val revengeEpisodes = remember(trades) { com.tradenex.app.data.RevengeTradingAnalyzer.analyze(trades) }
+    val behavioralPatterns = remember(trades) {
+        com.tradenex.app.data.TxAiBehavioralPatternAnalyzer.analyze(trades)
+    }
     fun money(v: Double) = Analytics.money(v)
     Page(title = "TX AI", onBack = { nav.popBackStack() }) {
         Reveal(0) {
@@ -278,6 +281,74 @@ fun TxAiScreen(nav: NavController) {
                         "روش تشخیص: فاصله حداکثر ۱۵ دقیقه، افزایش ریسک/حجم بیش از ۲۵٪، تخلف صریح از پلن، تگ Revenge، نشانه‌های خشم/FOMO و توالی ضرر. داده ناقص امتیاز نمی‌گیرد. هر اپیزود فقط دو معامله مرتبط را نمایش می‌دهد و جمع آن‌ها برای محاسبه هزینه کل حساب تجمیع نشده تا زیان تکراری شمرده نشود.",
                         color = Tx.Muted, fontSize = 9.sp,
                     )
+                }
+            }
+        }
+        Reveal(7) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    SectionTitle("سایر الگوهای رفتاری قابل مشاهده")
+                    Text(
+                        "این شاخص‌ها فقط شواهد ثبت‌شده در ژورنال را توصیف می‌کنند؛ برای نسبت‌دادن انگیزه یا تشخیص قطعی کافی نیستند.",
+                        color = Tx.Muted, fontSize = 10.sp,
+                    )
+                    if (behavioralPatterns.isEmpty()) {
+                        EmptyAi("برای این الگوها هنوز داده زمان، حجم یا قیمت کافی ثبت نشده است.")
+                    }
+                    behavioralPatterns.take(30).forEach { pattern ->
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .background(Color.White.copy(alpha = 0.035f), RoundedCornerShape(12.dp))
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    pattern.type.label,
+                                    color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text("Evidence ${pattern.evidenceScore}/100", color = Tx.Gold, fontSize = 10.sp)
+                            }
+                            Text(
+                                "معاملات مرتبط: ${pattern.linkedTradeIds.joinToString("، ") { "#$it" }} · خالص ثبت‌شده: ${money(pattern.actualNetPnl)}",
+                                color = Tx.Text, fontSize = 10.sp,
+                            )
+                            pattern.reasons.forEach { reason ->
+                                Text("• $reason", color = Tx.Muted, fontSize = 10.sp)
+                            }
+                            val review = AppState.episodeReview(account.id, pattern.id)
+                            Text(
+                                "بازبینی شما: " + when (review) {
+                                    com.tradenex.app.data.TxAiReviewStatus.CONFIRMED -> "تأیید شده"
+                                    com.tradenex.app.data.TxAiReviewStatus.NOT_REVENGE -> "رد شده"
+                                    com.tradenex.app.data.TxAiReviewStatus.UNSURE -> "نامشخص"
+                                    null -> "بازبینی نشده"
+                                },
+                                color = Tx.Muted, fontSize = 10.sp,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, pattern.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.CONFIRMED,
+                                    )
+                                }) { Text("تأیید") }
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, pattern.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.NOT_REVENGE,
+                                    )
+                                }) { Text("مورد معتبر نیست") }
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, pattern.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.UNSURE,
+                                    )
+                                }) { Text("نامشخص") }
+                            }
+                        }
+                    }
                 }
             }
         }
