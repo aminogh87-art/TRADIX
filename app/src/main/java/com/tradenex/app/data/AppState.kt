@@ -18,6 +18,18 @@ data class Trade(
     val tags: List<String>,
     val epochDay: Long,
     val emotion: String,
+    val accountId: String = "default",
+    val openedAtMillis: Long = 0L,
+    val closedAtMillis: Long = 0L,
+    val entryPrice: Double? = null,
+    val exitPrice: Double? = null,
+    val stopLossPrice: Double? = null,
+    val takeProfitPrice: Double? = null,
+    val commission: Double = 0.0,
+    val swap: Double = 0.0,
+    val otherFees: Double = 0.0,
+    val notes: String = "",
+    val plannedRisk: Double? = null,
 )
 
 data class Strategy(val id: Long, val name: String, val rules: List<String>, val active: Boolean)
