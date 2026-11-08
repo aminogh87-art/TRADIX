@@ -2,6 +2,7 @@ package com.tradenex.app.data
 
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class JalaliCalendarTest {
@@ -13,11 +14,25 @@ class JalaliCalendarTest {
     }
 
     @Test
-    fun roundTripsMonthBoundaries() {
-        for (month in 1..12) {
-            val day = JalaliCalendar.daysInMonth(1405, month)
-            val gregorian = JalaliCalendar.toGregorian(1405, month, day)
-            assertEquals(JalaliDate(1405, month, day), JalaliCalendar.fromGregorian(gregorian))
+    fun roundTripsMonthBoundariesAcrossRecentYears() {
+        for (year in 1390..1410) {
+            for (month in 1..12) {
+                val lastDay = JalaliCalendar.daysInMonth(year, month)
+                val firstGregorian = JalaliCalendar.toGregorian(year, month, 1)
+                val lastGregorian = JalaliCalendar.toGregorian(year, month, lastDay)
+                assertEquals(JalaliDate(year, month, 1), JalaliCalendar.fromGregorian(firstGregorian))
+                assertEquals(JalaliDate(year, month, lastDay), JalaliCalendar.fromGregorian(lastGregorian))
+            }
+        }
+    }
+
+    @Test
+    fun rejectsInvalidMonthAndDay() {
+        assertThrows(IllegalArgumentException::class.java) {
+            JalaliCalendar.toGregorian(1405, 13, 1)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            JalaliCalendar.toGregorian(1405, 12, 30)
         }
     }
 }
