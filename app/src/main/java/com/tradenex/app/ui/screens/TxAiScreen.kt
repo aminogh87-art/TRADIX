@@ -55,7 +55,9 @@ fun TxAiScreen(nav: NavController) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("تحلیل روزانه و هفتگی")
-                    Text("عملکرد روزهای هفته", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("روزهای معاملاتی اخیر", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    report.days.takeLast(14).forEach { AiSliceRow(it, money(it.net)) }
+                    Text("الگوی عملکرد در روزهای هفته", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     if (report.weekdays.isEmpty()) EmptyAi("داده روزانه کافی نیست.")
                     report.weekdays.forEach { AiSliceRow(it, money(it.net)) }
                     Text("هفته‌های اخیر · شروع هفته دوشنبه", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
