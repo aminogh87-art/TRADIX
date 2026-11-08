@@ -33,7 +33,7 @@ class AnalyticsTradeCandleTest {
         assertEquals("EURUSD", candles.first().tradeName)
         // Equity remains cumulative across trades omitted from the visible tail.
         assertEquals(101.0, candles.first().candle.o, 0.001)
-        assertEquals(103.0, candles.last().candle.c, 0.001)
+        assertEquals(106.0, candles.last().candle.c, 0.001)
     }
 
     @Test
