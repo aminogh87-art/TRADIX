@@ -56,16 +56,17 @@ fun TradesScreen(nav: NavController) {
     var commissionText by remember { mutableStateOf("") }
     var swapText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
+    var tradeNameText by remember { mutableStateOf("") }
     var complianceEdit by remember { mutableStateOf<Boolean?>(null) }
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri != null) {
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                    writer.appendLine("id,date,symbol,side,lots,net_pnl,currency,strategy,strategy_version,strategy_followed,emotion,timeframe,market_condition,planned_risk,entry,exit,stop_loss,take_profit,commission,swap,fees,notes")
+                    writer.appendLine("id,trade_name,date,symbol,side,lots,net_pnl,currency,strategy,strategy_version,strategy_followed,emotion,timeframe,market_condition,planned_risk,entry,exit,stop_loss,take_profit,commission,swap,fees,notes")
                     AppState.visibleTrades.sortedBy { it.epochDay }.forEach { t ->
                         val values = listOf(
-                            t.id.toString(), t.epochDay.toString(), t.symbol, if (t.buy) "BUY" else "SELL",
+                            t.id.toString(), t.tradeName, t.epochDay.toString(), t.symbol, if (t.buy) "BUY" else "SELL",
                             t.lot.toString(), t.pnl.toString(), AppState.selectedAccount.baseCurrency,
                             t.strategy, t.strategyVersion.toString(), t.strategyFollowed?.let { if (it) "YES" else "NO" }.orEmpty(), t.emotion,
                             t.timeframe, t.marketCondition, t.plannedRisk?.toString().orEmpty(),
@@ -121,7 +122,7 @@ fun TradesScreen(nav: NavController) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(trade.symbol, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(trade.tradeName.ifBlank { trade.symbol }, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                             Text(if (trade.buy) "  BUY" else "  SELL", color = if (trade.buy) Tx.Green else Tx.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · روز ${trade.epochDay}", color = Tx.Muted, fontSize = 10.sp)
@@ -141,6 +142,7 @@ fun TradesScreen(nav: NavController) {
                             commissionText = trade.commission.toString()
                             swapText = trade.swap.toString()
                             notesText = trade.notes
+                            tradeNameText = trade.tradeName
                             complianceEdit = trade.strategyFollowed
                         })
                         Icon(Icons.Rounded.Delete, "حذف معامله", tint = Tx.Muted, modifier = Modifier.clickable { deleting = trade })
@@ -172,6 +174,7 @@ fun TradesScreen(nav: NavController) {
                         TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
                         TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
                     }
+                    TxField(tradeNameText, { tradeNameText = it }, "Trade name / setup")
                     TxField(notesText, { notesText = it }, "Notes")
                     Text("پایبندی به استراتژی", color = Tx.Muted, fontSize = 11.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -198,6 +201,7 @@ fun TradesScreen(nav: NavController) {
                                 commission = commissionText.toDoubleOrNull() ?: 0.0,
                                 swap = swapText.toDoubleOrNull() ?: 0.0,
                                 notes = notesText.trim(),
+                                tradeName = tradeNameText.trim(),
                                 strategyFollowed = complianceEdit,
                             )
                             AppState.persist()
