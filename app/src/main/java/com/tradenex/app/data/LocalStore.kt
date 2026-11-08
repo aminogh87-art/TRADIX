@@ -154,7 +154,12 @@ internal object SnapshotCodec {
         if (target.accounts.isEmpty()) {
             target.accounts.add(TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10000.0))
         }
-        target.selectedAccountId = snapshot.optString("selectedAccountId", target.accounts.first().id)
+        if (target.accounts.none { !it.archived }) {
+            target.accounts[0] = target.accounts[0].copy(archived = false)
+        }
+        val requestedAccount = snapshot.optString("selectedAccountId", target.accounts.first().id)
+        target.selectedAccountId = target.accounts.firstOrNull { it.id == requestedAccount && !it.archived }?.id
+            ?: target.accounts.first { !it.archived }.id
         target.trades.clear()
         val tradeRows = snapshot.optJSONArray("trades") ?: JSONArray()
         for (i in 0 until tradeRows.length()) {
