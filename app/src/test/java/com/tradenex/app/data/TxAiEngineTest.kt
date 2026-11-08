@@ -60,6 +60,21 @@ class TxAiEngineTest {
     }
 
     @Test
+    fun missingStrategyNameAloneIsNotClassifiedAsOffPlan() {
+        val rows = (1L..5L).map { id -> trade(id, 15.0, strategy = "", tags = listOf("#discipline")) }
+        val report = TxAiEngine.analyze(rows, account, 1.0)
+        assertEquals(0, report.outsideStrategyCount)
+        assertEquals(0.0, report.withoutOutsideStrategyDelta, 0.001)
+    }
+
+    @Test
+    fun reportIncludesEmotionalAndSymbolBreakdowns() {
+        val report = TxAiEngine.analyze((1L..6L).map { trade(it, 12.0) }, account, 1.0)
+        assertEquals("آرام", report.emotions.single().label)
+        assertEquals("EURUSD", report.symbols.single().label)
+    }
+
+    @Test
     fun reportGroupsContextAndComputesHalfRisk() {
         val report = TxAiEngine.analyze((1L..6L).map { trade(it, 40.0) }, account, 1.0)
         assertEquals("M15", report.timeframes.single().label)
