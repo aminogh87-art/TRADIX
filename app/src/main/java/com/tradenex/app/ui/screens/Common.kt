@@ -77,7 +77,7 @@ fun Page(
 fun Reveal(index: Int, content: @Composable () -> Unit) {
     val level = AppState.settings.animations
     val instant = level == 0
-    val duration = if (level == 1) 150 else 420
+    val duration = when (level) { 0 -> 0; 1 -> 150; else -> 420 }
     var shown by remember { mutableStateOf(instant) }
     LaunchedEffect(level, index) {
         if (!instant) {
