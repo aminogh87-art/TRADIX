@@ -28,6 +28,7 @@ import com.tradenex.app.ui.screens.SessionsScreen
 import com.tradenex.app.ui.screens.SettingsScreen
 import com.tradenex.app.ui.screens.StrategiesScreen
 import com.tradenex.app.ui.screens.TagsScreen
+import com.tradenex.app.ui.screens.TradesScreen
 
 @Composable
 fun AppNav() {
@@ -48,6 +49,7 @@ fun AppNav() {
                 ) {
                     composable("home") { HomeScreen(nav) }
                     composable("accounts") { AccountsScreen(nav) }
+                    composable("trades") { TradesScreen(nav) }
                     composable("perf") { PerformanceScreen(nav) }
                     composable("edu") { EducationScreen(nav) }
                     composable("more") { MoreScreen(nav) }
