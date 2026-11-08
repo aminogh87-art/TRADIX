@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -126,7 +127,21 @@ fun TxAiScreen(nav: NavController) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("پیشنهادهای TX AI")
                     if (report.insights.isEmpty()) EmptyAi("برای ارائه پیشنهاد معتبر، معاملات و اطلاعات زمینه‌ای بیشتری ثبت کن.")
-                    report.insights.forEachIndexed { i, insight -> Text((i + 1).toString() + ". " + insight, color = Tx.Text, fontSize = 11.sp) }
+                    report.insights.forEachIndexed { i, insight ->
+                        val insightId = "report-${insight.hashCode().toUInt().toString(16)}"
+                        val pinned = AppState.isInsightPinned(account.id, insightId)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                (i + 1).toString() + ". " + insight,
+                                color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = {
+                                AppState.setInsightPinned(account.id, insightId, !pinned)
+                            }) {
+                                Text(if (pinned) "برداشتن سنجاق" else "سنجاق")
+                            }
+                        }
+                    }
                     Text("تایم‌فریم و شرایط بازار از معاملات جدیدی که این فیلدها در آن‌ها تکمیل شده استخراج می‌شوند؛ معاملات قدیمی فاقد این اطلاعات‌اند.", color = Tx.Gold, fontSize = 10.sp)
                 }
             }
@@ -182,6 +197,36 @@ fun TxAiScreen(nav: NavController) {
                             )
                             episode.evidence.reasons.forEach { reason ->
                                 Text("• $reason", color = Tx.Muted, fontSize = 10.sp)
+                            }
+                            val review = AppState.episodeReview(account.id, episode.id)
+                            Text(
+                                "بازبینی شما: " + when (review) {
+                                    com.tradenex.app.data.TxAiReviewStatus.CONFIRMED -> "تأیید شده"
+                                    com.tradenex.app.data.TxAiReviewStatus.NOT_REVENGE -> "Revenge نیست"
+                                    com.tradenex.app.data.TxAiReviewStatus.UNSURE -> "نامشخص"
+                                    null -> "بازبینی نشده"
+                                },
+                                color = Tx.Gold, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, episode.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.CONFIRMED,
+                                    )
+                                }) { Text("تأیید") }
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, episode.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.NOT_REVENGE,
+                                    )
+                                }) { Text("Revenge نیست") }
+                                TextButton(onClick = {
+                                    AppState.reviewEpisode(
+                                        account.id, episode.id,
+                                        com.tradenex.app.data.TxAiReviewStatus.UNSURE,
+                                    )
+                                }) { Text("نامشخص") }
                             }
                         }
                     }
