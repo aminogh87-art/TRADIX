@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tradenex.app.data.AppState
@@ -111,18 +112,18 @@ fun TxBackground(content: @Composable BoxScope.() -> Unit) {
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    border: Color = Tx.Gold.copy(alpha = Tx.borderAlpha),
+    border: Color = Color.Transparent,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(Tx.radius.dp)
     val glow = Tx.Gold.copy(alpha = Tx.glowAlpha)
     Box(
         modifier
-            .shadow((10f * Tx.glowLevel).dp, shape, ambientColor = glow, spotColor = glow)
+            .shadow((if (AppState.settings.animations >= 2) 8f else 2f).dp, shape, ambientColor = glow, spotColor = glow)
             .clip(shape)
             .background(Brush.linearGradient(listOf(Tx.PanelTop, Tx.PanelBottom)))
-            .border(1.dp, border, shape)
-            .shimmerBorder(shape),
+            .then(if (border != Color.Transparent) Modifier.border(1.dp, border, shape) else Modifier)
+            .then(if (AppState.settings.animations >= 2) Modifier.shimmerBorder(shape) else Modifier),
         content = content,
     )
 }
@@ -137,7 +138,7 @@ fun TxHeader(title: String, onBack: (() -> Unit)? = null, trailing: @Composable 
         if (onBack != null) {
             IconBox(Icons.AutoMirrored.Rounded.ArrowBack, "بازگشت", onBack)
         }
-        Text(title, color = Tx.Text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+        Text(title, color = Tx.Text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         trailing()
     }
 }
@@ -170,7 +171,7 @@ fun TxChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modif
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (selected) Tx.GoldPale else Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = if (selected) Tx.GoldPale else Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -203,9 +204,9 @@ fun GoldButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit)
 fun StatTile(label: String, value: String, color: Color, modifier: Modifier = Modifier, sub: String? = null) {
     GlassCard(modifier.height(68.dp)) {
         Column(Modifier.fillMaxSize().padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text(label, color = Tx.Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-            Text(value, color = color, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-            if (sub != null) Text(sub, color = Tx.Muted, fontSize = 10.sp)
+            Text(label, color = Tx.Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(value, color = color, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (sub != null) Text(sub, color = Tx.Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -213,8 +214,8 @@ fun StatTile(label: String, value: String, color: Color, modifier: Modifier = Mo
 @Composable
 fun SectionTitle(text: String, trailing: String? = null) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-        if (trailing != null) Text(trailing, color = Tx.Muted, fontSize = 11.sp)
+        Text(text, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (trailing != null) Text(trailing, color = Tx.Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -240,7 +241,7 @@ fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
     val t = rememberInfiniteTransition(label = "fab")
     val pulse by t.animateFloat(
         initialValue = 1f,
-        targetValue = 1.08f,
+        targetValue = if (AppState.settings.animations >= 2) 1.08f else 1f,
         animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
         label = "pulse",
     )
@@ -252,7 +253,7 @@ fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
                 .clip(shape)
                 .background(Brush.verticalGradient(listOf(Tx.BarTop, Tx.BarBottom)))
                 .border(1.dp, Tx.Gold.copy(alpha = (Tx.borderAlpha + 0.07f).coerceAtMost(1f)), shape)
-                .shimmerBorder(shape, offset = 0.5f),
+                .then(if (AppState.settings.animations >= 2) Modifier.shimmerBorder(shape, offset = 0.5f) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
