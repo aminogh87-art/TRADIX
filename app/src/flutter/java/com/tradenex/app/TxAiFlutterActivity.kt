@@ -87,6 +87,7 @@ class TxAiFlutterActivity : FlutterActivity() {
         "isBuy" to trade.buy,
         "pnl" to trade.pnl,
         "lot" to trade.lot,
+        "epochDay" to trade.epochDay,
         "strategy" to trade.strategy,
         "strategyVersion" to trade.strategyVersion,
         "tags" to trade.tags,
