@@ -64,7 +64,6 @@ fun StrategiesScreen(nav: NavController) {
     val n = AppState.visibleTrades.size
 
     Page(title = "استراتژی‌های من", onBack = { nav.popBackStack() }) {
-        // comparison
         Reveal(0) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -127,7 +126,7 @@ fun StrategiesScreen(nav: NavController) {
                     }
                     GoldButton("ذخیره استراتژی") {
                         if (name.isNotBlank()) {
-                            AppState.strategies.add(Strategy(System.currentTimeMillis(), name.trim(), rules.toList(), true))
+                            AppState.addStrategy(Strategy(System.currentTimeMillis(), name.trim(), rules.toList(), true))
                             name = ""
                             rules.clear()
                         }
@@ -210,14 +209,13 @@ private fun StrategyCard(s: Strategy, tradeCount: Int, onEdit: () -> Unit) {
                     modifier = Modifier.size(20.dp).clickable(onClick = onEdit),
                 )
                 SwitchMini(s.active) {
-                    val i = AppState.strategies.indexOfFirst { it.id == s.id }
-                    if (i >= 0) AppState.strategies[i] = s.copy(active = !s.active)
+                    AppState.updateStrategy(s.id) { it.copy(active = !it.active) }
                 }
                 Icon(
                     Icons.Rounded.Delete,
                     "حذف استراتژی",
                     tint = Tx.Muted,
-                    modifier = Modifier.size(22.dp).clickable { AppState.strategies.removeAll { it.id == s.id } },
+                    modifier = Modifier.size(22.dp).clickable { AppState.deleteStrategy(s.id) },
                 )
             }
         }
