@@ -241,3 +241,12 @@ Remaining work before calling TX AI complete:
 - Validate account switching, large-history pagination/performance and database migration/backup recovery.
 
 All changes remain on `feature/tradix-forex-journal`; keep PR #1 Draft and unmerged. Do not alter `main`.
+
+
+## Implementation update — complete journal-backed Behavioral Lab feed
+
+- Added an explicit size-up-after-loss signal alongside size-up-after-win; neither signal alone is labeled Revenge Trading.
+- Added session-drift detection only when the recorded strategy rule names allowed sessions. Historical strategy revisions are used when available; if the trade's version has no matching rule record, the detector withholds the result.
+- Session overlap is handled by checking every active IANA-zone session, so an allowed overlapping session prevents a false drift flag. A trade outside all active sessions is reported as between sessions.
+- Flutter receives the same deterministic pattern records from the Android host, displays linked trade details, restores user review states and persists review changes through the account-validated channel.
+- Stop widening remains unavailable until stop-loss change history is captured; it is intentionally not inferred from the final stop-loss value.
