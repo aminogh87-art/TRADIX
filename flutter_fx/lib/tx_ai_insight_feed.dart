@@ -45,9 +45,9 @@ class TxInsightFeed extends StatefulWidget {
 
 class _TxInsightFeedState extends State<TxInsightFeed> {
   TxInsightPeriod? _period;
-  final Set<String> _pinned = {};
+  final Map<String, bool> _pinOverrides = {};
 
-  bool _isPinned(TxInsight insight) => _pinned.contains(insight.id) || insight.pinned;
+  bool _isPinned(TxInsight insight) => _pinOverrides[insight.id] ?? insight.pinned;
 
   @override
   Widget build(BuildContext context) {
@@ -118,13 +118,7 @@ class _TxInsightFeedState extends State<TxInsightFeed> {
           Wrap(spacing: 8, children: [
             OutlinedButton.icon(
               onPressed: () {
-                setState(() {
-                  if (pinned) {
-                    _pinned.remove(insight.id);
-                  } else {
-                    _pinned.add(insight.id);
-                  }
-                });
+                setState(() => _pinOverrides[insight.id] = !pinned);
                 widget.onPinChanged?.call(insight.id, !pinned);
               },
               icon: Icon(pinned ? Icons.push_pin : Icons.push_pin_outlined),
