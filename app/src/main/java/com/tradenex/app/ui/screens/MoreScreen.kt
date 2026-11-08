@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -66,6 +67,7 @@ private data class MenuItem(val title: String, val sub: String, val icon: ImageV
 fun MoreScreen(nav: NavController) {
     var about by remember { mutableStateOf(false) }
     val items = listOf(
+        MenuItem("ژورنال معاملات", "تاریخچه، ویرایش و فیلتر", Icons.Rounded.ReceiptLong, "trades", Tx.Green),
         MenuItem("حساب‌ها", "دمو، ریل و پراپ", Icons.Rounded.AccountBalance, "accounts", Tx.Blue),
         MenuItem("سشن‌ها", "کره زمین و همپوشانی", Icons.Rounded.Public, "sessions", Tx.Blue),
         MenuItem("استراتژی‌ها", "ثبت، حذف و مقایسه", Icons.Rounded.TrackChanges, "strategies", Tx.Gold),
