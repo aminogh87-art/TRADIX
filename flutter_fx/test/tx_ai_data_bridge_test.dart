@@ -10,6 +10,8 @@ void main() {
       'startingBalance': 10000.0,
       'riskPercent': 1.0,
       'displayTimezone': 'Asia/Tehran',
+      'currentDisplayDateKey': '2026-11-08',
+      'currentMonthKey': '2026-11',
       'episodeReviews': [
         {'episodeId': 'a:1:2', 'status': 'confirmed'},
       ],
@@ -20,6 +22,7 @@ void main() {
         {
           'id': 1,
           'accountId': 'account-1',
+          'epochDay': 20695,
           'symbol': 'EURUSD',
           'isBuy': true,
           'pnl': 25.5,
@@ -35,6 +38,7 @@ void main() {
           'displayMinute': 45,
           'displayDateKey': '2026-11-03',
           'displayMonthKey': '2026-11',
+          'displayClosedMonthKey': '2026-11',
           'entryPrice': 1.1,
           'exitPrice': 1.101,
           'stopLossPrice': 1.099,
@@ -57,6 +61,10 @@ void main() {
     expect(snapshot.realizedPnls, [25.5]);
     expect(snapshot.trades.single.strategyFollowed, isTrue);
     expect(snapshot.trades.single.strategyVersion, 3);
+    expect(snapshot.trades.single.epochDay, 20695);
+    expect(snapshot.trades.single.displayClosedMonthKey, '2026-11');
+    expect(snapshot.currentDisplayDateKey, '2026-11-08');
+    expect(snapshot.currentMonthKey, '2026-11');
     expect(snapshot.trades.single.session, 'London');
     expect(snapshot.trades.single.displayHour, 13);
     expect(snapshot.trades.single.displayWeekday, 2);
