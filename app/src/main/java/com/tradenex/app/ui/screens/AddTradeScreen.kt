@@ -194,16 +194,17 @@ fun AddTradeScreen(nav: NavController) {
                     } else if (usePriceCalculation) {
                         Text("قیمت ورود و خروج", color = Tx.Muted, fontSize = 11.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TxField(entryText, { entryText = it }, "Entry", Modifier.weight(1f))
-                            TxField(exitText, { exitText = it }, "Exit", Modifier.weight(1f))
+                            TxField(entryText, { entryText = it }, "قیمت ورود", Modifier.weight(1f))
+                            TxField(exitText, { exitText = it }, "قیمت خروج", Modifier.weight(1f))
                         }
                         Text("نرخ تبدیل ارز مظنه به ارز حساب (${AppState.selectedAccount.baseCurrency})", color = Tx.Muted, fontSize = 10.sp)
-                        TxField(conversionText, { conversionText = it }, "نرخ تبدیل را وارد کن")
+                        TxField(conversionText, { conversionText = it }, "مثلاً 1 یا نرخ تبدیل واقعی")
+                        Text("هزینه‌ها به ارز حساب", color = Tx.Muted, fontSize = 11.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
-                            TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
-                            TxField(feeText, { feeText = it }, "Other fees", Modifier.weight(1f))
+                            TxField(commissionText, { commissionText = it }, "کمیسیون", Modifier.weight(1f))
+                            TxField(swapText, { swapText = it }, "سواپ", Modifier.weight(1f))
                         }
+                        TxField(feeText, { feeText = it }, "سایر هزینه‌ها (اختیاری)")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TxField(stopLossText, { stopLossText = it }, "Stop Loss", Modifier.weight(1f))
                             TxField(takeProfitText, { takeProfitText = it }, "Take Profit", Modifier.weight(1f))
