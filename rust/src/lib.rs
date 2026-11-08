@@ -266,6 +266,28 @@ mod tests {
     }
 
     #[test]
+    fn c_abi_returns_structured_metrics() {
+        let input = [10.0, -4.0, 6.0];
+        let mut output = [0.0; 10];
+        let status = unsafe {
+            tx_ai_performance_metrics(input.as_ptr(), input.len(), output.as_mut_ptr(), output.len())
+        };
+        assert_eq!(status, 0);
+        assert_eq!(output[0], 12.0);
+        assert!((output[1] - 2.0 / 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn c_abi_rejects_invalid_output_buffer() {
+        let input = [10.0];
+        let mut output = [0.0; 4];
+        let status = unsafe {
+            tx_ai_performance_metrics(input.as_ptr(), input.len(), output.as_mut_ptr(), output.len())
+        };
+        assert_eq!(status, -1);
+    }
+
+    #[test]
     fn stats_basic() {
         let s = stats(&[100.0, -50.0, 150.0, -100.0]);
         assert_eq!(s[0], 100.0);
