@@ -304,7 +304,12 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final heatmap = _heatmap(trades);
     final processMonths = _processMonths(trades, account);
     final insights = _insights(account, analytics, weekTrades, monthTrades, monthDiscipline);
-    final offPlanMask = trades.map(_isOffPlan).toList(growable: false);
+    final hasOffPlanEvidence = trades.any((trade) =>
+        trade.strategyFollowed != null ||
+        trade.tags.any((tag) => _isOffPlan(trade)));
+    final offPlanMask = hasOffPlanEvidence
+        ? trades.map(_isOffPlan).toList(growable: false)
+        : null;
 
     return TabBarView(
       children: [
