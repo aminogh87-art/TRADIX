@@ -57,7 +57,7 @@ import com.tradenex.app.core.NativeCore
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
-import com.tradenex.app.ui.components.CandleChart
+import com.tradenex.app.ui.components.TradeCandleChart
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.PulseDot
 import com.tradenex.app.ui.components.SessionTimeline
@@ -205,13 +205,13 @@ fun HomeScreen(nav: NavController) {
                         val chartTrades = visibleTrades.filter { it.epochDay > today - chartWindowDays }
                         val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay <= today - chartWindowDays }.sumOf { it.pnl }
                         val candles = remember(period, visibleTrades, accountStartBalance, today) {
-                            Analytics.tradeCandles(chartTrades, openingEquity, 60)
+                            Analytics.tradeCandleSeries(chartTrades, openingEquity, 60)
                         }
                         if (candles.isEmpty()) {
                             Text("پس از ثبت معامله، هر معامله به یک کندل مستقل تبدیل می‌شود.", color = Tx.Muted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 18.dp))
                         } else {
-                            CandleChart(candles, Modifier.fillMaxWidth().height(110.dp))
-                            Text("هر کندل = یک معامله · ${candles.size} معامله اخیر", color = Tx.Muted, fontSize = 9.sp)
+                            TradeCandleChart(candles, Modifier.fillMaxWidth().height(170.dp))
+                            Text("هر کندل باریک = یک معامله؛ روی کندل بزن تا نام و نتیجه را ببینی.", color = Tx.Muted, fontSize = 9.sp)
                         }
                     }
                 }
