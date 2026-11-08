@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.tradenex.app.ui.components.GlassCard
-import com.tradenex.app.ui.components.RowLabel
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
 import java.util.Locale
