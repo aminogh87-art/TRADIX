@@ -51,6 +51,10 @@ object EducationQr {
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
         val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
         val result = MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(source))).text
+        return decodePayload(result)
+    }
+
+    fun decodePayload(result: String): Pair<String, List<EducationBlock>>? {
         if (!result.startsWith(PREFIX)) return null
         val compressed = Base64.getUrlDecoder().decode(result.removePrefix(PREFIX))
         val bytes = GZIPInputStream(ByteArrayInputStream(compressed)).use { it.readBytes() }
