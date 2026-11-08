@@ -740,3 +740,171 @@ class _TxScatterPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TxScatterPainter old) => old.trades != trades;
 }
+
+
+enum TxRevengeClassification { userTagged, strongEvidence, possible, lossSequenceOnly }
+
+enum TxRevengeReview { unreviewed, confirmed, notRevenge, unsure }
+
+/// One account-scoped behavioral episode supplied by the host's local journal engine.
+/// P&L fields must be realized values; null means unavailable, never zero.
+class TxRevengeEpisode {
+  const TxRevengeEpisode({
+    required this.id,
+    required this.previousTradeId,
+    required this.triggerTradeId,
+    required this.previousTradeLabel,
+    required this.triggerTradeLabel,
+    required this.evidenceScore,
+    required this.classification,
+    required this.reasons,
+    this.gapMinutes,
+    this.previousRealizedPnl,
+    this.triggerRealizedPnl,
+    this.review = TxRevengeReview.unreviewed,
+  });
+
+  final String id;
+  final String previousTradeId;
+  final String triggerTradeId;
+  final String previousTradeLabel;
+  final String triggerTradeLabel;
+  final int evidenceScore;
+  final TxRevengeClassification classification;
+  final List<String> reasons;
+  final int? gapMinutes;
+  final double? previousRealizedPnl;
+  final double? triggerRealizedPnl;
+
+  final TxRevengeReview review;
+
+  double? get realizedEpisodeNet {
+    if (previousRealizedPnl == null || triggerRealizedPnl == null) return null;
+    return previousRealizedPnl! + triggerRealizedPnl!;
+  }
+}
+
+/// Evidence-first Revenge Trading card. Review persistence and account scoping
+/// remain host responsibilities; this widget never writes journal data itself.
+class TxRevengeEpisodeCard extends StatelessWidget {
+  const TxRevengeEpisodeCard({
+    super.key,
+    required this.episode,
+    this.onShowTrades,
+    this.onReview,
+  });
+
+  final TxRevengeEpisode episode;
+  final ValueChanged<TxRevengeReview>? onReview;
+  final VoidCallback? onShowTrades;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = switch (episode.classification) {
+      TxRevengeClassification.userTagged => const Color(0xFFFFD36E),
+      TxRevengeClassification.strongEvidence => const Color(0xFFFF7B83),
+      TxRevengeClassification.possible => const Color(0xFF55D9F5),
+      TxRevengeClassification.lossSequenceOnly => const Color(0xFF91A5C4),
+    };
+    final net = episode.realizedEpisodeNet;
+    final reviewLabel = switch (episode.review) {
+      TxRevengeReview.unreviewed => 'نیازمند مرور',
+      TxRevengeReview.confirmed => 'تأیید کاربر',
+      TxRevengeReview.notRevenge => 'Revenge نیست',
+      TxRevengeReview.unsure => 'نامشخص',
+    };
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B1730),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withOpacity(.38)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Expanded(child: Text(
+                switch (episode.classification) {
+                  TxRevengeClassification.userTagged => 'با تگ دستی کاربر',
+                  TxRevengeClassification.strongEvidence => 'شواهد رفتاری قوی',
+                  TxRevengeClassification.possible => 'الگوی احتمالی',
+                  TxRevengeClassification.lossSequenceOnly => 'توالی زیان',
+                },
+                style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 13),
+              )),
+              Text('Evidence ${episode.evidenceScore.clamp(0, 100)}/100',
+                style: TextStyle(color: accent, fontWeight: FontWeight.w900, fontSize: 11)),
+            ]),
+            const SizedBox(height: 8),
+            _tradeLine('معامله زیان‌ده قبلی', episode.previousTradeLabel, episode.previousTradeId),
+            const SizedBox(height: 5),
+            _tradeLine('ورود بعدی', episode.triggerTradeLabel, episode.triggerTradeId),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text(
+                episode.gapMinutes == null ? 'فاصله زمانی: ثبت نشده' : 'فاصله زمانی: ${episode.gapMinutes} دقیقه',
+                style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 10),
+              )),
+              Text(
+                net == null ? 'خالص: داده ناکافی' : 'خالص دو معامله: ${net.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: net == null ? const Color(0xFF91A5C4) : net >= 0 ? const Color(0xFF36D6A0) : const Color(0xFFFF7B83),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10,
+                ),
+              ),
+            ]),
+            if (episode.reasons.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final reason in episode.reasons)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text('• $reason', style: const TextStyle(color: Color(0xFFB7C9E8), fontSize: 10, height: 1.4)),
+                ),
+            ],
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text(reviewLabel, style: const TextStyle(color: Color(0xFFFFD36E), fontSize: 10, fontWeight: FontWeight.w700))),
+              if (onShowTrades != null)
+                TextButton(onPressed: onShowTrades, child: const Text('مشاهده معاملات')),
+            ]),
+            if (onReview != null)
+              Wrap(spacing: 4, runSpacing: 2, children: [
+                _reviewButton('تأیید', TxRevengeReview.confirmed),
+                _reviewButton('Revenge نیست', TxRevengeReview.notRevenge),
+                _reviewButton('مطمئن نیستم', TxRevengeReview.unsure),
+              ]),
+            const SizedBox(height: 3),
+            const Text(
+              'امتیاز فقط شدت شواهد ثبت‌شده است، نه احتمال روان‌شناختی. ورود سریع به‌تنهایی تشخیص Revenge نیست.',
+              style: TextStyle(color: Color(0xFF7185A5), fontSize: 9, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tradeLine(String label, String summary, String id) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 104, child: Text(label, style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 10))),
+      Expanded(child: Text('$summary · #$id', style: const TextStyle(color: Color(0xFFEAF2FF), fontSize: 10))),
+    ],
+  );
+
+  Widget _reviewButton(String label, TxRevengeReview value) => OutlinedButton(
+    onPressed: () => onReview?.call(value),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: episode.review == value ? const Color(0xFFFFD36E) : const Color(0xFFB7C9E8),
+      side: BorderSide(color: episode.review == value ? const Color(0xFFFFD36E) : const Color(0x334CCBFF)),
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    ),
+    child: Text(label, style: const TextStyle(fontSize: 10)),
+  );
+}
