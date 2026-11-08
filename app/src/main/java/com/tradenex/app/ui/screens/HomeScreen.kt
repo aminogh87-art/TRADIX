@@ -69,14 +69,14 @@ fun HomeScreen(nav: NavController) {
     val settings = AppState.settings
     val utc by rememberUtcMinute()
     val tz = SessionEngine.tzOffsetMinutes(settings.tzMode)
-    val tradeCount = AppState.trades.size
+    val tradeCount = AppState.visibleTrades.size
     val stats = remember(tradeCount) { AppState.stats() }
     val today = AppState.today()
-    val monthPnl = AppState.trades.filter { it.epochDay > today - 30 }.sumOf { it.pnl }
+    val monthPnl = AppState.visibleTrades.filter { it.epochDay > today - 30 }.sumOf { it.pnl }
     val monthPct = monthPnl / settings.startBalance * 100
-    val grossWin = AppState.trades.filter { it.pnl > 0 }.sumOf { it.pnl }
-    val grossLoss = AppState.trades.filter { it.pnl < 0 }.sumOf { it.pnl }
-    val todayCount = AppState.trades.count { it.epochDay == today }
+    val grossWin = AppState.visibleTrades.filter { it.pnl > 0 }.sumOf { it.pnl }
+    val grossLoss = AppState.visibleTrades.filter { it.pnl < 0 }.sumOf { it.pnl }
+    val todayCount = AppState.visibleTrades.count { it.epochDay == today }
     var period by remember { mutableStateOf(Period.WEEK) }
 
     val shownPct by animateFloatAsState(monthPct.toFloat(), tween(1200), label = "pct")
@@ -194,7 +194,7 @@ fun HomeScreen(nav: NavController) {
                         }
                         Spacer(Modifier.height(8.dp))
                         val candles = remember(period, tradeCount) {
-                            Analytics.candles(AppState.trades, period, settings.startBalance)
+                            Analytics.candles(AppState.visibleTrades, period, settings.startBalance)
                         }
                         CandleChart(candles, Modifier.fillMaxWidth().height(110.dp))
                     }
