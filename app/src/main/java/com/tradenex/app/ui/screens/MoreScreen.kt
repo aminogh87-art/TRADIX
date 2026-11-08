@@ -153,13 +153,13 @@ fun MoreScreen(nav: NavController) {
 
 @Composable
 private fun MenuTile(m: MenuItem, modifier: Modifier, onClick: () -> Unit) {
-    GlassCard(modifier.height(92.dp).clickable(onClick = onClick), border = m.color.copy(alpha = 0.5f)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Icon(m.icon, null, tint = m.color, modifier = Modifier.size(26.dp))
-            Column {
-                Text(m.title, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-                Text(m.sub, color = Tx.Muted, fontSize = 10.sp)
+    GlassCard(modifier.height(104.dp).clickable(onClick = onClick)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Box(Modifier.size(32.dp).clip(CircleShape).background(m.color.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
+                Icon(m.icon, null, tint = m.color, modifier = Modifier.size(20.dp))
             }
+            Text(m.title, color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(m.sub, color = Tx.Muted, fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
