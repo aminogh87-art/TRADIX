@@ -3,8 +3,6 @@ package com.tradenex.app.data
 import com.tradenex.app.core.SessionEngine
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import kotlin.math.roundToInt
 
 data class TxAiSlice(
@@ -96,8 +94,7 @@ object TxAiEngine {
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
-            bestSession = sessions.firstOrNull(), sessions = sessions, weekdays = weekdays, days = days, weeks = weeks,
-            days = days, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
+            bestSession = sessions.firstOrNull(), sessions = sessions, weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
