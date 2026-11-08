@@ -61,7 +61,7 @@ import kotlin.math.round
 
 private val symbols = listOf("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF")
 private val lotPresets = listOf(0.01, 0.05, 0.1, 0.5, 1.0, 2.0)
-private val amountPresets = listOf(50.0, 100.0, 250.0, 500.0)
+private val amountPresets = listOf(10.0, 50.0, 100.0, 250.0)
 private val emotions = listOf("آرام", "ترس", "طمع", "انتقام", "خسته")
 
 private fun round2(v: Double) = round(v * 100) / 100
@@ -111,8 +111,9 @@ fun AddTradeScreen(nav: NavController) {
     var emotion by remember { mutableStateOf("آرام") }
     var tags by remember { mutableStateOf(setOf<String>()) }
 
-    val priceResult = remember(symbol, buy, lot, entryText, exitText, conversionText, commissionText, swapText, feeText) {
-        runCatching {
+    val standardFxSymbol = remember(symbol) { runCatching { FxInstrument.standard(symbol) }.isSuccess }
+    val priceResult = remember(symbol, standardFxSymbol, buy, lot, entryText, exitText, conversionText, commissionText, swapText, feeText) {
+        if (!standardFxSymbol) null else runCatching {
             ForexPnlCalculator.calculate(
                 FxPnlInput(
                     instrument = FxInstrument.standard(symbol),
@@ -142,8 +143,17 @@ fun AddTradeScreen(nav: NavController) {
             }
         }
         Reveal(1) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                symbols.forEach { TxChip(it, symbol == it, { symbol = it }) }
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text("نماد یا نام دارایی", color = Tx.Muted, fontSize = 11.sp)
+                TxField(symbol, { value ->
+                    symbol = value.uppercase(java.util.Locale.ROOT)
+                        .filter { it.isLetterOrDigit() || it in "._/-" }
+                        .take(24)
+                }, "مثلاً EURUSD، XAUUSD، BTCUSDT")
+                Text("نماد دلخواه برای ثبت دستی هم قابل استفاده است؛ محاسبهٔ قیمت فقط برای جفت‌ارزهای پشتیبانی‌شده فعال است.", color = Tx.Muted, fontSize = 10.sp)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    symbols.forEach { TxChip(it, symbol == it, { symbol = it }) }
+                }
             }
         }
         Reveal(2) {
@@ -179,7 +189,9 @@ fun AddTradeScreen(nav: NavController) {
                         TxChip("مبلغ دستی", !usePriceCalculation, { usePriceCalculation = false })
                         TxChip("محاسبه از قیمت", usePriceCalculation, { usePriceCalculation = true })
                     }
-                    if (usePriceCalculation) {
+                    if (usePriceCalculation && !standardFxSymbol) {
+                        Text("برای این نماد، ثبت دستی نتیجه را انتخاب کن. محاسبهٔ خودکار قیمت فعلاً فقط برای جفت‌ارزهای استاندارد فارکس فعال است.", color = Tx.Gold, fontSize = 11.sp)
+                    } else if (usePriceCalculation) {
                         Text("قیمت ورود و خروج", color = Tx.Muted, fontSize = 11.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TxField(entryText, { entryText = it }, "Entry", Modifier.weight(1f))
@@ -221,8 +233,8 @@ fun AddTradeScreen(nav: NavController) {
                     if (!usePriceCalculation) {
                         Stepper(
                             valueText = AppState.selectedAccount.baseCurrency + " " + String.format(java.util.Locale.US, "%,.2f", amount),
-                            onMinus = { amount = (amount - 25).coerceAtLeast(0.0) },
-                            onPlus = { amount += 25 },
+                            onMinus = { amount = (amount - 10).coerceAtLeast(0.0) },
+                            onPlus = { amount += 10 },
                             valueColor = resColor,
                         )
                         Spacer(Modifier.height(8.dp))
@@ -231,6 +243,7 @@ fun AddTradeScreen(nav: NavController) {
                                 TxChip("+${p.toInt()}", false, { amount += p })
                             }
                         }
+                        Text("تغییر مبلغ دستی: هر بار ۱۰ واحد", color = Tx.Muted, fontSize = 10.sp)
                     }
                 }
             }
@@ -297,7 +310,7 @@ fun AddTradeScreen(nav: NavController) {
             if (parsedTradeDate == null) Text("تاریخ باید با قالب YYYY-MM-DD وارد شود.", color = Tx.Red, fontSize = 11.sp)
             if (parsedTradeTime == null) Text("ساعت باید با قالب HH:mm وارد شود.", color = Tx.Red, fontSize = 11.sp)
             GoldButton("ذخیره معامله در دفترچه") {
-                if (parsedTradeDate != null && parsedTradeTime != null && (!usePriceCalculation || priceResult != null)) {
+                if (symbol.isNotBlank() && parsedTradeDate != null && parsedTradeTime != null && (!usePriceCalculation || priceResult != null)) {
                     AppState.addTrade(
                     Trade(
                         id = System.currentTimeMillis(),
