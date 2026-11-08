@@ -1,4 +1,4 @@
-# TRADENEX
+# TRADIX
 
 دفترچه معاملات، آموزش و ساعت سشن‌های فارکس. **سیگنال نمی‌دهد و معامله انجام نمی‌دهد.**
 Forex trade journal, learning hub and live session clock. It never trades and never gives signals.
@@ -30,8 +30,10 @@ performance (equity candles daily/weekly/monthly/yearly + 5-week heatmap), strat
 
 ## Status / honest notes
 
-- Written without a build machine: first thing to do is run the CI / a Gradle sync and fix any compile errors.
-- Data is in memory with seeded sample trades; persistence (Room/DataStore) is not done.
-- Sample news only; ForexFactory feed, QR sharing, real notifications (22:00 reminder), media attachments and the
-  language switch (Persian/English) are UI-only or stubs.
-- No Vazirmatn font bundled yet: add it under `res/font` and wire it in `Theme.kt`.
+- Core journal data now persists locally in an atomic SQLite snapshot; trade, strategy, lesson, tag and settings state are restored on app launch.
+- Synthetic trade fixtures were removed. The quick-add symbol list and domain validator are restricted to supported fiat FX pairs (no BTC, gold or index symbols).
+- Detailed trade model fields now include optional entry/exit, stop-loss/take-profit, costs, notes, account reference and planned risk. The current quick-add screen still records a manually entered realized P&L; full price/fill-based entry UI remains to be wired.
+- A first Forex calculation domain is present with pair-aware pip size, explicit quote-to-account conversion, net costs and R-multiple calculation; JUnit tests cover representative cases.
+- Calendar-aware daily/weekly/monthly/yearly bucket boundaries replace rough 30/365-day approximations.
+- Session timezone/DST integration into the existing globe/timeline, normalized multi-account screens, complete mixed-media lesson editor, news provider, scheduled reminders, import/export, and complete Persian/English localization remain to be implemented and validated.
+- The current UI/theme components remain unchanged. Run the Android and Rust CI jobs for the latest PR commit before considering this branch ready.
