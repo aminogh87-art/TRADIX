@@ -31,6 +31,7 @@ data class Trade(
     val otherFees: Double = 0.0,
     val notes: String = "",
     val plannedRisk: Double? = null,
+    val strategyVersion: Int = 1,
 )
 
 data class TradingAccount(
@@ -43,7 +44,16 @@ data class TradingAccount(
     val archived: Boolean = false,
 )
 
-data class Strategy(val id: Long, val name: String, val rules: List<String>, val active: Boolean)
+data class Strategy(val id: Long, val name: String, val rules: List<String>, val active: Boolean, val version: Int = 1)
+
+data class StrategyRevision(
+    val id: Long,
+    val strategyId: Long,
+    val version: Int,
+    val name: String,
+    val rules: List<String>,
+    val createdAt: Long,
+)
 
 enum class ContentKind(val label: String) {
     TEXT("فقط متن"),
@@ -94,6 +104,7 @@ object AppState {
         Strategy(2, "Supply & Demand", listOf("ناحیه تازه", "تایید کندلی"), true),
         Strategy(3, "Breakout", listOf("شکست با حجم", "استاپ زیر کندل شکست"), false),
     )
+    val strategyRevisions = mutableStateListOf<StrategyRevision>()
     val hashtags = mutableStateListOf("#london", "#news", "#fomo", "#breakout", "#discipline", "#revenge")
     val lessons = mutableStateListOf(
         Lesson(1, "پرایس اکشن از صفر", ContentKind.VIDEO_TEXT, 0.65f),
@@ -111,14 +122,14 @@ object AppState {
         if (snapshot != null) {
             SnapshotCodec.restore(
                 snapshot,
-                MutableSnapshot(trades, accounts, strategies, hashtags, lessons, settings, selectedAccountId),
+                MutableSnapshot(trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings, selectedAccountId),
             )
         }
     }
 
     /** Atomic save called after mutations and whenever the activity leaves the foreground. */
     fun persist() {
-        val payload = SnapshotCodec.encode(trades, accounts, strategies, hashtags, lessons, settings, selectedAccountId)
+        val payload = SnapshotCodec.encode(trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings, selectedAccountId)
         localStore?.writeSnapshot(payload)
     }
 
