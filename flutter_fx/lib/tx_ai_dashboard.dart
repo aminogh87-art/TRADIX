@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -333,9 +334,10 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         ),
         TxEdgeExplorer(
           trades: edgeTrades,
-          onTradeTap: (id) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('شناسه معامله: #$id')),
-          ),
+          onTradeTap: (id) {
+            final tradeId = int.tryParse(id);
+            if (tradeId != null) _showLinkedTrades(context, trades, [tradeId], account.currency);
+          },
         ),
         ListView(
           padding: const EdgeInsets.all(12),
@@ -362,15 +364,19 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
               TxBehavioralReview.unsure => 'unsure',
               TxBehavioralReview.unreviewed => 'unsure',
             };
-            _bridge.saveEpisodeReview(
+            unawaited(_bridge.saveEpisodeReview(
               accountId: account.accountId,
               episodeId: episodeId,
               status: status,
-            );
+            ).catchError((Object error) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('ذخیره بازبینی ناموفق بود: $error')),
+                );
+              }
+            }));
           },
-          onShowTrades: (ids) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('معاملات مرتبط: ${ids.map((id) => "#$id").join("، ")}')),
-          ),
+          onShowTrades: (ids) => _showLinkedTrades(context, trades, ids, account.currency),
           ),
         ),
         ListView(
@@ -388,14 +394,20 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
           padding: const EdgeInsets.all(12),
           child: TxInsightFeed(
           insights: insights,
-          onPinChanged: (id, pinned) => _bridge.setInsightPinned(
-            accountId: account.accountId,
-            insightId: id,
-            pinned: pinned,
-          ),
-          onOpenEvidence: (ids) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('شواهد معاملات: ${ids.map((id) => "#$id").join("، ")}')),
-          ),
+          onPinChanged: (id, pinned) {
+            unawaited(_bridge.setInsightPinned(
+              accountId: account.accountId,
+              insightId: id,
+              pinned: pinned,
+            ).catchError((Object error) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('ذخیره سنجاق ناموفق بود: $error')),
+                );
+              }
+            }));
+          },
+          onOpenEvidence: (ids) => _showLinkedTrades(context, trades, ids, account.currency),
           ),
         ),
       ],
@@ -667,6 +679,58 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         tag.contains('بدون پلن') ||
         tag.contains('خارج از استراتژی'));
   }
+}
+
+void _showLinkedTrades(
+  BuildContext context,
+  List<TxAiTradeRecord> trades,
+  List<int> tradeIds,
+  String currency,
+) {
+  final selected = trades.where((trade) => tradeIds.contains(trade.id)).toList(growable: false);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF0B1730),
+    builder: (context) => SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.55,
+        maxChildSize: 0.9,
+        builder: (context, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text('معاملات پشتیبان', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            if (selected.isEmpty)
+              const Text('معامله مرتبطی در snapshot فعلی پیدا نشد.'),
+            for (final trade in selected)
+              Card(
+                color: const Color(0xFF101F3B),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('#${trade.id} · ${trade.symbol} · ${trade.isBuy ? "BUY" : "SELL"}',
+                          style: const TextStyle(fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text('P&L: ${trade.pnl.toStringAsFixed(2)} $currency · Lot: ${trade.lot}'),
+                      Text('استراتژی: ${trade.strategy.isEmpty ? "ثبت نشده" : trade.strategy} · نسخه ${trade.strategyVersion}'),
+                      Text('سشن: ${trade.session ?? "نامشخص"} · TF: ${trade.timeframe ?? "ثبت نشده"}'),
+                      Text('ریسک برنامه‌ریزی‌شده: ${trade.plannedRisk?.toStringAsFixed(2) ?? "ثبت نشده"}'),
+                      if (trade.emotion.isNotEmpty) Text('حالت ذهنی: ${trade.emotion}'),
+                      if (trade.tags.isNotEmpty) Text('تگ‌ها: ${trade.tags.join("، ")}'),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _TxSessionSlice {
