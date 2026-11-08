@@ -43,6 +43,7 @@ data class TxAiReport(
     val halfRiskDelta: Double,
     val scores: TxAiScores,
     val insights: List<String>,
+    val monthlyProgress: List<TxAiScores>,
     val timeframeDataAvailable: Boolean = false,
     val marketRegimeDataAvailable: Boolean = false,
 )
@@ -65,26 +66,14 @@ object TxAiEngine {
         val strategySlices = ordered.filter { it.strategy.isNotBlank() }.groupBy { it.strategy }
             .map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
         val outside = ordered.filter { isOutsideStrategy(it) }
-        val month = LocalDate.now().withDayOfMonth(1)
-        val monthTrades = ordered.filter { LocalDate.ofEpochDay(it.epochDay).let { d -> d.year == month.year && d.month == month.month } }
-        val knownRisk = monthTrades.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
-        val strategyKnown = monthTrades.filter { it.strategy.isNotBlank() }
-        val taggedTrades = monthTrades.filter { it.tags.isNotEmpty() }
-        val discipline = if (monthTrades.size >= 5 && taggedTrades.size >= 3) {
-            val violations = taggedTrades.count { hasBehaviorFlag(it) }
-            ((1.0 - violations.toDouble() / taggedTrades.size) * 100).roundToInt().coerceIn(0, 100)
-        } else null
-        val strategyScore = if (monthTrades.size >= 5) {
-            (strategyKnown.size.toDouble() / monthTrades.size * 100).roundToInt()
-        } else null
-        val riskScore = if (knownRisk.size >= 3) {
-            val within = knownRisk.count { it.plannedRisk!! <= account.startingBalance * riskPercent.coerceAtLeast(0.1) / 100.0 * 1.25 }
-            (within.toDouble() / knownRisk.size * 100).roundToInt()
-        } else null
-        val decisionScore = if (monthTrades.size >= 5) {
-            val complete = monthTrades.count { it.entryPrice != null && it.exitPrice != null && it.stopLossPrice != null && it.strategy.isNotBlank() }
-            (complete.toDouble() / monthTrades.size * 100).roundToInt()
-        } else null
+        val monthlyProgress = ordered.groupBy { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) }
+            .toSortedMap().values.mapIndexed { index, rows ->
+                val monthKey = java.time.YearMonth.from(LocalDate.ofEpochDay(rows.first().epochDay))
+                scoreMonth(rows, account, riskPercent, monthKey.toString())
+            }.takeLast(6)
+        val currentMonth = java.time.YearMonth.now()
+        val monthTrades = ordered.filter { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) == currentMonth }
+        val scores = scoreMonth(monthTrades, account, riskPercent, currentMonth.toString())
         val halfRisk = ordered.sumOf { it.pnl * 0.5 }
         val insights = buildList {
             if (ordered.size < 10) add("برای تشخیص الگوی پایدار، حداقل ۱۰ معامله ثبت کن؛ نتیجه فعلی مقدماتی است.")
@@ -101,13 +90,12 @@ object TxAiEngine {
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
             bestSession = sessions.firstOrNull(), sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
-            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
+            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
-            scores = TxAiScores(discipline, riskScore, strategyScore, decisionScore,
-                "${month.year}/${month.monthValue}", monthTrades.size),
-            insights = insights,
+            scores = scores,
+            insights = insights, monthlyProgress = monthlyProgress,
         )
     }
 
