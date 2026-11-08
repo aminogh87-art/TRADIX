@@ -108,6 +108,8 @@ object AppState {
         Strategy(3, "Breakout", listOf("شکست با حجم", "استاپ زیر کندل شکست"), false),
     )
     val strategyRevisions = mutableStateListOf<StrategyRevision>()
+    val txAiEpisodeReviews = mutableStateListOf<TxAiEpisodeReview>()
+    val txAiInsightPins = mutableStateListOf<TxAiInsightPin>()
     val hashtags = mutableStateListOf("#london", "#news", "#fomo", "#breakout", "#discipline", "#revenge")
     val lessons = mutableStateListOf(
         Lesson(1, "پرایس اکشن از صفر", ContentKind.VIDEO_TEXT, 0.65f),
@@ -125,14 +127,20 @@ object AppState {
         if (snapshot != null) {
             SnapshotCodec.restore(
                 snapshot,
-                MutableSnapshot(trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings, selectedAccountId),
+                MutableSnapshot(
+                    trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings,
+                    selectedAccountId, txAiEpisodeReviews, txAiInsightPins,
+                ),
             )
         }
     }
 
     /** Atomic save called after mutations and whenever the activity leaves the foreground. */
     fun persist() {
-        val payload = SnapshotCodec.encode(trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings, selectedAccountId)
+        val payload = SnapshotCodec.encode(
+            trades, accounts, strategies, strategyRevisions, hashtags, lessons, settings, selectedAccountId,
+            txAiEpisodeReviews, txAiInsightPins,
+        )
         localStore?.writeSnapshot(payload)
     }
 
@@ -142,6 +150,31 @@ object AppState {
         FxInstrument.standard(t.symbol)
         require(t.lot > 0.0 && t.pnl.isFinite()) { "Trade volume and P&L must be valid." }
         trades.add(t)
+        persist()
+    }
+
+    fun episodeReview(accountId: String, episodeId: String): TxAiReviewStatus? =
+        TxAiReviewRules.reviewFor(txAiEpisodeReviews, accountId, episodeId)
+
+    fun reviewEpisode(accountId: String, episodeId: String, status: TxAiReviewStatus) {
+        require(accountId.isNotBlank() && episodeId.isNotBlank())
+        val next = TxAiReviewRules.upsertReview(
+            txAiEpisodeReviews.toList(),
+            TxAiEpisodeReview(accountId, episodeId, status, System.currentTimeMillis()),
+        )
+        txAiEpisodeReviews.clear()
+        txAiEpisodeReviews.addAll(next)
+        persist()
+    }
+
+    fun isInsightPinned(accountId: String, insightId: String): Boolean =
+        TxAiReviewRules.isPinned(txAiInsightPins, accountId, insightId)
+
+    fun setInsightPinned(accountId: String, insightId: String, pinned: Boolean) {
+        require(accountId.isNotBlank() && insightId.isNotBlank())
+        val next = TxAiReviewRules.setPinned(txAiInsightPins.toList(), accountId, insightId, pinned)
+        txAiInsightPins.clear()
+        txAiInsightPins.addAll(next)
         persist()
     }
 
