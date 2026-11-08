@@ -46,7 +46,7 @@ effects (dust, shimmer, crown) are saved in SharedPreferences. The gold dust is 
 ## Status / honest notes
 
 - Core journal data now persists locally in an atomic SQLite snapshot; trade, strategy, lesson, tag and settings state are restored on app launch.
-- Synthetic trade fixtures were removed. The quick-add symbol list and domain validator are restricted to supported fiat FX pairs (no BTC, gold or index symbols).
+- Synthetic trade fixtures were removed. Price-based P&L calculation is restricted to supported fiat FX pairs; manual journal entry accepts user-defined asset symbols (for example, XAUUSD or BTCUSDT) without inventing unsupported pip values.
 - Trade records now carry optional entry/exit, stop-loss/take-profit, commission, swap, fees, notes, account reference, date, and strategy-version metadata. Quick-add supports manual realized P&L or price-derived Forex P&L.
 - The calculation engine uses pair-aware pip sizes, explicit quote-to-account conversion, costs, and optional R multiple. Unit tests cover major-pair, JPY, short-side, invalid-conversion, and FX-only validation cases.
 - Multiple account profiles can be created, selected, and archived. Home, performance, strategy comparisons, calendar, tags, trade history, and CSV exports are scoped to the selected account.
