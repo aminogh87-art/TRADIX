@@ -525,7 +525,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
   List<TxProcessMonth> _processMonths(List<TxAiTradeRecord> trades) {
     final grouped = <String, List<TxAiTradeRecord>>{};
     for (final trade in trades) {
-      final key = trade.displayMonthKey;
+      final key = trade.displayClosedMonthKey;
       if (key == null || trade.closedAtMillis == null) continue;
       grouped.putIfAbsent(key, () => []).add(trade);
     }
