@@ -99,7 +99,7 @@ object Analytics {
         val days = trades.map { it.epochDay }.toSet()
         var n = 0
         for (d in (today - lookback + 1)..today) {
-            if (weekendHoliday && column(d) == 6) continue
+            if (weekendHoliday && column(d) < 2) continue
             if (d !in days) n++
         }
         return n
