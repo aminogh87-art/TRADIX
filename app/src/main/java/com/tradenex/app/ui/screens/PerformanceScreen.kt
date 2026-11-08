@@ -50,7 +50,8 @@ import kotlin.math.abs
 fun PerformanceScreen(nav: NavController) {
     val settings = AppState.settings
     val accountStartBalance = AppState.selectedAccount.startingBalance.coerceAtLeast(1.0)
-    var period by remember { mutableStateOf(Period.MONTH) }
+    var viewMode by remember { mutableStateOf("روزانه") }
+    val period = when (viewMode) { "روزانه" -> Period.DAY; "هفتگی" -> Period.WEEK; "ماهانه" -> Period.MONTH; else -> Period.MONTH }
     var selectedHeatmapDay by remember { mutableStateOf<Long?>(null) }
     val trades = AppState.visibleTrades.toList()
     val symbolGroups = remember(trades) {
@@ -64,11 +65,12 @@ fun PerformanceScreen(nav: NavController) {
             .take(6)
     }
     val today = AppState.today()
-    val windowDays = when (period) {
-        Period.DAY -> 1
-        Period.WEEK -> 7
-        Period.MONTH -> 30
-        Period.YEAR -> 365
+    val earliestDay = trades.minOfOrNull { it.epochDay } ?: today
+    val windowDays = when (viewMode) {
+        "لحظه‌ای" -> (today - earliestDay + 1L).coerceAtLeast(1L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        "روزانه" -> 30
+        "هفتگی" -> 84
+        else -> 365
     }
     val windowStartDay = today - (windowDays - 1L)
     val windowed = remember(period, trades) { trades.filter { it.epochDay >= windowStartDay } }
@@ -77,8 +79,9 @@ fun PerformanceScreen(nav: NavController) {
     val ext = remember(pnlArray) { NativeCore.performanceMetrics(pnlArray) }
     val openingEquity = accountStartBalance + trades.filter { it.epochDay < windowStartDay }.sumOf { it.pnl }
     // هر کندل = یک معامله ثبت‌شده (با نام معامله)
-    val candles = remember(period, windowed, openingEquity) {
-        Analytics.tradeCandleSeries(windowed, openingEquity, 120)
+    val candles = remember(viewMode, windowed, openingEquity) {
+        if (viewMode == "لحظه‌ای") Analytics.tradeCandleSeries(windowed, openingEquity, 240)
+        else Analytics.bucketTradeCandleSeries(windowed, period, openingEquity)
     }
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
@@ -92,7 +95,9 @@ fun PerformanceScreen(nav: NavController) {
     Page(title = "عملکرد من") {
         Reveal(0) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Period.entries.forEach { TxChip(it.label, period == it, { period = it }, Modifier) }
+                listOf("لحظه‌ای", "روزانه", "هفتگی", "ماهانه").forEach { mode ->
+                    TxChip(mode, viewMode == mode, { viewMode = mode }, Modifier.weight(1f))
+                }
             }
         }
         Reveal(1) {
@@ -100,7 +105,7 @@ fun PerformanceScreen(nav: NavController) {
                 Column(Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Column(Modifier.weight(1f)) {
-                            Text("سود خالص $windowDays روز اخیر · هسته $coreLabel", color = Tx.Muted, fontSize = 11.sp)
+                            Text("عملکرد $viewMode · هسته $coreLabel", color = Tx.Muted, fontSize = 11.sp)
                             Text(
                                 if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", stats.net / accountStartBalance * 100),
                                 color = netColor,
@@ -116,7 +121,7 @@ fun PerformanceScreen(nav: NavController) {
                     } else {
                         TradeCandleChart(candles, Modifier.fillMaxWidth().height(200.dp))
                         Text(
-                            "هر کندل کوچک = یک معامله ثبت‌شده (${candles.size} کندل). روی کندل بزن تا نام معامله، نماد و P&L را ببینی.",
+                            if (viewMode == "لحظه‌ای") "هر کندل = یک معامله، به ترتیب ثبت. لمس کندل، جزئیات همان معامله را نشان می‌دهد." else "هر کندل = عملکرد تجمیعی $viewMode. لمس کندل، سود و زیان و تعداد معاملات آن بازه را نشان می‌دهد.",
                             color = Tx.Muted,
                             fontSize = 9.sp,
                         )
