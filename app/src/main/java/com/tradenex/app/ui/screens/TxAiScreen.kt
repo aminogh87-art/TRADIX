@@ -88,6 +88,7 @@ fun TxAiScreen(nav: NavController) {
                         StatTile("ریسک ۵۰٪", money(report.halfRiskNet), Tx.Gold, Modifier.weight(1f))
                     }
                     Text("سود/زیان کل اگر معاملات خارج از پلن حذف می‌شد: " + money(report.withoutOutsideStrategyNet), color = if (report.withoutOutsideStrategyNet >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("تغییر نسبت به عملکرد واقعی: " + money(report.withoutOutsideStrategyDelta), color = if (report.withoutOutsideStrategyDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("تغییر سناریوی ریسک نصف: " + money(report.halfRiskDelta), color = if (report.halfRiskDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن بر اساس تگ‌های رفتاری یا خالی‌بودن نام استراتژی است.", color = Tx.Muted, fontSize = 10.sp)
                 }
@@ -102,7 +103,7 @@ fun TxAiScreen(nav: NavController) {
                     ScoreRow("مدیریت ریسک", report.scores.risk, "نیازمند ثبت ریسک برنامه‌ریزی‌شده")
                     ScoreRow("پایبندی به استراتژی", report.scores.strategy, "بر اساس ثبت نام استراتژی؛ نه اثبات اجرای قوانین")
                     ScoreRow("کیفیت تصمیم‌گیری", report.scores.decision, "کامل‌بودن ورود، خروج، حدضرر و استراتژی")
-                    Text("نمونه این ماه: " + report.scores.sampleSize + " معامله", color = Tx.Muted, fontSize = 10.sp)
+                    Text("نمونه این ماه: " + report.scores.sampleSize + " معامله · امتیاز فقط با پوشش داده کافی نمایش داده می‌شود.", color = Tx.Muted, fontSize = 10.sp)
                     Text("روند امتیازها در ماه‌های ثبت‌شده", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     report.monthlyProgress.forEach { month ->
                         Text(month.monthLabel + "  ·  نظم " + (month.discipline?.toString() ?: "—") + "  ·  ریسک " + (month.risk?.toString() ?: "—") + "  ·  استراتژی " + (month.strategy?.toString() ?: "—") + "  ·  تصمیم " + (month.decision?.toString() ?: "—"), color = Tx.Text, fontSize = 10.sp)
@@ -114,6 +115,7 @@ fun TxAiScreen(nav: NavController) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("پیشنهادهای TX AI")
+                    if (report.insights.isEmpty()) EmptyAi("برای ارائه پیشنهاد معتبر، معاملات و اطلاعات زمینه‌ای بیشتری ثبت کن.")
                     report.insights.forEachIndexed { i, insight -> Text((i + 1).toString() + ". " + insight, color = Tx.Text, fontSize = 11.sp) }
                     Text("تایم‌فریم و شرایط بازار از معاملات جدیدی که این فیلدها در آن‌ها تکمیل شده استخراج می‌شوند؛ معاملات قدیمی فاقد این اطلاعات‌اند.", color = Tx.Gold, fontSize = 10.sp)
                 }
