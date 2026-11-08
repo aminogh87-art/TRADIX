@@ -32,7 +32,7 @@ import com.tradenex.app.ui.screens.TradesScreen
 import com.tradenex.app.ui.screens.WeeklyPlanScreen
 
 @Composable
-fun AppNav() {
+fun AppNav(startDestination: String = "home") {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
@@ -42,7 +42,7 @@ fun AppNav() {
             Box(Modifier.weight(1f)) {
                 NavHost(
                     navController = nav,
-                    startDestination = "home",
+                    startDestination = startDestination,
                     enterTransition = { fadeIn(tween(320)) + slideInHorizontally(tween(320)) { it / 10 } },
                     exitTransition = { fadeOut(tween(200)) },
                     popEnterTransition = { fadeIn(tween(320)) },
@@ -52,6 +52,7 @@ fun AppNav() {
                     composable("accounts") { AccountsScreen(nav) }
                     composable("trades") { TradesScreen(nav) }
                     composable("weekly") { WeeklyPlanScreen(nav) }
+                    composable("weekly_reminder") { WeeklyPlanScreen(nav, openToday = true) }
                     composable("perf") { PerformanceScreen(nav) }
                     composable("edu") { EducationScreen(nav) }
                     composable("more") { MoreScreen(nav) }
