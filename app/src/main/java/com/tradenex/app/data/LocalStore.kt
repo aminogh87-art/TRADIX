@@ -121,7 +121,7 @@ internal object SnapshotCodec {
                     t.entryPrice?.let { put("entryPrice", it) }; t.exitPrice?.let { put("exitPrice", it) }
                     t.stopLossPrice?.let { put("stopLossPrice", it) }; t.takeProfitPrice?.let { put("takeProfitPrice", it) }
                     put("commission", t.commission); put("swap", t.swap); put("otherFees", t.otherFees)
-                    put("notes", t.notes); t.plannedRisk?.let { put("plannedRisk", it) }
+                    put("notes", t.notes); put("tradeName", t.tradeName); t.plannedRisk?.let { put("plannedRisk", it) }
                     put("strategyVersion", t.strategyVersion); put("timeframe", t.timeframe); put("marketCondition", t.marketCondition)
                     t.strategyFollowed?.let { put("strategyFollowed", it) }
                 })
@@ -242,6 +242,7 @@ internal object SnapshotCodec {
                     swap = row.optDouble("swap", 0.0),
                     otherFees = row.optDouble("otherFees", 0.0),
                     notes = row.optString("notes", ""),
+                    tradeName = row.optString("tradeName", ""),
                     plannedRisk = row.optDouble("plannedRisk").takeIf { row.has("plannedRisk") },
                     strategyVersion = row.optInt("strategyVersion", 1),
                     timeframe = row.optString("timeframe", ""),
