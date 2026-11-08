@@ -437,7 +437,7 @@ class TxProcessTimeline extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 minHeight: 8,
-                value: month.score == null ? 0 : month.score!.clamp(0, 100) / 100,
+                value: month.score == null ? 0 : month.score!.clamp(0, 100).toDouble() / 100,
                 backgroundColor: const Color(0xFF1B2A43),
                 valueColor: AlwaysStoppedAnimation(month.score == null ? const Color(0xFF52627A) : const Color(0xFFFFD36E)),
               ),
