@@ -34,7 +34,7 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         val lo = candles.minOf { it.l }
         val span = (hi - lo).coerceAtLeast(1e-6)
         val slot = size.width / candles.size
-        val bodyW = slot * 0.6f
+        val bodyW = (slot * 0.28f).coerceAtLeast(2.dp.toPx())
         val mid = size.height / 2f
         val p = progress.value
 
@@ -50,13 +50,13 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         candles.forEachIndexed { i, c ->
             val color = if (c.c >= c.o) Tx.Green else Tx.Red
             val x = slot * i + slot / 2f
-            drawLine(color, Offset(x, y(c.h)), Offset(x, y(c.l)), 2.dp.toPx(), StrokeCap.Round)
+            drawLine(color, Offset(x, y(c.h)), Offset(x, y(c.l)), 1.dp.toPx(), StrokeCap.Round)
             val top = y(max(c.o, c.c))
             val bottom = y(min(c.o, c.c))
             drawRoundRect(
                 color,
                 Offset(x - bodyW / 2f, top),
-                Size(bodyW, (bottom - top).coerceAtLeast(3f)),
+                Size(bodyW, (bottom - top).coerceAtLeast(2f)),
                 CornerRadius(2.dp.toPx()),
             )
         }
