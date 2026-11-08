@@ -32,6 +32,8 @@ data class Trade(
     val notes: String = "",
     val plannedRisk: Double? = null,
     val strategyVersion: Int = 1,
+    val timeframe: String = "",
+    val marketCondition: String = "",
 )
 
 data class TradingAccount(
