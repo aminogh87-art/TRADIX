@@ -115,6 +115,65 @@ class TxAiTradeRecord {
   }
 }
 
+class TxAiBehaviorPatternRecord {
+  const TxAiBehaviorPatternRecord({
+    required this.id,
+    required this.title,
+    required this.triggerTradeId,
+    required this.linkedTradeIds,
+    required this.evidenceScore,
+    required this.actualNetPnl,
+    required this.reasons,
+    this.reviewStatus,
+  });
+
+  final String id;
+  final String title;
+  final int triggerTradeId;
+  final List<int> linkedTradeIds;
+  final int evidenceScore;
+  final double actualNetPnl;
+  final List<String> reasons;
+  final String? reviewStatus;
+
+  static TxAiBehaviorPatternRecord? fromMap(
+    Map<Object?, Object?> map,
+    Map<String, String> reviews,
+  ) {
+    final id = map['id'];
+    final title = map['title'];
+    final triggerTradeId = map['triggerTradeId'];
+    final evidenceScore = map['evidenceScore'];
+    final actualNetPnl = _finiteNumber(map['actualNetPnl']);
+    if (id is! String ||
+        id.isEmpty ||
+        title is! String ||
+        triggerTradeId is! int ||
+        evidenceScore is! int ||
+        actualNetPnl == null) {
+      return null;
+    }
+    final rawIds = map['linkedTradeIds'];
+    final linkedIds = rawIds is List
+        ? rawIds.whereType<int>().toList(growable: false)
+        : <int>[];
+    final rawReasons = map['reasons'];
+    final reasons = rawReasons is List
+        ? rawReasons.whereType<String>().toList(growable: false)
+        : <String>[];
+    return TxAiBehaviorPatternRecord(
+      id: id,
+      title: title,
+      triggerTradeId: triggerTradeId,
+      linkedTradeIds: List<int>.unmodifiable(linkedIds),
+      evidenceScore: evidenceScore.clamp(0, 100),
+      actualNetPnl: actualNetPnl,
+      reasons: List<String>.unmodifiable(reasons),
+      reviewStatus: reviews[id],
+    );
+  }
+}
+
 class TxAiAccountSnapshot {
   const TxAiAccountSnapshot({
     required this.accountId,
@@ -128,6 +187,7 @@ class TxAiAccountSnapshot {
     this.currentMonthKey,
     this.episodeReviews = const <String, String>{},
     this.pinnedInsights = const <String>{},
+    this.behavioralPatterns = const <TxAiBehaviorPatternRecord>[],
   });
 
   final String accountId;
@@ -141,6 +201,7 @@ class TxAiAccountSnapshot {
   final String? currentMonthKey;
   final Map<String, String> episodeReviews;
   final Set<String> pinnedInsights;
+  final List<TxAiBehaviorPatternRecord> behavioralPatterns;
 
   factory TxAiAccountSnapshot.fromMap(Map<Object?, Object?> map) {
     final accountId = map['accountId'];
@@ -172,6 +233,19 @@ class TxAiAccountSnapshot {
         }
       }
     }
+    final patterns = <TxAiBehaviorPatternRecord>[];
+    final rawPatterns = map['behavioralPatterns'];
+    if (rawPatterns is List) {
+      for (final item in rawPatterns) {
+        if (item is Map) {
+          final pattern = TxAiBehaviorPatternRecord.fromMap(
+            Map<Object?, Object?>.from(item),
+            reviews,
+          );
+          if (pattern != null) patterns.add(pattern);
+        }
+      }
+    }
     final pins = <String>{};
     final rawPins = map['pinnedInsights'];
     if (rawPins is List) {
@@ -195,6 +269,7 @@ class TxAiAccountSnapshot {
       currentMonthKey: map['currentMonthKey'] is String ? map['currentMonthKey'] as String : null,
       episodeReviews: Map<String, String>.unmodifiable(reviews),
       pinnedInsights: Set<String>.unmodifiable(pins),
+      behavioralPatterns: List<TxAiBehaviorPatternRecord>.unmodifiable(patterns),
     );
   }
 
