@@ -118,11 +118,16 @@ fun GlassCard(
 ) {
     val shape = RoundedCornerShape(Tx.radius.dp)
     val glow = Tx.Gold.copy(alpha = Tx.glowAlpha)
+    val cardBrush = if (Tx.isGilded) {
+        Brush.linearGradient(listOf(Tx.PanelTop, Tx.PanelBottom))
+    } else {
+        Brush.linearGradient(listOf(Color.White.copy(alpha = 0.025f), Color.White.copy(alpha = 0.008f)))
+    }
     Box(
         modifier
             .shadow((if (AppState.settings.animations >= 2) 8f else 2f).dp, shape, ambientColor = glow, spotColor = glow)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Tx.PanelTop, Tx.PanelBottom)))
+            .background(cardBrush)
             .then(if (border != Color.Transparent) Modifier.border(1.dp, border, shape) else Modifier)
             .then(if (AppState.settings.animations >= 2) Modifier.shimmerBorder(shape) else Modifier),
         content = content,
