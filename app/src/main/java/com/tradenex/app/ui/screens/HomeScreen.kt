@@ -69,14 +69,16 @@ fun HomeScreen(nav: NavController) {
     val settings = AppState.settings
     val utc by rememberUtcMinute()
     val tz = SessionEngine.tzOffsetMinutes(settings.tzMode)
-    val tradeCount = AppState.visibleTrades.size
-    val stats = remember(tradeCount) { AppState.stats() }
+    val visibleTrades = AppState.visibleTrades.toList()
+    val accountStartBalance = AppState.selectedAccount.startingBalance.coerceAtLeast(1.0)
+    val tradeCount = visibleTrades.size
+    val stats = remember(visibleTrades) { NativeCore.stats(visibleTrades.map { it.pnl }.toDoubleArray()) }
     val today = AppState.today()
-    val monthPnl = AppState.visibleTrades.filter { it.epochDay > today - 30 }.sumOf { it.pnl }
-    val monthPct = monthPnl / settings.startBalance * 100
-    val grossWin = AppState.visibleTrades.filter { it.pnl > 0 }.sumOf { it.pnl }
-    val grossLoss = AppState.visibleTrades.filter { it.pnl < 0 }.sumOf { it.pnl }
-    val todayCount = AppState.visibleTrades.count { it.epochDay == today }
+    val monthPnl = visibleTrades.filter { it.epochDay > today - 30 }.sumOf { it.pnl }
+    val monthPct = monthPnl / accountStartBalance * 100
+    val grossWin = visibleTrades.filter { it.pnl > 0 }.sumOf { it.pnl }
+    val grossLoss = visibleTrades.filter { it.pnl < 0 }.sumOf { it.pnl }
+    val todayCount = visibleTrades.count { it.epochDay == today }
     var period by remember { mutableStateOf(Period.WEEK) }
 
     val shownPct by animateFloatAsState(monthPct.toFloat(), tween(1200), label = "pct")
@@ -193,10 +195,23 @@ fun HomeScreen(nav: NavController) {
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        val candles = remember(period, tradeCount) {
-                            Analytics.candles(AppState.visibleTrades, period, settings.startBalance)
+                        val chartWindowDays = when (period) {
+                            Period.DAY -> 7
+                            Period.WEEK -> 30
+                            Period.MONTH -> 90
+                            Period.YEAR -> 365
                         }
-                        CandleChart(candles, Modifier.fillMaxWidth().height(110.dp))
+                        val chartTrades = visibleTrades.filter { it.epochDay > today - chartWindowDays }
+                        val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay <= today - chartWindowDays }.sumOf { it.pnl }
+                        val candles = remember(period, visibleTrades, accountStartBalance) {
+                            Analytics.tradeCandles(chartTrades, openingEquity, 60)
+                        }
+                        if (candles.isEmpty()) {
+                            Text("پس از ثبت معامله، هر معامله به یک کندل مستقل تبدیل می‌شود.", color = Tx.Muted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 18.dp))
+                        } else {
+                            CandleChart(candles, Modifier.fillMaxWidth().height(110.dp))
+                            Text("هر کندل = یک معامله · ${candles.size} معامله اخیر", color = Tx.Muted, fontSize = 9.sp)
+                        }
                     }
                 }
             }
