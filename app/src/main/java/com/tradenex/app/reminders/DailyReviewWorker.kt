@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
@@ -15,6 +16,7 @@ import androidx.work.WorkerParameters
 import com.tradenex.app.MainActivity
 import com.tradenex.app.R
 import org.json.JSONArray
+import org.json.JSONObject
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -33,13 +35,32 @@ class DailyReviewWorker(context: Context, params: WorkerParameters) : Worker(con
                 val rows = JSONArray(raw ?: "[]")
                 (0 until rows.length()).map { rows.getJSONObject(it) }.firstOrNull { it.optString("date") == today.toString() }
             }.getOrNull()
-            val count = plan?.optInt("tradeCount", 0) ?: 0
+            val plannedCount = plan?.optInt("tradeCount", 0) ?: 0
+            val journalCount = journalTradesOn(today)
+            val count = maxOf(plannedCount, journalCount)
             val reason = plan?.optString("noTradeReason").orEmpty()
             val confirmed = plan?.optBoolean("confirmed", false) ?: false
             if (count == 0 && (!confirmed || reason.isBlank())) notifyReview()
         }
         ReminderScheduler.schedule(applicationContext)
         return Result.success()
+    }
+
+    private fun journalTradesOn(date: LocalDate): Int {
+        val dbFile = applicationContext.getDatabasePath("tradix_local.db")
+        if (!dbFile.exists()) return 0
+        return runCatching {
+            SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+                db.rawQuery("SELECT payload FROM app_snapshot WHERE id = 1", null).use { cursor ->
+                    if (!cursor.moveToFirst()) return@use 0
+                    val snapshot = JSONObject(cursor.getString(0))
+                    val trades = snapshot.optJSONArray("trades") ?: JSONArray()
+                    (0 until trades.length()).count { index ->
+                        trades.optJSONObject(index)?.optLong("epochDay", Long.MIN_VALUE) == date.toEpochDay()
+                    }
+                }
+            }
+        }.getOrDefault(0)
     }
 
     private fun notifyReview() {
