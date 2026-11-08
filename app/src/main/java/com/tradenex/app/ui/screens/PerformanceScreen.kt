@@ -133,7 +133,7 @@ fun PerformanceScreen(nav: NavController) {
                                     day = JalaliCalendar.fromGregorian(LocalDate.ofEpochDay(d)).day,
                                     pnl = pnl,
                                     strength = if (pnl == null) 0f else (abs(pnl) / heatScale).toFloat().coerceIn(0f, 1f),
-                                    holiday = settings.weekendHoliday && c == 6,
+                                    holiday = settings.weekendHoliday && c < 2,
                                     future = d > today,
                                     index = r * 7 + c,
                                     modifier = Modifier.weight(1f),
