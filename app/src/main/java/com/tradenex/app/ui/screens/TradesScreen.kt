@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Trade
+import java.time.LocalDate
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.GoldButton
 import com.tradenex.app.ui.components.TxChip
@@ -125,7 +126,7 @@ fun TradesScreen(nav: NavController) {
                             Text(trade.tradeName.ifBlank { trade.symbol }, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                             Text(if (trade.buy) "  BUY" else "  SELL", color = if (trade.buy) Tx.Green else Tx.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
-                        Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · روز ${trade.epochDay}", color = Tx.Muted, fontSize = 10.sp)
+                        Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · ${jalaliText(LocalDate.ofEpochDay(trade.epochDay))}", color = Tx.Muted, fontSize = 10.sp)
                         Text("پایبندی: " + when (trade.strategyFollowed) { true -> "طبق پلن"; false -> "خارج از پلن"; null -> "ثبت نشده" }, color = when (trade.strategyFollowed) { true -> Tx.Green; false -> Tx.Red; null -> Tx.Muted }, fontSize = 10.sp)
                         if (trade.notes.isNotBlank()) Text(trade.notes, color = Tx.Muted, fontSize = 11.sp, maxLines = 2)
                     }
@@ -189,9 +190,8 @@ fun TradesScreen(nav: NavController) {
                     val pnl = pnlText.toDoubleOrNull()
                     val lot = lotText.toDoubleOrNull()
                     if (pnl != null && pnl.isFinite() && lot != null && lot > 0.0 && lot.isFinite()) {
-                        val index = AppState.trades.indexOfFirst { it.id == original.id }
-                        if (index >= 0) {
-                            AppState.trades[index] = original.copy(
+                        AppState.updateTrade(original.id) {
+                            it.copy(
                                 pnl = pnl,
                                 lot = lot,
                                 entryPrice = entryText.toDoubleOrNull(),
@@ -204,7 +204,6 @@ fun TradesScreen(nav: NavController) {
                                 tradeName = tradeNameText.trim(),
                                 strategyFollowed = complianceEdit,
                             )
-                            AppState.persist()
                         }
                         editing = null
                     }
@@ -222,8 +221,7 @@ fun TradesScreen(nav: NavController) {
             text = { Text("معامله ${trade.symbol} از ژورنال این حساب حذف شود؟", color = Tx.Muted) },
             confirmButton = {
                 TextButton(onClick = {
-                    AppState.trades.removeAll { it.id == trade.id }
-                    AppState.persist()
+                    AppState.deleteTrade(trade.id)
                     deleting = null
                 }) { Text("حذف", color = Tx.Red) }
             },
@@ -231,7 +229,6 @@ fun TradesScreen(nav: NavController) {
         )
     }
 }
-
 
 private fun csvCell(value: String): String =
     "\"" + value.replace("\"", "\"\"") + "\""

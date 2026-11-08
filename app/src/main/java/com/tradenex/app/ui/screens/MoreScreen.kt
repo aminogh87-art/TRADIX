@@ -180,7 +180,7 @@ fun TagsScreen(nav: NavController) {
                 TxField(input, { input = it }, "هشتگ جدید (مثلاً asia_range)", Modifier.weight(1f))
                 IconBox(Icons.Rounded.Add, "افزودن هشتگ") {
                     val t = input.trim().removePrefix("#").lowercase().replace(" ", "_")
-                    if (t.isNotEmpty() && "#$t" !in AppState.hashtags) AppState.hashtags.add("#$t")
+                    if (t.isNotEmpty()) AppState.addHashtag("#" + t)
                     input = ""
                 }
             }
@@ -202,7 +202,7 @@ fun TagsScreen(nav: NavController) {
                                 Icons.Rounded.Delete,
                                 "حذف هشتگ",
                                 tint = Tx.Muted,
-                                modifier = Modifier.padding(start = 12.dp).size(22.dp).clickable { AppState.hashtags.remove(tag) },
+                                modifier = Modifier.padding(start = 12.dp).size(22.dp).clickable { AppState.removeHashtag(tag) },
                             )
                         }
                     }
