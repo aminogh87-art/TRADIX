@@ -598,3 +598,152 @@ class TxAiCommandCenter extends StatelessWidget {
     ]),
   );
 }
+
+
+class TxEdgeTrade {
+  const TxEdgeTrade({
+    required this.id, required this.netPnl, this.session, this.weekday,
+    this.strategy, this.timeframe, this.marketCondition, this.emotion,
+    this.riskAmount, this.rewardAmount,
+  });
+  final String id;
+  final double netPnl;
+  final String? session, strategy, timeframe, marketCondition, emotion;
+  final int? weekday;
+  final double? riskAmount, rewardAmount;
+}
+
+/// Interactive local Edge Explorer. The host supplies trades already scoped to one account.
+class TxEdgeExplorer extends StatefulWidget {
+  const TxEdgeExplorer({super.key, required this.trades, this.onTradeTap});
+  final List<TxEdgeTrade> trades;
+  final ValueChanged<String>? onTradeTap;
+
+  @override
+  State<TxEdgeExplorer> createState() => _TxEdgeExplorerState();
+}
+
+class _TxEdgeExplorerState extends State<TxEdgeExplorer> {
+  String? session, strategy, timeframe, condition, emotion;
+
+  List<String> _options(String? Function(TxEdgeTrade) pick) => widget.trades
+      .map(pick).whereType<String>().where((v) => v.trim().isNotEmpty).toSet().toList()..sort();
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.trades.where((t) =>
+      (session == null || t.session == session) &&
+      (strategy == null || t.strategy == strategy) &&
+      (timeframe == null || t.timeframe == timeframe) &&
+      (condition == null || t.marketCondition == condition) &&
+      (emotion == null || t.emotion == emotion)
+    ).toList();
+    final validScatter = filtered.where((t) =>
+      t.riskAmount != null && t.rewardAmount != null &&
+      t.riskAmount! > 0 && t.riskAmount!.isFinite && t.rewardAmount!.isFinite
+    ).toList();
+    final net = filtered.fold<double>(0, (sum, t) => sum + t.netPnl);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: ListView(padding: const EdgeInsets.all(16), children: [
+        const Text('Edge Explorer · کاوشگر لبه', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 5),
+        Text('${filtered.length} از ${widget.trades.length} معامله · داده حساب محلی', style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 11)),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _filter('سشن', session, _options((t) => t.session), (v) => setState(() => session = v)),
+          _filter('استراتژی', strategy, _options((t) => t.strategy), (v) => setState(() => strategy = v)),
+          _filter('تایم‌فریم', timeframe, _options((t) => t.timeframe), (v) => setState(() => timeframe = v)),
+          _filter('شرایط بازار', condition, _options((t) => t.marketCondition), (v) => setState(() => condition = v)),
+          _filter('حالت ذهنی', emotion, _options((t) => t.emotion), (v) => setState(() => emotion = v)),
+          ActionChip(label: const Text('پاک‌کردن فیلترها'), onPressed: () => setState(() {
+            session = strategy = timeframe = condition = emotion = null;
+          })),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _summary('خالص فیلتر', net.toStringAsFixed(2), net >= 0 ? const Color(0xFF36D6A0) : const Color(0xFFFF7B83))),
+          const SizedBox(width: 8),
+          Expanded(child: _summary('Scatter معتبر', validScatter.length.toString(), const Color(0xFF55D9F5))),
+          const SizedBox(width: 8),
+          Expanded(child: _summary('ریسک ثبت‌نشده', (filtered.length - validScatter.length).toString(), const Color(0xFFFFD36E))),
+        ]),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(16)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Risk vs Reward · فقط داده واقعی ثبت‌شده', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+            const SizedBox(height: 8),
+            SizedBox(height: 220, child: validScatter.isEmpty
+              ? const Center(child: Text('برای رسم نمودار، ریسک و نتیجه هر دو باید ثبت شده باشند.', style: TextStyle(color: Color(0xFF91A5C4), fontSize: 11)))
+              : CustomPaint(size: Size.infinite, painter: _TxScatterPainter(validScatter))),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        const Text('معاملات در فیلتر فعلی', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        for (final trade in filtered.take(100))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text(trade.strategy ?? 'بدون استراتژی', style: const TextStyle(color: Color(0xFFEAF2FF), fontSize: 12)),
+            subtitle: Text('${trade.session ?? "سشن نامشخص"} · ${trade.timeframe ?? "TF نامشخص"} · #${trade.id}', style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 10)),
+            trailing: Text(trade.netPnl.toStringAsFixed(2), style: TextStyle(color: trade.netPnl >= 0 ? const Color(0xFF36D6A0) : const Color(0xFFFF7B83), fontWeight: FontWeight.w800)),
+            onTap: widget.onTradeTap == null ? null : () => widget.onTradeTap!(trade.id),
+          ),
+      ]),
+    );
+  }
+
+  Widget _filter(String label, String? value, List<String> options, ValueChanged<String?> onChanged) {
+    return SizedBox(width: 155, child: DropdownButtonFormField<String?>(
+      value: value,
+      isExpanded: true,
+      dropdownColor: const Color(0xFF0B1730),
+      decoration: InputDecoration(
+        labelText: label, labelStyle: const TextStyle(color: Color(0xFF91A5C4), fontSize: 11),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0x334CCBFF))),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      ),
+      style: const TextStyle(color: Colors.white, fontSize: 11),
+      items: [const DropdownMenuItem<String?>(value: null, child: Text('همه')),...options.map((v) => DropdownMenuItem<String?>(value: v, child: Text(v, overflow: TextOverflow.ellipsis)))],
+      onChanged: onChanged,
+    ));
+  }
+
+  Widget _summary(String label, String value, Color color) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(12)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(color: Color(0xFF91A5C4), fontSize: 9)),
+      const SizedBox(height: 4),
+      Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 13)),
+    ]),
+  );
+}
+
+class _TxScatterPainter extends CustomPainter {
+  _TxScatterPainter(this.trades);
+  final List<TxEdgeTrade> trades;
+  @override
+  void paint(Canvas canvas, Size size) {
+    const pad = 18.0;
+    final rect = Rect.fromLTWH(pad, pad, size.width - pad * 2, size.height - pad * 2);
+    final maxX = trades.map((t) => t.riskAmount!).reduce(math.max).clamp(1, double.infinity).toDouble();
+    final minX = trades.map((t) => t.riskAmount!).reduce(math.min);
+    final maxY = trades.map((t) => t.rewardAmount!).reduce(math.max).clamp(1, double.infinity).toDouble();
+    final minY = trades.map((t) => t.rewardAmount!).reduce(math.min);
+    final spanX = (maxX - minX).abs() < .000001 ? 1.0 : maxX - minX;
+    final spanY = (maxY - minY).abs() < .000001 ? 1.0 : maxY - minY;
+    final axis = Paint()..color = const Color(0x557A91B5)..strokeWidth = 1;
+    canvas.drawLine(Offset(rect.left, rect.bottom), Offset(rect.right, rect.bottom), axis);
+    canvas.drawLine(Offset(rect.left, rect.top), Offset(rect.left, rect.bottom), axis);
+    for (final t in trades) {
+      final x = rect.left + ((t.riskAmount! - minX) / spanX) * rect.width;
+      final y = rect.bottom - ((t.rewardAmount! - minY) / spanY) * rect.height;
+      canvas.drawCircle(Offset(x, y), 4, Paint()..color = t.netPnl >= 0 ? const Color(0xFF36D6A0) : const Color(0xFFFF7B83));
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _TxScatterPainter old) => old.trades != trades;
+}
