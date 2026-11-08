@@ -26,6 +26,18 @@ import kotlin.math.round
 
 private fun update(block: (AppSettings) -> AppSettings) {
     AppState.settings = block(AppState.settings)
+    AppState.persist()
+}
+
+private fun updateSelectedBalance(delta: Double) {
+    val account = AppState.selectedAccount
+    val nextBalance = (account.startingBalance + delta).coerceAtLeast(100.0)
+    val index = AppState.accounts.indexOfFirst { it.id == account.id }
+    if (index >= 0) {
+        AppState.accounts[index] = account.copy(startingBalance = nextBalance)
+        AppState.settings = AppState.settings.copy(startBalance = nextBalance)
+        AppState.persist()
+    }
 }
 
 @Composable
@@ -57,9 +69,9 @@ fun SettingsScreen(nav: NavController) {
         }
         Reveal(2) {
             SettingGroup("معامله و ریسک") {
-                StepRow("بالانس اولیه", AppState.selectedAccount.baseCurrency + " " + String.format(Locale.US, "%,.0f", s.startBalance),
-                    { update { it.copy(startBalance = (it.startBalance - 500).coerceAtLeast(100.0)) } },
-                    { update { it.copy(startBalance = it.startBalance + 500) } })
+                StepRow("بالانس اولیه", AppState.selectedAccount.baseCurrency + " " + String.format(Locale.US, "%,.0f", AppState.selectedAccount.startingBalance),
+                    { updateSelectedBalance(-500.0) },
+                    { updateSelectedBalance(500.0) })
                 StepRow("لات پیش‌فرض", String.format(Locale.US, "%.2f", s.defaultLot),
                     { update { it.copy(defaultLot = (round((it.defaultLot - 0.05) * 100) / 100).coerceAtLeast(0.01)) } },
                     { update { it.copy(defaultLot = round((it.defaultLot + 0.05) * 100) / 100) } })
@@ -83,7 +95,7 @@ fun SettingsScreen(nav: NavController) {
         }
         Reveal(4) {
             SettingGroup("داده و پشتیبان") {
-                SwitchRow("پشتیبان‌گیری خودکار", "به‌زودی", s.autoBackup) { v -> update { it.copy(autoBackup = v) } }
+                Text("پشتیبان‌گیری خودکار هنوز فعال نیست؛ خروجی CSV از بخش ژورنال قابل دریافت است.", color = Tx.Muted, fontSize = 11.sp)
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text("موتور محاسبات", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     Text(if (NativeCore.isNative) "Rust (JNI)" else "Kotlin", color = if (NativeCore.isNative) Tx.Green else Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -95,7 +107,7 @@ fun SettingsScreen(nav: NavController) {
             }
         }
         Reveal(5) {
-            GoldButton("بازنشانی همه تنظیمات") { AppState.settings = AppSettings() }
+            GoldButton("بازنشانی همه تنظیمات") { AppState.settings = AppSettings(); AppState.persist() }
         }
         Spacer(Modifier.height(16.dp))
     }
