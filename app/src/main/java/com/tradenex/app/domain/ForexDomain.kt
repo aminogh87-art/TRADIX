@@ -23,8 +23,9 @@ data class FxInstrument(
 ) {
     init {
         require(symbol.matches(Regex("[A-Z]{6}"))) { "Forex symbols must be six-letter currency pairs." }
-        require(baseCurrency.matches(Regex("[A-Z]{3}")))
-        require(quoteCurrency.matches(Regex("[A-Z]{3}")))
+        require(baseCurrency in CURRENCIES && quoteCurrency in CURRENCIES) {
+            "Only ISO fiat currency pairs are supported; crypto and metals are not Forex pairs."
+        }
         require(baseCurrency != quoteCurrency)
         require(pipSize > BigDecimal.ZERO)
         require(contractSize > BigDecimal.ZERO)
@@ -32,6 +33,12 @@ data class FxInstrument(
     }
 
     companion object {
+        private val CURRENCIES = setOf(
+            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD",
+            "SEK", "NOK", "DKK", "SGD", "HKD", "CNH", "CNY", "MXN",
+            "ZAR", "TRY", "PLN", "HUF", "CZK", "ILS", "THB", "INR",
+        )
+
         /** Standard FX pip convention; broker-specific metadata should override when necessary. */
         fun standard(symbol: String, contractSize: BigDecimal = BigDecimal("100000")): FxInstrument {
             val normalized = symbol.uppercase(Locale.ROOT)
@@ -40,6 +47,9 @@ data class FxInstrument(
             }
             val base = normalized.substring(0, 3)
             val quote = normalized.substring(3, 6)
+            require(base in CURRENCIES && quote in CURRENCIES && base != quote) {
+                "Only ISO fiat currency pairs are supported; crypto and metals are not Forex pairs."
+            }
             val pip = if (quote == "JPY") BigDecimal("0.01") else BigDecimal("0.0001")
             return FxInstrument(normalized, base, quote, pip, contractSize)
         }
