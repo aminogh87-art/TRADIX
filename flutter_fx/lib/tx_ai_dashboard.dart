@@ -128,8 +128,9 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final metrics = analytics.calculate(pnls);
     final revengeEpisodes = _revengeEpisodes(account, analytics, trades);
     final sessionSlices = _sessionSlices(trades);
-    final bestSession = sessionSlices.where((e) => e.trades >= 5).firstOrNull;
-    final worstSession = sessionSlices.where((e) => e.trades >= 5).lastOrNull;
+    final qualifiedSessions = sessionSlices.where((e) => e.trades >= 5).toList(growable: false);
+    final bestSession = qualifiedSessions.isEmpty ? null : qualifiedSessions.first;
+    final worstSession = qualifiedSessions.isEmpty ? null : qualifiedSessions.last;
     final compliance = trades.where((trade) => trade.strategyFollowed != null).toList();
     final complianceCoverage = compliance.length / math.max(1, trades.length);
     final discipline = trades.length >= 5 &&
@@ -197,7 +198,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         : null;
     final tiltEvidence = revengeEpisodes.isEmpty
         ? null
-        : revengeEpisodes.map((episode) => episode.evidenceScore).reduce(math.max);
+        : revengeEpisodes.map((episode) => episode.evidenceScore).reduce((a, b) => math.max(a, b).toInt());
     final narratives = <String>[];
     if (metrics.sampleSize < 5) {
       narratives.add('برای ادعای الگوی پایدار حداقل ۵ معامله معتبر لازم است؛ فعلاً نتیجه فقط توصیفی است.');
@@ -441,11 +442,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     return episodes;
   }
 
-  List<TxEdgeMatrixCell> _unusedMatrix() => const [];
-
-  List<TxEdgeMatrixCell> _emptyMatrix() => const [];
-
-  List<TxAiSlice> _sessionSlices(List<TxAiTradeRecord> trades) {
+  List<_TxSessionSlice> _sessionSlices(List<TxAiTradeRecord> trades) {
     final grouped = <String, List<TxAiTradeRecord>>{};
     for (final trade in trades) {
       final session = trade.session;
@@ -463,22 +460,16 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       );
     }).toList()
       ..sort((a, b) => b.average.compareTo(a.average));
-    return slices.map((slice) => TxAiSlice(
-      label: slice.label,
-      trades: slice.trades,
-      net: slice.net,
-      winRate: 0,
-      average: slice.average,
-    )).toList(growable: false);
+    return slices;
   }
 
-  double? _sessionEdge(List<TxAiSlice> sessions) {
+  double? _sessionEdge(List<_TxSessionSlice> sessions) {
     final qualified = sessions.where((session) => session.trades >= 5).toList();
     if (qualified.length < 2) return null;
     final spread = qualified.first.average - qualified.last.average;
     final scale = qualified
         .map((session) => session.average.abs())
-        .fold<double>(0, math.max);
+        .fold<double>(0, (a, b) => math.max(a, b).toDouble());
     if (scale == 0) return 50;
     return (50 + math.atan(spread / scale) * 100 / math.pi)
         .clamp(0, 100)
