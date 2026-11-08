@@ -17,6 +17,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tradenex.app.ui.components.TxBackground
 import com.tradenex.app.ui.components.TxBottomBar
+import com.tradenex.app.ui.screens.AccountsScreen
 import com.tradenex.app.ui.screens.AddTradeScreen
 import com.tradenex.app.ui.screens.CalendarScreen
 import com.tradenex.app.ui.screens.EducationScreen
@@ -46,6 +47,7 @@ fun AppNav() {
                     popExitTransition = { fadeOut(tween(200)) },
                 ) {
                     composable("home") { HomeScreen(nav) }
+                    composable("accounts") { AccountsScreen(nav) }
                     composable("perf") { PerformanceScreen(nav) }
                     composable("edu") { EducationScreen(nav) }
                     composable("more") { MoreScreen(nav) }
