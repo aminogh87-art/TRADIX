@@ -29,6 +29,7 @@ import com.tradenex.app.ui.screens.SettingsScreen
 import com.tradenex.app.ui.screens.StrategiesScreen
 import com.tradenex.app.ui.screens.TagsScreen
 import com.tradenex.app.ui.screens.TradesScreen
+import com.tradenex.app.ui.screens.TxAiScreen
 import com.tradenex.app.ui.screens.WeeklyPlanScreen
 
 @Composable
@@ -54,6 +55,7 @@ fun AppNav(startDestination: String = "home") {
                     composable("weekly") { WeeklyPlanScreen(nav) }
                     composable("weekly_reminder") { WeeklyPlanScreen(nav, openToday = true) }
                     composable("perf") { PerformanceScreen(nav) }
+                    composable("tx_ai") { TxAiScreen(nav) }
                     composable("edu") { EducationScreen(nav) }
                     composable("more") { MoreScreen(nav) }
                     composable("add") { AddTradeScreen(nav) }
