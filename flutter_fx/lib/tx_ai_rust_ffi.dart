@@ -9,6 +9,13 @@ typedef _NativeMetrics = Int32 Function(
 typedef _DartMetrics = int Function(
   Pointer<Double>, int, Pointer<Double>, int,
 );
+typedef _NativeScenario = Int32 Function(
+  Pointer<Double>, UintPtr, Pointer<Uint8>, UintPtr, Double,
+  Pointer<Double>, UintPtr,
+);
+typedef _DartScenario = int Function(
+  Pointer<Double>, int, Pointer<Uint8>, int, double, Pointer<Double>, int,
+);
 typedef _NativeRevenge = Int32 Function(
   Int64, Int32, Int32, Double, Double, Double, Double,
   Int32, Int32, Int32, Uint32, Pointer<Int32>, UintPtr,
@@ -56,9 +63,13 @@ class TxRustAnalytics {
         ),
         _revenge = library.lookupFunction<_NativeRevenge, _DartRevenge>(
           'tx_ai_revenge_evidence',
+        ),
+        _scenario = library.lookupFunction<_NativeScenario, _DartScenario>(
+          'tx_ai_scenario_metrics',
         );
   final _DartMetrics _calculate;
   final _DartRevenge _revenge;
+  final _DartScenario _scenario;
 
   static TxRustAnalytics openAndroid() {
     if (!Platform.isAndroid) {
@@ -102,6 +113,66 @@ class TxRustAnalytics {
         score: output[0], flags: output[1], classificationCode: output[2],
       );
     } finally {
+      calloc.free(output);
+    }
+  }
+
+  /// Runs a deterministic what-if over realized journal P&L.
+  /// A false mask entry excludes a trade; scaleFactor=0.5 illustrates half risk.
+  TxRustMetrics calculateScenario(
+    List<double> realizedPnls, {
+    List<bool>? includeMask,
+    double scaleFactor = 1.0,
+  }) {
+    if (includeMask != null && includeMask.length != realizedPnls.length) {
+      throw ArgumentError.value(includeMask.length, 'includeMask.length',
+          'Must match the number of P&L values.');
+    }
+    if (!scaleFactor.isFinite || scaleFactor < 0) {
+      throw ArgumentError.value(scaleFactor, 'scaleFactor',
+          'Must be finite and non-negative.');
+    }
+    final input = calloc<Double>(realizedPnls.isEmpty ? 1 : realizedPnls.length);
+    final mask = includeMask == null ? nullptr : calloc<Uint8>(includeMask.length);
+    final output = calloc<Double>(10);
+    try {
+      for (var i = 0; i < realizedPnls.length; i++) {
+        input[i] = realizedPnls[i];
+        if (includeMask != null) {
+          mask[i] = includeMask[i] ? 1 : 0;
+        }
+      }
+      final status = _scenario(
+        input,
+        realizedPnls.length,
+        mask,
+        includeMask?.length ?? 0,
+        scaleFactor,
+        output,
+        10,
+      );
+      if (status != 0) {
+        throw StateError('Rust scenario engine rejected the input (status $status).');
+      }
+      final sampleSize = realizedPnls.asMap().entries.where((entry) =>
+          entry.value.isFinite &&
+          (includeMask == null || includeMask[entry.key])).length;
+      return TxRustMetrics(
+        net: output[0],
+        winRate: output[1],
+        profitFactor: output[2],
+        maxDrawdown: output[3],
+        expectancy: output[4],
+        averageWin: output[5],
+        averageLoss: output[6],
+        recoveryFactor: output[7],
+        largestWinShare: output[8],
+        largestLossShare: output[9],
+        sampleSize: sampleSize,
+      );
+    } finally {
+      calloc.free(input);
+      if (includeMask != null) calloc.free(mask);
       calloc.free(output);
     }
   }
