@@ -7,6 +7,7 @@ import java.time.Instant
 enum class TxAiBehaviorPatternType(val label: String) {
     OVERTRADING_AFTER_WIN("افزایش تراکم معاملات پس از برد"),
     SIZE_UP_AFTER_WIN("افزایش حجم پس از برد"),
+    SIZE_UP_AFTER_LOSS("افزایش حجم پس از زیان"),
     EXIT_BEFORE_TARGET("خروج ثبت‌شده پیش از حدسود"),
     SESSION_DRIFT("معامله خارج از سشن مجاز استراتژی"),
 }
@@ -143,6 +144,26 @@ object TxAiBehavioralPatternAnalyzer {
                         ),
                     )
                 }
+            }
+
+            ordered.zipWithNext().forEach { (previous, current) ->
+                if (previous.pnl >= 0.0 || previous.closedAtMillis <= 0L ||
+                    current.openedAtMillis < previous.closedAtMillis ||
+                    previous.lot <= 0.0 || current.lot <= previous.lot * INCREASE_THRESHOLD
+                ) return@forEach
+                output += TxAiBehaviorPattern(
+                    id = "$accountId:size-up-after-loss:${current.id}",
+                    accountId = accountId,
+                    type = TxAiBehaviorPatternType.SIZE_UP_AFTER_LOSS,
+                    triggerTradeId = current.id,
+                    linkedTradeIds = listOf(previous.id, current.id),
+                    evidenceScore = 25,
+                    actualNetPnl = previous.pnl + current.pnl,
+                    reasons = listOf(
+                        "حجم معامله بعد از زیان قبلی بیش از ۲۵٪ افزایش یافته است.",
+                        "این تغییر حجم به‌تنهایی اثبات‌کننده معامله انتقامی نیست.",
+                    ),
+                )
             }
 
             ordered.forEach { trade ->
