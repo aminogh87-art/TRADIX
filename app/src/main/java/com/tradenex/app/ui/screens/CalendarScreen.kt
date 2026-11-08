@@ -34,27 +34,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
-import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.data.ForexFactoryCalendarStore
+import com.tradenex.app.data.ForexFactoryEvent
+import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
 import com.tradenex.app.ui.components.SectionTitle
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
-import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 private val jalaliMonths = listOf("فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند")
 
@@ -71,10 +72,6 @@ fun jalaliText(d: LocalDate): String {
     return "${fa(day)} ${jalaliMonths[m - 1]} ${fa(y)}"
 }
 
-
-
-
-
 @Composable
 fun CalendarScreen(nav: NavController) {
     var tab by remember { mutableStateOf(0) }
@@ -83,10 +80,11 @@ fun CalendarScreen(nav: NavController) {
     var remind by remember { mutableStateOf(setOf<Int>()) }
     val context = LocalContext.current
     var refreshCounter by remember { mutableStateOf(0) }
-    var newsEvents by remember { mutableStateOf(emptyList<com.tradenex.app.data.ForexFactoryEvent>()) }
+    var newsEvents by remember { mutableStateOf(emptyList<ForexFactoryEvent>()) }
     var newsLoading by remember { mutableStateOf(true) }
     var newsMessage by remember { mutableStateOf("در حال اتصال به Forex Factory…") }
     var newsFetchedAt by remember { mutableStateOf(0L) }
+
     LaunchedEffect(refreshCounter) {
         newsLoading = true
         val result = ForexFactoryCalendarStore.load(context, forceRefresh = refreshCounter > 0)
@@ -95,6 +93,7 @@ fun CalendarScreen(nav: NavController) {
         newsMessage = result.message
         newsLoading = false
     }
+
     val today = LocalDate.now()
     var selectedDate by remember { mutableStateOf(today) }
     val todayJalali = JalaliCalendar.fromGregorian(today)
@@ -103,8 +102,11 @@ fun CalendarScreen(nav: NavController) {
     val selectedJalaliMonth = Math.floorMod(monthIndex, 12) + 1
     val trades = AppState.visibleTrades.toList()
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
-    val selectedTrades = remember(trades, selectedDate) { trades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis } }
+    val selectedTrades = remember(trades, selectedDate) {
+        trades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis }
+    }
     val settings = AppState.settings
+
     fun moveMonth(delta: Int) {
         val nextOffset = offset + delta
         val nextIndex = todayJalali.year * 12 + todayJalali.month - 1 + nextOffset
@@ -127,6 +129,7 @@ fun CalendarScreen(nav: NavController) {
             }
         }
         Text("امروز: ${jalaliText(today)}", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+
         if (tab == 0) {
             Reveal(1) {
                 GlassCard(Modifier.fillMaxWidth()) {
@@ -134,15 +137,30 @@ fun CalendarScreen(nav: NavController) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconBox(Icons.Rounded.KeyboardArrowRight, "ماه قبل") { moveMonth(-1) }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(jalaliMonths[selectedJalaliMonth - 1] + " " + fa(selectedJalaliYear), color = Tx.Text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                                Text(
+                                    jalaliMonths[selectedJalaliMonth - 1] + " " + fa(selectedJalaliYear),
+                                    color = Tx.Text,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                )
                                 val firstGregorian = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
-                                Text(firstGregorian.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + firstGregorian.year, color = Tx.Muted, fontSize = 11.sp)
+                                Text(
+                                    firstGregorian.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + firstGregorian.year,
+                                    color = Tx.Muted,
+                                    fontSize = 11.sp,
+                                )
                             }
                             IconBox(Icons.Rounded.KeyboardArrowLeft, "ماه بعد") { moveMonth(1) }
                         }
                         Row(Modifier.fillMaxWidth()) {
-                            listOf("شنبه", "یک", "دوش", "سه", "چهار", "پنج", "جمعه").forEachIndexed { i, w ->
-                                Text(w, color = if (i < 2) Tx.Muted.copy(alpha = 0.6f) else Tx.Muted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                            listOf("شنبه", "یک", "دوش", "سه", "چهار", "پنج", "جمعه").forEachIndexed { i, weekday ->
+                                Text(
+                                    weekday,
+                                    color = if (i < 2) Tx.Muted.copy(alpha = 0.6f) else Tx.Muted,
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
                         }
                         val first = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
@@ -165,6 +183,40 @@ fun CalendarScreen(nav: NavController) {
                                             onClick = { selectedDate = date },
                                         )
                                     } else {
+                                        Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("معاملات ${jalaliText(selectedDate)}", color = Tx.Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        if (selectedTrades.isEmpty()) {
+                            Text("برای این روز معامله‌ای ثبت نشده است.", color = Tx.Muted, fontSize = 11.sp)
+                        } else {
+                            selectedTrades.forEach { trade ->
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        trade.tradeName.ifBlank { trade.symbol } + " · " + trade.symbol + " · " + if (trade.buy) "خرید" else "فروش",
+                                        color = Tx.Text,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        Analytics.money(trade.pnl),
+                                        color = if (trade.pnl >= 0) Tx.Green else Tx.Red,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
             Reveal(1) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf("همه", "High", "USD", "EUR", "GBP", "JPY").forEachIndexed { i, label ->
@@ -174,14 +226,24 @@ fun CalendarScreen(nav: NavController) {
             }
             Reveal(2) {
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         SectionTitle("تقویم اقتصادی Forex Factory", "هفته جاری · ساعت محلی")
                         Text(newsMessage, color = if (newsEvents.isNotEmpty()) Tx.Muted else Tx.Gold, fontSize = 10.sp)
                         if (newsFetchedAt > 0L) {
-                            val updated = Instant.ofEpochMilli(newsFetchedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
+                            val updated = Instant.ofEpochMilli(newsFetchedAt)
+                                .atZone(ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
                             Text("آخرین دریافت: " + updated, color = Tx.Muted, fontSize = 10.sp)
                         }
-                        val minImpact = when (settings.newsImpact) { 1 -> 1; 2 -> 2; else -> 0 }
+
+                        val minImpact = when (settings.newsImpact) {
+                            1 -> 1
+                            2 -> 2
+                            else -> 0
+                        }
                         val list = newsEvents.filter { event ->
                             event.impact >= minImpact && when (filter) {
                                 1 -> event.impact == 2
@@ -192,31 +254,81 @@ fun CalendarScreen(nav: NavController) {
                                 else -> true
                             }
                         }
+
                         if (newsLoading && newsEvents.isEmpty()) {
-                            Text("در حال دریافت رویدادهای اقتصادی…", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
+                            Text(
+                                "در حال دریافت رویدادهای اقتصادی…",
+                                color = Tx.Muted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(vertical = 18.dp),
+                            )
                         } else if (list.isEmpty()) {
-                            Text(if (newsEvents.isEmpty()) "داده‌ای دریافت نشد؛ اینترنت را بررسی و دوباره تازه‌سازی کن." else "برای این فیلتر رویدادی پیدا نشد.", color = Tx.Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 14.dp))
+                            Text(
+                                if (newsEvents.isEmpty()) "داده‌ای دریافت نشد؛ اینترنت را بررسی و دوباره تازه‌سازی کن."
+                                else "برای این فیلتر رویدادی پیدا نشد.",
+                                color = Tx.Muted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(vertical = 14.dp),
+                            )
                         } else {
                             list.forEach { event ->
-                                val color = when (event.impact) { 2 -> Tx.Red; 1 -> Tx.Gold; -1 -> Tx.Blue; else -> Tx.Muted }
+                                val impactColor = when (event.impact) {
+                                    2 -> Tx.Red
+                                    1 -> Tx.Gold
+                                    -1 -> Tx.Blue
+                                    else -> Tx.Muted
+                                }
                                 val local = Instant.ofEpochMilli(event.timestampMillis).atZone(ZoneId.systemDefault())
                                 val time = local.format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
                                 val dateLabel = jalaliText(local.toLocalDate())
-                                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
                                     Column(Modifier.width(66.dp)) {
                                         Text(time, color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                         Text(dateLabel, color = Tx.Muted, fontSize = 9.sp)
                                     }
-                                    Box(Modifier.width(42.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.07f)).padding(vertical = 5.dp), contentAlignment = Alignment.Center) {
+                                    Box(
+                                        Modifier.width(42.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color.White.copy(alpha = 0.07f))
+                                            .padding(vertical = 5.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
                                         Text(event.currency, color = Tx.Text, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
                                     }
                                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                         Text(event.title, color = Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                                        Text(when (event.impact) { 2 -> "تأثیر بالا"; 1 -> "تأثیر متوسط"; -1 -> "تعطیلی"; else -> "تأثیر کم" }, color = color, fontSize = 10.sp)
-                                        Text("قبلی: " + event.previous.ifBlank { "—" } + " · پیش‌بینی: " + event.forecast.ifBlank { "—" } + " · واقعی: " + event.actual.ifBlank { "—" }, color = Tx.Muted, fontSize = 9.sp, maxLines = 2)
+                                        Text(
+                                            when (event.impact) {
+                                                2 -> "تأثیر بالا"
+                                                1 -> "تأثیر متوسط"
+                                                -1 -> "تعطیلی"
+                                                else -> "تأثیر کم"
+                                            },
+                                            color = impactColor,
+                                            fontSize = 10.sp,
+                                        )
+                                        Text(
+                                            "قبلی: " + event.previous.ifBlank { "—" } +
+                                                " · پیش‌بینی: " + event.forecast.ifBlank { "—" } +
+                                                " · واقعی: " + event.actual.ifBlank { "—" },
+                                            color = Tx.Muted,
+                                            fontSize = 9.sp,
+                                            maxLines = 2,
+                                        )
                                     }
-                                    val on = event.id in remind
-                                    Icon(if (on) Icons.Rounded.Notifications else Icons.Rounded.NotificationsNone, "یادآور", tint = if (on) Tx.Gold else Tx.Muted, modifier = Modifier.size(22.dp).clickable { remind = if (on) remind - event.id else remind + event.id })
+                                    val hasReminder = event.id in remind
+                                    Icon(
+                                        if (hasReminder) Icons.Rounded.Notifications else Icons.Rounded.NotificationsNone,
+                                        "یادآور",
+                                        tint = if (hasReminder) Tx.Gold else Tx.Muted,
+                                        modifier = Modifier.size(22.dp).clickable {
+                                            remind = if (hasReminder) remind - event.id else remind + event.id
+                                        },
+                                    )
                                 }
                                 Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.05f)))
                             }
@@ -224,14 +336,26 @@ fun CalendarScreen(nav: NavController) {
                     }
                 }
             }
-            Text("منبع: فید هفتگی Forex Factory؛ داده‌ها محلی ذخیره می‌شوند و ساعت رویدادها با منطقه زمانی دستگاه نمایش داده می‌شود.", color = Tx.Muted, fontSize = 10.sp)
+            Text(
+                "منبع: فید هفتگی Forex Factory؛ داده‌ها محلی ذخیره می‌شوند و ساعت رویدادها با منطقه زمانی دستگاه نمایش داده می‌شود.",
+                color = Tx.Muted,
+                fontSize = 10.sp,
+            )
         }
         Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
-private fun DayCell(day: Int, isToday: Boolean, selected: Boolean, holiday: Boolean, pnl: Double?, modifier: Modifier, onClick: () -> Unit) {
+private fun DayCell(
+    day: Int,
+    isToday: Boolean,
+    selected: Boolean,
+    holiday: Boolean,
+    pnl: Double?,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     val shape = RoundedCornerShape(11.dp)
     val base = modifier.height(42.dp).clip(shape).clickable(onClick = onClick)
     val styled = when {
