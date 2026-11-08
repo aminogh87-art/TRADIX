@@ -237,10 +237,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       id: trade.id.toString(),
       netPnl: trade.pnl,
       session: trade.session,
-      weekday: trade.openedAtMillis == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(
-              trade.openedAtMillis!, isUtc: true).weekday,
+      weekday: trade.displayWeekday,
       strategy: trade.strategy.isEmpty ? null : trade.strategy,
       timeframe: trade.timeframe,
       marketCondition: trade.marketCondition,
@@ -319,7 +316,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
               title: 'استراتژی × حالت ذهنی',
             ),
             const SizedBox(height: 12),
-            _heatmapCard(heatmap),
+            _heatmapCard(heatmap, account.displayTimezone),
           ],
         ),
         TxBehavioralLab(
@@ -492,14 +489,12 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final totals = List.generate(7, (_) => List<double>.filled(24, 0));
     final counts = List.generate(7, (_) => List<int>.filled(24, 0));
     for (final trade in trades) {
-      if (trade.openedAtMillis == null) continue;
-      final time = DateTime.fromMillisecondsSinceEpoch(
-        trade.openedAtMillis!,
-        isUtc: true,
-      );
-      final day = time.weekday - 1;
-      totals[day][time.hour] += trade.pnl;
-      counts[day][time.hour]++;
+      final weekday = trade.displayWeekday;
+      final hour = trade.displayHour;
+      if (weekday == null || hour == null || weekday < 1 || weekday > 7 || hour < 0 || hour > 23) continue;
+      final day = weekday - 1;
+      totals[day][hour] += trade.pnl;
+      counts[day][hour]++;
     }
     return List.generate(7, (day) => List.generate(24, (hour) {
       if (counts[day][hour] == 0) return null;
@@ -507,15 +502,15 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     }));
   }
 
-  Widget _heatmapCard(List<List<double?>> values) => Card(
+  Widget _heatmapCard(List<List<double?>> values, String timezone) => Card(
         color: const Color(0xFF0B1730),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('روز هفته × ساعت ورود (UTC)',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
+              Text('روز هفته × ساعت ورود ($timezone)',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               TxHeatmap(cells: values),
               const Text(
@@ -530,9 +525,8 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
   List<TxProcessMonth> _processMonths(List<TxAiTradeRecord> trades) {
     final grouped = <String, List<TxAiTradeRecord>>{};
     for (final trade in trades) {
-      if (trade.closedAtMillis == null) continue;
-      final date = DateTime.fromMillisecondsSinceEpoch(trade.closedAtMillis!, isUtc: true);
-      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      final key = trade.displayMonthKey;
+      if (key == null || trade.closedAtMillis == null) continue;
       grouped.putIfAbsent(key, () => []).add(trade);
     }
     final keys = grouped.keys.toList()..sort();
