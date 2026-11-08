@@ -1,0 +1,115 @@
+package com.tradenex.app
+
+import com.tradenex.app.core.SessionEngine
+import com.tradenex.app.data.AppState
+import com.tradenex.app.data.Trade
+import com.tradenex.app.data.TxAiReviewStatus
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+import java.time.Instant
+import java.time.LocalTime
+
+/**
+ * Flutter host boundary for TX AI. Only the selected account's journal fields are exposed;
+ * broker credentials and account secrets are never sent to Dart.
+ */
+class TxAiFlutterActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "loadSelectedAccountSnapshot" -> result.success(selectedAccountSnapshot())
+                    "saveEpisodeReview" -> {
+                        val accountId = call.argument<String>("accountId")
+                        val episodeId = call.argument<String>("episodeId")
+                        val status = TxAiReviewStatus.fromStorageKey(call.argument<String>("status"))
+                        if (accountId != AppState.selectedAccount.id || episodeId.isNullOrBlank() || status == null) {
+                            result.error("invalid_review", "Review payload is invalid or the selected account changed.", null)
+                        } else {
+                            AppState.reviewEpisode(accountId, episodeId, status)
+                            result.success(null)
+                        }
+                    }
+                    "setInsightPinned" -> {
+                        val accountId = call.argument<String>("accountId")
+                        val insightId = call.argument<String>("insightId")
+                        val pinned = call.argument<Boolean>("pinned")
+                        if (accountId != AppState.selectedAccount.id || insightId.isNullOrBlank() || pinned == null) {
+                            result.error("invalid_pin", "Pin payload is invalid or the selected account changed.", null)
+                        } else {
+                            AppState.setInsightPinned(accountId, insightId, pinned)
+                            result.success(null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    override fun onDestroy() {
+        AppState.persist()
+        super.onDestroy()
+    }
+
+    private fun selectedAccountSnapshot(): Map<String, Any?> {
+        val account = AppState.selectedAccount
+        val trades = AppState.visibleTrades
+        return mapOf(
+            "accountId" to account.id,
+            "accountName" to account.name,
+            "currency" to account.baseCurrency,
+            "startingBalance" to account.startingBalance,
+            "riskPercent" to AppState.settings.riskPercent,
+            "trades" to trades.map(::tradePayload),
+            "episodeReviews" to AppState.txAiEpisodeReviews
+                .filter { it.accountId == account.id }
+                .map { mapOf("episodeId" to it.episodeId, "status" to it.status.storageKey) },
+            "pinnedInsights" to AppState.txAiInsightPins
+                .filter { it.accountId == account.id }
+                .map { mapOf("insightId" to it.insightId, "pinned" to it.pinned) },
+        )
+    }
+
+    private fun tradePayload(trade: Trade): Map<String, Any?> = mapOf(
+        "id" to trade.id,
+        "accountId" to trade.accountId,
+        "symbol" to trade.symbol,
+        "isBuy" to trade.buy,
+        "pnl" to trade.pnl,
+        "lot" to trade.lot,
+        "strategy" to trade.strategy,
+        "strategyVersion" to trade.strategyVersion,
+        "tags" to trade.tags,
+        "emotion" to trade.emotion,
+        "openedAtMillis" to trade.openedAtMillis.takeIf { it > 0L },
+        "closedAtMillis" to trade.closedAtMillis.takeIf { it > 0L },
+        "plannedRisk" to trade.plannedRisk,
+        "timeframe" to trade.timeframe.ifBlank { null },
+        "marketCondition" to trade.marketCondition.ifBlank { null },
+        "strategyFollowed" to trade.strategyFollowed,
+        "session" to sessionFor(trade),
+        "entryPrice" to trade.entryPrice,
+        "exitPrice" to trade.exitPrice,
+        "stopLossPrice" to trade.stopLossPrice,
+        "takeProfitPrice" to trade.takeProfitPrice,
+    )
+
+    private fun sessionFor(trade: Trade): String? {
+        if (trade.openedAtMillis <= 0L) return null
+        val instant = Instant.ofEpochMilli(trade.openedAtMillis)
+        return SessionEngine.defs.firstOrNull { def ->
+            val local = instant.atZone(def.zoneId).toLocalTime()
+            if (def.localOpen < def.localClose) {
+                !local.isBefore(def.localOpen) && local.isBefore(def.localClose)
+            } else {
+                !local.isBefore(def.localOpen) || local.isBefore(def.localClose)
+            }
+        }?.name
+    }
+
+    companion object {
+        private const val CHANNEL = "tradenex/tx_ai"
+    }
+}
