@@ -150,3 +150,28 @@ Next coding gates:
 4. Connect the selected-account journal snapshot to typed Dart models and test account isolation end-to-end.
 5. Persist behavioral review corrections and add the remaining Behavioral Lab detectors.
 6. Implement saved views, cross-analysis matrix, scenario engine and insight lifecycle with persistence.
+
+
+## Implementation update — durable review and native metrics batch
+
+
+## Implementation update — durable review and native metrics batch
+
+Added on `feature/tradix-forex-journal`:
+
+- Account-scoped Behavioral Lab review states: Confirmed / Not Revenge / Unsure. Each decision is keyed by account + episode ID and records its update timestamp.
+- Account-scoped Insight pin preferences keyed by account + deterministic insight key.
+- Both preference collections are included in the versioned local snapshot. Older version-1 snapshots remain readable because missing preference arrays restore as empty collections.
+- TX AI screen now exposes the review controls and pin/unpin actions; each action persists through the existing atomic SQLite snapshot path.
+- Extended performance metrics are now available to the Android host through the Rust JNI boundary, with a deterministic Kotlin fallback: expectancy, average win/loss, recovery factor, and largest win/loss concentration in addition to net, win rate, profit factor and max drawdown.
+- Added pure unit tests for review/pin account isolation and update behavior, plus Kotlin fallback metric parity.
+
+Still not release-complete:
+
+- Flutter widgets and the Dart FFI/data bridge remain in the standalone `flutter_fx` package; they are not embedded into the Android navigation or connected to the live account snapshot.
+- The current Android screen remains Compose. Rust JNI metrics are now used there; this does not mean the Flutter module has been integrated.
+- Remaining Behavioral Lab detectors (including overtrading-after-win, early-exit evidence, session drift and stop-widening) require additional structured trade history. Stop-widening cannot be inferred from a single final stop value; it needs stop-change audit events.
+- Full persisted saved views, complete multi-axis aggregation, advanced replay/backtesting, encrypted backup/restore, normalized storage migration and real economic-calendar provider are still outstanding.
+- CI for the latest commit and real-device install/launch/RTL verification must pass before release claims.
+
+Do not fabricate missing stop history, market excursion data, live news, or broker data. Keep this PR Draft and do not merge it.
