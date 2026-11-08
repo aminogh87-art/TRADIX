@@ -136,10 +136,24 @@ fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
                             Text(money(net), color = if (net >= 0) Tx.Green else Tx.Red, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
                         }
                         if (confirmedCount == 5) {
+                            val adherenceDays = weekPlans.count { it.followedPlan }
+                            val averageMood = weekPlans.map { it.mood }.average()
+                            val checklistDone = weekPlans.sumOf { it.doneTasks.size }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                SummaryValue("پایبندی به پلن", "$adherenceDays/5 روز", if (adherenceDays >= 4) Tx.Green else Tx.Red)
+                                SummaryValue("میانگین تمرکز", String.format(java.util.Locale.US, "%.1f/5", averageMood), Tx.Blue)
+                                SummaryValue("چک‌لیست", "$checklistDone/30", if (checklistDone >= 24) Tx.Green else Tx.Gold)
+                            }
+                            if (totalTrades > 0) {
+                                Text("میانگین خالص به‌ازای هر معامله: ${money(net / totalTrades)}", color = Tx.Muted, fontSize = 11.sp)
+                            }
                             val tips = buildList {
                                 if (net < 0) add("این هفته زیان‌ده بوده؛ حجم معاملات و کیفیت ورودها را بازبینی کن.")
                                 if (loss > profit * 0.7) add("نسبت ضرر به سود بالاست؛ حد ضرر و نسبت ریسک به بازده را بررسی کن.")
                                 if (totalTrades > 25) add("تعداد معاملات زیاد است؛ مراقب بیش‌معامله‌گری باش.")
+                                if (weekPlans.count { it.followedPlan } < 4) add("پایبندی به پلن در کمتر از چهار روز بوده؛ قبل از ورود قوانینت را مرور کن.")
+                                if (weekPlans.map { it.mood }.average() < 3.0) add("میانگین تمرکز یا حال روانی پایین بوده؛ کیفیت تصمیم‌گیری را بر تعداد معاملات مقدم کن.")
+                                if (weekPlans.sumOf { it.doneTasks.size } < 20) add("چک‌لیست انضباطی کامل نشده؛ برای هر روز یک روال ثابت قبل و بعد از معامله بساز.")
                                 if (weekPlans.any { it.tradeCount == 0 && it.noTradeReason.isBlank() }) add("برای روزهای بدون معامله، دلیل مشخص ثبت کن.")
                                 if (isEmpty()) add("عملکرد هفته مثبت و منظم بوده؛ قوانین فعلی را حفظ و کیفیت ستاپ‌ها را بررسی کن.")
                             }
