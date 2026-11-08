@@ -27,6 +27,16 @@ class JalaliCalendarTest {
     }
 
     @Test
+    fun parsesGregorianAndJalaliDatesIncludingPersianDigits() {
+        val expected = LocalDate.of(2026, 3, 21)
+        assertEquals(expected, JalaliCalendar.parseDateInput("2026-03-21"))
+        assertEquals(expected, JalaliCalendar.parseDateInput("1405/01/01"))
+        assertEquals(expected, JalaliCalendar.parseDateInput("۱۴۰۵/۰۱/۰۱"))
+        assertEquals(null, JalaliCalendar.parseDateInput("۱۴۰۵/۱۳/۰۱"))
+        assertEquals(null, JalaliCalendar.parseDateInput("not-a-date"))
+    }
+
+    @Test
     fun rejectsInvalidMonthAndDay() {
         assertThrows(IllegalArgumentException::class.java) {
             JalaliCalendar.toGregorian(1405, 13, 1)
