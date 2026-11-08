@@ -85,6 +85,14 @@ fun CalendarScreen(nav: NavController) {
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val selectedTrades = remember(trades, selectedDate) { trades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis } }
     val settings = AppState.settings
+    fun moveMonth(delta: Int) {
+        val nextOffset = offset + delta
+        val nextIndex = todayJalali.year * 12 + todayJalali.month - 1 + nextOffset
+        val nextYear = Math.floorDiv(nextIndex, 12)
+        val nextMonth = Math.floorMod(nextIndex, 12) + 1
+        offset = nextOffset
+        selectedDate = JalaliCalendar.toGregorian(nextYear, nextMonth, 1)
+    }
 
     Page(title = "تقویم", onBack = { nav.popBackStack() }, trailing = {
         TxChip("امروز", false, { offset = 0; selectedDate = today })
@@ -101,13 +109,13 @@ fun CalendarScreen(nav: NavController) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconBox(Icons.Rounded.KeyboardArrowRight, "ماه قبل") { offset -= 1 }
+                            IconBox(Icons.Rounded.KeyboardArrowRight, "ماه قبل") { moveMonth(-1) }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(jalaliMonths[selectedJalaliMonth - 1] + " " + fa(selectedJalaliYear), color = Tx.Text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
                                 val firstGregorian = JalaliCalendar.toGregorian(selectedJalaliYear, selectedJalaliMonth, 1)
                                 Text(firstGregorian.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + firstGregorian.year, color = Tx.Muted, fontSize = 11.sp)
                             }
-                            IconBox(Icons.Rounded.KeyboardArrowLeft, "ماه بعد") { offset += 1 }
+                            IconBox(Icons.Rounded.KeyboardArrowLeft, "ماه بعد") { moveMonth(1) }
                         }
                         Row(Modifier.fillMaxWidth()) {
                             listOf("شنبه", "یک", "دوش", "سه", "چهار", "پنج", "جمعه").forEachIndexed { i, w ->
