@@ -64,7 +64,7 @@ The hamburger menu includes **TX AI**, a local, account-scoped analysis view bui
 - Trader profile labels are conservative, sample-aware summaries of observed session/strategy concentration, not psychological diagnoses.
 - Counterfactual views show the net result after excluding trades flagged as outside-plan and a simple 50%-size risk scenario. The latter assumes P&L scales linearly and is not a backtest.
 - Monthly process scores separately cover discipline tags, planned-risk records, strategy-field coverage and decision-record completeness. Scores are withheld when sample coverage is insufficient.
-- Behavioral Lab includes explainable Revenge evidence, post-win activity density, post-win size increase and recorded exit-before-target patterns. User review decisions and pinned insights persist locally with account-scoped keys.
+- Behavioral Lab includes explainable Revenge evidence, post-win activity density, size-up after win/loss, recorded exit-before-target and explicit strategy-session drift patterns. User review decisions and pinned insights persist locally with account-scoped keys.
 - New trade entries capture actual open time, timeframe, market condition and planned cash risk. Older entries remain compatible; fields not present in historical records are not inferred.
 - Flutter TX AI reads only the currently selected account's journal snapshot. It never receives broker credentials; reviews and insight pins are written back through a validated host channel.
 
