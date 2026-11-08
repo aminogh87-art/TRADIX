@@ -7,6 +7,15 @@ void main() {
       'accountId': 'account-1',
       'accountName': 'Main',
       'currency': 'USD',
+      'startingBalance': 10000.0,
+      'riskPercent': 1.0,
+      'displayTimezone': 'Asia/Tehran',
+      'episodeReviews': [
+        {'episodeId': 'a:1:2', 'status': 'confirmed'},
+      ],
+      'pinnedInsights': [
+        {'insightId': 'summary-win-rate', 'pinned': true},
+      ],
       'trades': [
         {
           'id': 1,
@@ -19,6 +28,17 @@ void main() {
           'tags': ['London'],
           'emotion': 'Calm',
           'strategyFollowed': true,
+          'strategyVersion': 3,
+          'session': 'London',
+          'displayHour': 13,
+          'displayWeekday': 2,
+          'displayMinute': 45,
+          'displayDateKey': '2026-11-03',
+          'displayMonthKey': '2026-11',
+          'entryPrice': 1.1,
+          'exitPrice': 1.101,
+          'stopLossPrice': 1.099,
+          'takeProfitPrice': 1.105,
         },
         {
           'id': 2,
@@ -36,6 +56,15 @@ void main() {
     expect(snapshot.trades.single.id, 1);
     expect(snapshot.realizedPnls, [25.5]);
     expect(snapshot.trades.single.strategyFollowed, isTrue);
+    expect(snapshot.trades.single.strategyVersion, 3);
+    expect(snapshot.trades.single.session, 'London');
+    expect(snapshot.trades.single.displayHour, 13);
+    expect(snapshot.trades.single.displayWeekday, 2);
+    expect(snapshot.trades.single.displayMonthKey, '2026-11');
+    expect(snapshot.startingBalance, 10000.0);
+    expect(snapshot.displayTimezone, 'Asia/Tehran');
+    expect(snapshot.episodeReviews['a:1:2'], 'confirmed');
+    expect(snapshot.pinnedInsights, contains('summary-win-rate'));
   });
 
   test('invalid or non-finite trade values are not fabricated', () {
