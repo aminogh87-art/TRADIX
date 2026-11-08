@@ -125,8 +125,10 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
   ) {
     final trades = account.trades.where((trade) => trade.pnl.isFinite).toList()
       ..sort((a, b) {
-        final aTime = (a.openedAtMillis ?? 0) > 0 ? a.openedAtMillis! : 0x7fffffffffffffff;
-        final bTime = (b.openedAtMillis ?? 0) > 0 ? b.openedAtMillis! : 0x7fffffffffffffff;
+        final aRawTime = a.openedAtMillis ?? 0;
+        final bRawTime = b.openedAtMillis ?? 0;
+        final aTime = aRawTime > 0 ? aRawTime : 0x7fffffffffffffff;
+        final bTime = bRawTime > 0 ? bRawTime : 0x7fffffffffffffff;
         final timeOrder = aTime.compareTo(bTime);
         if (timeOrder != 0) return timeOrder;
         final dayOrder = a.epochDay.compareTo(b.epochDay);
