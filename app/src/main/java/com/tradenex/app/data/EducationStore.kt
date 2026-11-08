@@ -1,0 +1,103 @@
+package com.tradenex.app.data
+
+import android.content.Context
+import android.net.Uri
+import org.json.JSONArray
+import org.json.JSONObject
+
+enum class EducationBlockType { TEXT, IMAGE, VIDEO, FILE }
+
+data class EducationBlock(
+    val id: Long = System.currentTimeMillis(),
+    val type: EducationBlockType,
+    val text: String = "",
+    val uri: String = "",
+    val mimeType: String = "",
+    val displayName: String = "",
+)
+
+data class EducationLesson(
+    val id: Long,
+    val title: String,
+    val createdAt: Long,
+    val blocks: List<EducationBlock> = emptyList(),
+    val progress: Float = 0f,
+)
+
+object EducationStore {
+    val lessons = androidx.compose.runtime.mutableStateListOf<EducationLesson>()
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun initialize(context: Context) {
+        if (prefs != null) return
+        prefs = context.applicationContext.getSharedPreferences("tradix_education_v1", Context.MODE_PRIVATE)
+        val raw = prefs?.getString("lessons", null) ?: return
+        runCatching {
+            val rows = JSONArray(raw)
+            for (i in 0 until rows.length()) {
+                val row = rows.getJSONObject(i)
+                val blocks = row.optJSONArray("blocks") ?: JSONArray()
+                val parsed = (0 until blocks.length()).mapNotNull { index ->
+                    val b = blocks.optJSONObject(index) ?: return@mapNotNull null
+                    val type = runCatching { EducationBlockType.valueOf(b.optString("type")) }.getOrDefault(EducationBlockType.TEXT)
+                    EducationBlock(
+                        id = b.optLong("id", System.currentTimeMillis() + index),
+                        type = type,
+                        text = b.optString("text"),
+                        uri = b.optString("uri"),
+                        mimeType = b.optString("mimeType"),
+                        displayName = b.optString("displayName"),
+                    )
+                }
+                lessons.add(EducationLesson(row.optLong("id"), row.optString("title"), row.optLong("createdAt"), parsed, row.optDouble("progress").toFloat()))
+            }
+        }
+    }
+
+    fun add(title: String): EducationLesson {
+        val lesson = EducationLesson(System.currentTimeMillis(), title.trim(), System.currentTimeMillis())
+        lessons.add(0, lesson)
+        persist()
+        return lesson
+    }
+
+    fun addBlock(lessonId: Long, block: EducationBlock) {
+        val index = lessons.indexOfFirst { it.id == lessonId }
+        if (index < 0) return
+        lessons[index] = lessons[index].copy(blocks = lessons[index].blocks + block)
+        persist()
+    }
+
+    fun updateProgress(lessonId: Long, progress: Float) {
+        val index = lessons.indexOfFirst { it.id == lessonId }
+        if (index >= 0) { lessons[index] = lessons[index].copy(progress = progress.coerceIn(0f, 1f)); persist() }
+    }
+
+    fun delete(lessonId: Long) {
+        lessons.removeAll { it.id == lessonId }
+        persist()
+    }
+
+    fun importTextLesson(title: String, blocks: List<EducationBlock>) {
+        lessons.add(0, EducationLesson(System.currentTimeMillis(), title, System.currentTimeMillis(), blocks))
+        persist()
+    }
+
+    fun persist() {
+        val rows = JSONArray()
+        lessons.forEach { lesson ->
+            rows.put(JSONObject().apply {
+                put("id", lesson.id); put("title", lesson.title); put("createdAt", lesson.createdAt); put("progress", lesson.progress)
+                put("blocks", JSONArray().apply {
+                    lesson.blocks.forEach { b ->
+                        put(JSONObject().apply {
+                            put("id", b.id); put("type", b.type.name); put("text", b.text)
+                            put("uri", b.uri); put("mimeType", b.mimeType); put("displayName", b.displayName)
+                        })
+                    }
+                })
+            })
+        }
+        prefs?.edit()?.putString("lessons", rows.toString())?.apply()
+    }
+}
