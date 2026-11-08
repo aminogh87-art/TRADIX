@@ -60,9 +60,9 @@ private val weekdays = listOf(
 private fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY))
 
 @Composable
-fun WeeklyPlanScreen(nav: NavController) {
+fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
     var weekOffset by remember { mutableStateOf(0) }
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedDate by remember { mutableStateOf(if (openToday && LocalDate.now().dayOfWeek.value in 1..5) LocalDate.now() else null) }
     val start = weekStart(LocalDate.now()).plusWeeks(weekOffset.toLong())
     val tradingDays = (2..6).map { start.plusDays(it.toLong()) }
     val weekPlans = tradingDays.map { WeeklyPlannerStore.plan(it) }
