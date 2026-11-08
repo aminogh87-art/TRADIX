@@ -213,6 +213,8 @@ object Tx {
 object ThemeController {
     var theme: ThemeId by mutableStateOf(ThemeId.DEFAULT)
         private set
+    var goldAvailable: Boolean by mutableStateOf(true)
+        private set
     var accent: Int by mutableIntStateOf(0)
         private set
 
