@@ -147,7 +147,7 @@ fun EducationScreen(nav: NavController) {
                     }.onFailure { message = it.message ?: "ساخت QR ممکن نشد." }
                 }, onDelete = { EducationStore.delete(lesson.id); if (selected == lesson.id) selected = null })
                 if (selected == lesson.id) {
-                    LessonEditor(lesson, context, onText = { text ->
+                    LessonEditor(lesson, context, onRemove = { blockId -> EducationStore.removeBlock(lesson.id, blockId) }, onText = { text ->
                         if (text.isNotBlank()) EducationStore.addBlock(lesson.id, EducationBlock(type = EducationBlockType.TEXT, text = text.trim()))
                     }, onPick = { imagePicker.launch(arrayOf("image/*", "video/*", "application/pdf", "text/plain", "application/*")) },
                         onProgress = { EducationStore.updateProgress(lesson.id, it) })
@@ -240,13 +240,20 @@ private fun LessonRow(lesson: EducationLesson, onOpen: () -> Unit, onQr: () -> U
 }
 
 @Composable
-private fun LessonEditor(lesson: EducationLesson, context: android.content.Context, onText: (String) -> Unit, onPick: () -> Unit, onProgress: (Float) -> Unit) {
+private fun LessonEditor(lesson: EducationLesson, context: android.content.Context, onRemove: (Long) -> Unit, onText: (String) -> Unit, onPick: () -> Unit, onProgress: (Float) -> Unit) {
     var text by remember(lesson.id, lesson.blocks.size) { mutableStateOf("") }
     GlassCard(Modifier.fillMaxWidth(), border = Tx.Gold) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle("محتوای مبحث", "ترتیب متن و فایل‌ها حفظ می‌شود")
             lesson.blocks.forEach { block ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.035f)).padding(9.dp),
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.035f))
+                    .clickable(enabled = block.uri.isNotBlank()) {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW)
+                                .setDataAndType(Uri.parse(block.uri), block.mimeType.ifBlank { "*/*" })
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                        }
+                    }.padding(9.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     val (icon, label) = when (block.type) {
                         EducationBlockType.TEXT -> Icons.Rounded.TextFields to block.text
@@ -256,6 +263,7 @@ private fun LessonEditor(lesson: EducationLesson, context: android.content.Conte
                     }
                     androidx.compose.material3.Icon(icon, null, tint = Tx.Gold, modifier = Modifier.size(20.dp))
                     Text(label, color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                    IconBox(Icons.Rounded.Delete, "حذف این بخش") { onRemove(block.id) }
                 }
             }
             MultiLineEducationField(text, { text = it }, "متن آموزشی یا توضیح این فایل")
