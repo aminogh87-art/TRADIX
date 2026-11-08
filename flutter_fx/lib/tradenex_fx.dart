@@ -530,7 +530,7 @@ class TxAiCommandCenter extends StatelessWidget {
               decoration: BoxDecoration(color: const Color(0xFF0B1730), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0x224CCBFF))),
               child: Column(children: [
                 const Text('Performance Radar', style: TextStyle(color: Color(0xFFB7C9E8), fontSize: 11, fontWeight: FontWeight.w700)),
-                TxRadar(values: snapshot.radarValues, onAxisTap: onAxisTap),
+                TxRadar(values: snapshot.radarValues.length == 6 ? snapshot.radarValues : List<double?>.filled(6, null), onAxisTap: onAxisTap),
               ]),
             ),
             const SizedBox(height: 10),
@@ -579,7 +579,7 @@ class TxAiCommandCenter extends StatelessWidget {
     if (values.length != 6) return null;
     final available = values.whereType<double>().where((v) => v.isFinite).toList();
     if (available.length < 4) return null;
-    return (available.map((v) => v.clamp(0, 1)).reduce((a, b) => a + b) / available.length * 100).round();
+    return (available.map((v) => v.clamp(0, 100)).reduce((a, b) => a + b) / available.length).round();
   }
   Widget _metricPanel(String label, String value, Color accent) => Container(
     padding: const EdgeInsets.all(11),
@@ -722,10 +722,10 @@ class _TxScatterPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const pad = 18.0;
     final rect = Rect.fromLTWH(pad, pad, size.width - pad * 2, size.height - pad * 2);
-    final maxX = trades.map((t) => t.riskAmount!).reduce(math.max).clamp(1, double.infinity).toDouble();
-    final minX = trades.map((t) => t.riskAmount!).reduce(math.min);
-    final maxY = trades.map((t) => t.rewardAmount!).reduce(math.max).clamp(1, double.infinity).toDouble();
-    final minY = trades.map((t) => t.rewardAmount!).reduce(math.min);
+    final maxX = trades.map((t) => t.riskAmount!).reduce((a, b) => a > b ? a : b).clamp(1, double.infinity).toDouble();
+    final minX = trades.map((t) => t.riskAmount!).reduce((a, b) => a < b ? a : b);
+    final maxY = trades.map((t) => t.rewardAmount!).reduce((a, b) => a > b ? a : b).clamp(1, double.infinity).toDouble();
+    final minY = trades.map((t) => t.rewardAmount!).reduce((a, b) => a < b ? a : b);
     final spanX = (maxX - minX).abs() < .000001 ? 1.0 : maxX - minX;
     final spanY = (maxY - minY).abs() < .000001 ? 1.0 : maxY - minY;
     final axis = Paint()..color = const Color(0x557A91B5)..strokeWidth = 1;
