@@ -7,12 +7,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tradenex.app.core.SessionState
@@ -39,70 +41,97 @@ import com.tradenex.app.ui.theme.Tx
 import kotlin.math.max
 import kotlin.math.min
 
-/** Compact one-candle-per-trade equity chart with selectable, named trade details. */
+/**
+ * One candle per recorded trade (ordered by time).
+ * Bodies stay deliberately narrow; chart scrolls horizontally when there are many trades.
+ * Tapping a candle shows trade name, symbol, side, lot and P&L.
+ */
 @Composable
 fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
     var selectedIndex by remember(series) { mutableStateOf((series.size - 1).coerceAtLeast(0)) }
     val progress = remember { Animatable(0f) }
+    val scroll = rememberScrollState()
+    val density = LocalDensity.current
+
     LaunchedEffect(series) {
         progress.snapTo(0f)
         progress.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
         selectedIndex = (series.size - 1).coerceAtLeast(0)
+        // Keep the newest trades in view.
+        scroll.scrollTo(scroll.maxValue)
     }
+
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Canvas(
-            Modifier.fillMaxWidth().weight(1f).pointerInput(series) {
-                detectTapGestures { tap ->
-                    if (series.isNotEmpty()) {
-                        val slot = size.width / series.size.toFloat()
-                        selectedIndex = (tap.x / slot).toInt().coerceIn(0, series.lastIndex)
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val minSlotPx = with(density) { 10.dp.toPx() }
+            val available = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+            val needWidth = if (series.isEmpty()) available else max(available, series.size * minSlotPx)
+            val chartWidthDp = with(density) { needWidth.toDp() }
+
+            Row(Modifier.horizontalScroll(scroll)) {
+                Canvas(
+                    Modifier
+                        .width(chartWidthDp)
+                        .height(maxHeight)
+                        .pointerInput(series, needWidth) {
+                            detectTapGestures { tap ->
+                                if (series.isNotEmpty()) {
+                                    val slot = needWidth / series.size.toFloat()
+                                    selectedIndex = (tap.x / slot).toInt().coerceIn(0, series.lastIndex)
+                                }
+                            }
+                        },
+                ) {
+                    if (series.isEmpty()) return@Canvas
+                    val candles = series.map { it.candle }
+                    val hi = candles.maxOf { it.h }
+                    val lo = candles.minOf { it.l }
+                    val span = (hi - lo).coerceAtLeast(1e-6)
+                    val slot = size.width / candles.size
+                    // Keep candle bodies small even with few trades.
+                    val bodyW = (slot * 0.28f).coerceIn(1.0.dp.toPx(), 3.6.dp.toPx())
+                    val wickW = 0.7.dp.toPx()
+                    val mid = size.height / 2f
+                    val p = progress.value
+                    fun y(v: Double): Float {
+                        val raw = size.height - (((v - lo) / span) * 0.88 + 0.06).toFloat() * size.height
+                        return mid + (raw - mid) * p
+                    }
+                    // Soft grid
+                    for (i in 1..3) {
+                        val gy = size.height * i / 4f
+                        drawLine(Color.White.copy(alpha = 0.07f), Offset(0f, gy), Offset(size.width, gy), 1f)
+                    }
+                    series.forEachIndexed { i, item ->
+                        val candle = item.candle
+                        val color = if (candle.c >= candle.o) Tx.Green else Tx.Red
+                        val x = slot * i + slot / 2f
+                        if (i == selectedIndex) {
+                            drawLine(Color.White.copy(alpha = 0.28f), Offset(x, 0f), Offset(x, size.height), 1.2.dp.toPx())
+                        }
+                        // Wick
+                        drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), wickW, StrokeCap.Round)
+                        // Body
+                        val top = y(max(candle.o, candle.c))
+                        val bottom = y(min(candle.o, candle.c))
+                        drawRoundRect(
+                            color,
+                            Offset(x - bodyW / 2f, top),
+                            Size(bodyW, (bottom - top).coerceAtLeast(1.2.dp.toPx())),
+                            CornerRadius(0.8.dp.toPx()),
+                        )
                     }
                 }
-            },
-        ) {
-            if (series.isEmpty()) return@Canvas
-            val candles = series.map { it.candle }
-            val hi = candles.maxOf { it.h }
-            val lo = candles.minOf { it.l }
-            val span = (hi - lo).coerceAtLeast(1e-6)
-            val slot = size.width / candles.size
-            // Keep candle bodies deliberately narrow even when the sample is small.
-            val bodyW = (slot * 0.30f).coerceIn(1.1.dp.toPx(), 4.dp.toPx())
-            val mid = size.height / 2f
-            val p = progress.value
-            fun y(v: Double): Float {
-                val raw = size.height - (((v - lo) / span) * 0.88 + 0.06).toFloat() * size.height
-                return mid + (raw - mid) * p
-            }
-            for (i in 1..3) {
-                val gy = size.height * i / 4f
-                drawLine(Color.White.copy(alpha = 0.07f), Offset(0f, gy), Offset(size.width, gy), 1f)
-            }
-            series.forEachIndexed { i, item ->
-                val candle = item.candle
-                val color = if (candle.c >= candle.o) Tx.Green else Tx.Red
-                val x = slot * i + slot / 2f
-                if (i == selectedIndex) {
-                    drawLine(Color.White.copy(alpha = 0.22f), Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
-                }
-                drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), 0.8.dp.toPx(), StrokeCap.Round)
-                val top = y(max(candle.o, candle.c))
-                val bottom = y(min(candle.o, candle.c))
-                drawRoundRect(
-                    color,
-                    Offset(x - bodyW / 2f, top),
-                    Size(bodyW, (bottom - top).coerceAtLeast(1.4.dp.toPx())),
-                    CornerRadius(1.dp.toPx()),
-                )
             }
         }
+
         if (series.isNotEmpty()) {
             val selected = series[selectedIndex.coerceIn(0, series.lastIndex)]
             Text(
                 "${selected.tradeName} · ${selected.symbol} · ${selected.side} · ${selected.lot} lot · ${if (selected.pnl >= 0) "+" else ""}${String.format(java.util.Locale.US, "%.2f", selected.pnl)}",
                 color = if (selected.pnl >= 0) Tx.Green else Tx.Red,
                 fontSize = 10.sp,
-                maxLines = 1,
+                maxLines = 2,
             )
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -115,7 +144,9 @@ fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
                         color = if (index == selectedIndex) Tx.Gold else Tx.Muted,
                         fontSize = 9.sp,
                         maxLines = 1,
-                        modifier = Modifier.clickable { selectedIndex = index }.padding(horizontal = 3.dp, vertical = 2.dp),
+                        modifier = Modifier
+                            .clickable { selectedIndex = index }
+                            .padding(horizontal = 3.dp, vertical = 2.dp),
                     )
                 }
             }
@@ -137,7 +168,7 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         val lo = candles.minOf { it.l }
         val span = (hi - lo).coerceAtLeast(1e-6)
         val slot = size.width / candles.size
-        val bodyW = (slot * 0.30f).coerceIn(1.1.dp.toPx(), 4.dp.toPx())
+        val bodyW = (slot * 0.28f).coerceIn(1.0.dp.toPx(), 3.6.dp.toPx())
         val mid = size.height / 2f
         fun y(v: Double): Float {
             val raw = size.height - (((v - lo) / span) * 0.88 + 0.06).toFloat() * size.height
@@ -146,10 +177,15 @@ fun CandleChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         candles.forEachIndexed { i, candle ->
             val color = if (candle.c >= candle.o) Tx.Green else Tx.Red
             val x = slot * i + slot / 2f
-            drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), 0.8.dp.toPx(), StrokeCap.Round)
+            drawLine(color, Offset(x, y(candle.h)), Offset(x, y(candle.l)), 0.7.dp.toPx(), StrokeCap.Round)
             val top = y(max(candle.o, candle.c))
             val bottom = y(min(candle.o, candle.c))
-            drawRoundRect(color, Offset(x - bodyW / 2f, top), Size(bodyW, (bottom - top).coerceAtLeast(1.4.dp.toPx())), CornerRadius(1.dp.toPx()))
+            drawRoundRect(
+                color,
+                Offset(x - bodyW / 2f, top),
+                Size(bodyW, (bottom - top).coerceAtLeast(1.2.dp.toPx())),
+                CornerRadius(0.8.dp.toPx()),
+            )
         }
     }
 }

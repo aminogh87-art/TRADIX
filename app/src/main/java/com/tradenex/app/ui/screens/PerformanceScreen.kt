@@ -53,7 +53,6 @@ fun PerformanceScreen(nav: NavController) {
     var period by remember { mutableStateOf(Period.MONTH) }
     var selectedHeatmapDay by remember { mutableStateOf<Long?>(null) }
     val trades = AppState.visibleTrades.toList()
-    val n = trades.size
     val today = AppState.today()
     val windowDays = when (period) {
         Period.DAY -> 1
@@ -63,9 +62,14 @@ fun PerformanceScreen(nav: NavController) {
     }
     val windowStartDay = today - (windowDays - 1L)
     val windowed = remember(period, trades) { trades.filter { it.epochDay >= windowStartDay } }
-    val stats = remember(period, windowed) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
+    val pnlArray = remember(windowed) { windowed.map { it.pnl }.toDoubleArray() }
+    val stats = remember(pnlArray) { NativeCore.stats(pnlArray) }
+    val ext = remember(pnlArray) { NativeCore.performanceMetrics(pnlArray) }
     val openingEquity = accountStartBalance + trades.filter { it.epochDay < windowStartDay }.sumOf { it.pnl }
-    val candles = remember(period, windowed, accountStartBalance, openingEquity) { Analytics.tradeCandleSeries(windowed, openingEquity, 60) }
+    // هر کندل = یک معامله ثبت‌شده (با نام معامله)
+    val candles = remember(period, windowed, openingEquity) {
+        Analytics.tradeCandleSeries(windowed, openingEquity, 120)
+    }
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
     val heatScale = (dayPnl.filterKeys { it > today - 35 && it <= today }.values.maxOfOrNull { abs(it) } ?: 0.0).coerceAtLeast(1.0)
@@ -73,6 +77,7 @@ fun PerformanceScreen(nav: NavController) {
     val worst = inWindow.values.minOrNull() ?: 0.0
     val noTrade = Analytics.noTradeDays(trades, today, 35, settings.weekendHoliday)
     val netColor = if (stats.net >= 0) Tx.Green else Tx.Red
+    val coreLabel = if (NativeCore.isNative) "Rust" else "Kotlin"
 
     Page(title = "عملکرد من") {
         Reveal(0) {
@@ -85,7 +90,7 @@ fun PerformanceScreen(nav: NavController) {
                 Column(Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Column(Modifier.weight(1f)) {
-                            Text("سود خالص $windowDays روز اخیر", color = Tx.Muted, fontSize = 11.sp)
+                            Text("سود خالص $windowDays روز اخیر · هسته $coreLabel", color = Tx.Muted, fontSize = 11.sp)
                             Text(
                                 if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", stats.net / accountStartBalance * 100),
                                 color = netColor,
@@ -99,8 +104,12 @@ fun PerformanceScreen(nav: NavController) {
                     if (candles.isEmpty()) {
                         Text("برای ساخت نمودار، ابتدا معامله‌ای در این بازه ثبت کن.", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 28.dp))
                     } else {
-                        TradeCandleChart(candles, Modifier.fillMaxWidth().height(190.dp))
-                        Text("هر کندل کوچک = یک معامله ثبت‌شده؛ انتخاب کندل، نام و P&L همان معامله را نمایش می‌دهد.", color = Tx.Muted, fontSize = 9.sp)
+                        TradeCandleChart(candles, Modifier.fillMaxWidth().height(200.dp))
+                        Text(
+                            "هر کندل کوچک = یک معامله ثبت‌شده (${candles.size} کندل). روی کندل بزن تا نام معامله، نماد و P&L را ببینی.",
+                            color = Tx.Muted,
+                            fontSize = 9.sp,
+                        )
                     }
                 }
             }
@@ -115,8 +124,26 @@ fun PerformanceScreen(nav: NavController) {
         }
         Reveal(3) {
             GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionTitle("جزئیات آماری ($coreLabel)", "بر اساس معاملات همین بازه")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile("انتظار", String.format(java.util.Locale.US, "%+.2f", ext.expectancy), if (ext.expectancy >= 0) Tx.Green else Tx.Red, Modifier.weight(1f))
+                        StatTile("میانگین برد", Analytics.money(ext.averageWin), Tx.Green, Modifier.weight(1f))
+                        StatTile("میانگین باخت", Analytics.money(-ext.averageLoss), Tx.Red, Modifier.weight(1f))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile("بازیابی", String.format(java.util.Locale.US, "%.2f", ext.recoveryFactor), Tx.Gold, Modifier.weight(1f))
+                        StatTile("سهم بزرگ‌ترین برد", String.format(java.util.Locale.US, "%.0f%%", ext.largestWinShare * 100), Tx.Green, Modifier.weight(1f))
+                        StatTile("سهم بزرگ‌ترین باخت", String.format(java.util.Locale.US, "%.0f%%", ext.largestLossShare * 100), Tx.Red, Modifier.weight(1f))
+                    }
+                    Text("نمونه آماری: ${ext.sampleSize} معامله", color = Tx.Muted, fontSize = 10.sp)
+                }
+            }
+        }
+        Reveal(4) {
+            GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SectionTitle("نقشه حرارتی ۵ هفته اخیر", "شنبه تا جمعه")
+                    SectionTitle("نقشه حرارتی ۵ هفته اخیر", "شنبه تا جمعه · تقویم شمسی")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         listOf("شنبه", "یک", "دوش", "سه", "چهار", "پنج", "جمعه", "جمع").forEach {
                             Text(it, color = Tx.Muted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
@@ -154,7 +181,7 @@ fun PerformanceScreen(nav: NavController) {
                         }
                     }
                     selectedHeatmapDay?.let { selectedDay ->
-                        val selectedTrades = trades.filter { it.epochDay == selectedDay }
+                        val selectedTrades = trades.filter { it.epochDay == selectedDay }.sortedBy { it.openedAtMillis }
                         val selectedPnl = dayPnl[selectedDay] ?: 0.0
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -169,18 +196,24 @@ fun PerformanceScreen(nav: NavController) {
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold,
                         )
-                        selectedTrades.take(8).forEach { trade ->
+                        selectedTrades.take(12).forEach { trade ->
                             Text(
-                                trade.tradeName.ifBlank { trade.symbol } + " · " + trade.symbol + " · " + Analytics.money(trade.pnl),
+                                (trade.tradeName.ifBlank { trade.symbol }) +
+                                    " · " + trade.symbol +
+                                    " · " + (if (trade.buy) "خرید" else "فروش") +
+                                    " · " + Analytics.money(trade.pnl),
                                 color = Tx.Muted,
                                 fontSize = 10.sp,
                             )
+                        }
+                        if (selectedTrades.size > 12) {
+                            Text("… و ${selectedTrades.size - 12} معامله دیگر", color = Tx.Muted, fontSize = 10.sp)
                         }
                     }
                 }
             }
         }
-        Reveal(4) {
+        Reveal(5) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("بهترین روز", Analytics.money(best), Tx.Green, Modifier.weight(1f))
                 StatTile("بدترین روز", Analytics.money(worst), Tx.Red, Modifier.weight(1f))
