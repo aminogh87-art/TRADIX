@@ -173,7 +173,7 @@ fun AddTradeScreen(nav: NavController) {
                 }
             }
         }
-        Reveal(5) {
+        Reveal(4) {
             GlassCard(Modifier.fillMaxWidth(), border = resColor.copy(alpha = 0.5f)) {
                 Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     if (!usePriceCalculation) {
@@ -181,6 +181,7 @@ fun AddTradeScreen(nav: NavController) {
                             ResultToggle("سود (Profit)", win, Tx.Green, Modifier.weight(1f)) { win = true }
                             ResultToggle("ضرر (Loss)", !win, Tx.Red, Modifier.weight(1f)) { win = false }
                         }
+                    }
                     Spacer(Modifier.height(8.dp))
                     if (!usePriceCalculation) {
                         Stepper(
@@ -199,7 +200,7 @@ fun AddTradeScreen(nav: NavController) {
                 }
             }
         }
-        Reveal(4) {
+        Reveal(5) {
             GlassCard(Modifier.fillMaxWidth(), border = resColor.copy(alpha = 0.5f)) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
