@@ -53,6 +53,16 @@ fun PerformanceScreen(nav: NavController) {
     var period by remember { mutableStateOf(Period.MONTH) }
     var selectedHeatmapDay by remember { mutableStateOf<Long?>(null) }
     val trades = AppState.visibleTrades.toList()
+    val symbolGroups = remember(trades) {
+        trades.groupBy { it.symbol }.toList()
+            .sortedByDescending { (_, items) -> items.sumOf { it.pnl } }
+            .take(6)
+    }
+    val strategyGroups = remember(trades) {
+        trades.groupBy { it.strategy.ifBlank { "بدون استراتژی" } }.toList()
+            .sortedByDescending { (_, items) -> items.sumOf { it.pnl } }
+            .take(6)
+    }
     val today = AppState.today()
     val windowDays = when (period) {
         Period.DAY -> 1
@@ -225,6 +235,25 @@ fun PerformanceScreen(nav: NavController) {
             }
         }
         Reveal(6) { HeatmapPeriods(trades) }
+        Reveal(7) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("عملکرد بر اساس نماد", "تا ۶ نماد")
+                    if (symbolGroups.isEmpty()) {
+                        Text("پس از ثبت معامله، مقایسهٔ نمادها اینجا نمایش داده می‌شود.", color = Tx.Muted, fontSize = 11.sp)
+                    } else {
+                        symbolGroups.forEach { (symbol, items) -> BreakdownRow(symbol, items) }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    SectionTitle("عملکرد بر اساس استراتژی", "تا ۶ استراتژی")
+                    if (strategyGroups.isEmpty()) {
+                        Text("هنوز معامله‌ای با استراتژی ثبت نشده است.", color = Tx.Muted, fontSize = 11.sp)
+                    } else {
+                        strategyGroups.forEach { (strategy, items) -> BreakdownRow(strategy, items) }
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
     }
 }
@@ -276,5 +305,18 @@ private fun HeatCell(
         contentAlignment = Alignment.Center,
     ) {
         Text(day.toString(), color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun BreakdownRow(label: String, trades: List<com.tradenex.app.data.Trade>) {
+    val net = trades.sumOf { it.pnl }
+    val winRate = trades.count { it.pnl > 0.0 }.toDouble() / trades.size.coerceAtLeast(1) * 100.0
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text("${trades.size} معامله · نرخ برد ${String.format(java.util.Locale.US, "%.0f", winRate)}٪", color = Tx.Muted, fontSize = 10.sp)
+        }
+        Text(Analytics.money(net), color = if (net >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
