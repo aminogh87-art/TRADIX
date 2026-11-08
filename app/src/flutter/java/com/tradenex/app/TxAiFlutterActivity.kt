@@ -8,7 +8,6 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.time.Instant
-import java.time.LocalTime
 
 /**
  * Flutter host boundary for TX AI. Only the selected account's journal fields are exposed;
@@ -62,6 +61,7 @@ class TxAiFlutterActivity : FlutterActivity() {
             "currency" to account.baseCurrency,
             "startingBalance" to account.startingBalance,
             "riskPercent" to AppState.settings.riskPercent,
+            "displayTimezone" to SessionEngine.displayZone(AppState.settings.tzMode).id,
             "trades" to trades.map(::tradePayload),
             "episodeReviews" to AppState.txAiEpisodeReviews
                 .filter { it.accountId == account.id }
@@ -72,7 +72,12 @@ class TxAiFlutterActivity : FlutterActivity() {
         )
     }
 
-    private fun tradePayload(trade: Trade): Map<String, Any?> = mapOf(
+    private fun tradePayload(trade: Trade): Map<String, Any?> {
+        val displayTime = trade.openedAtMillis.takeIf { it > 0L }?.let {
+            Instant.ofEpochMilli(it).atZone(SessionEngine.displayZone(AppState.settings.tzMode))
+        }
+        val displayDate = displayTime?.toLocalDate()
+        return mapOf(
         "id" to trade.id,
         "accountId" to trade.accountId,
         "symbol" to trade.symbol,
@@ -94,7 +99,13 @@ class TxAiFlutterActivity : FlutterActivity() {
         "exitPrice" to trade.exitPrice,
         "stopLossPrice" to trade.stopLossPrice,
         "takeProfitPrice" to trade.takeProfitPrice,
+        "displayHour" to displayTime?.hour,
+        "displayWeekday" to displayTime?.dayOfWeek?.value,
+        "displayMinute" to displayTime?.minute,
+        "displayDateKey" to displayDate?.toString(),
+        "displayMonthKey" to displayDate?.let { "%04d-%02d".format(java.util.Locale.US, it.year, it.monthValue) },
     )
+    }
 
     private fun sessionFor(trade: Trade): String? {
         if (trade.openedAtMillis <= 0L) return null
