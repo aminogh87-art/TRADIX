@@ -91,7 +91,7 @@ fun MoreScreen(nav: NavController) {
     }
     val profileBitmap = remember(photoUri) {
         if (photoUri.isBlank()) null else runCatching {
-            context.contentResolver.openInputStream(Uri.parse(photoUri))?.use(BitmapFactory::decodeStream)?.asImageBitmap()
+            context.contentResolver.openInputStream(Uri.parse(photoUri))?.use { stream -> BitmapFactory.decodeStream(stream)?.asImageBitmap() }
         }.getOrNull()
     }
     val items = listOf(
