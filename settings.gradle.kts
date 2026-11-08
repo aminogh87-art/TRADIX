@@ -8,7 +8,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(
         if (file("flutter_module/.android/include_flutter.groovy").exists()) {
-            RepositoriesMode.PREFER_PROJECT
+            RepositoriesMode.PREFER_SETTINGS
         } else {
             RepositoriesMode.FAIL_ON_PROJECT_REPOS
         }
