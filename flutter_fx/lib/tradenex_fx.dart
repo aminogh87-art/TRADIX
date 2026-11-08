@@ -222,8 +222,8 @@ class TxRadar extends StatelessWidget {
     final x = center + math.cos(angle) * radius;
     final y = center + math.sin(angle) * radius;
     return Positioned(
-      left: (x - 43).clamp(0.0, side - 86),
-      top: (y - 18).clamp(0.0, side - 36),
+      left: (x - 43).clamp(0.0, side - 86).toDouble(),
+      top: (y - 18).clamp(0.0, side - 36).toDouble(),
       width: 86,
       height: 36,
       child: GestureDetector(
@@ -277,7 +277,7 @@ class _TxRadarPainter extends CustomPainter {
     if (values.every((v) => v == null)) return;
     final shape = Path();
     for (var i = 0; i < 6; i++) {
-      final p = point(i, radius * ((values[i] ?? 0).clamp(0, 100) / 100));
+      final p = point(i, radius * ((values[i] ?? 0).clamp(0, 100).toDouble() / 100));
       i == 0 ? shape.moveTo(p.dx, p.dy) : shape.lineTo(p.dx, p.dy);
     }
     shape.close();
@@ -286,7 +286,7 @@ class _TxRadarPainter extends CustomPainter {
     for (var i = 0; i < 6; i++) {
       final v = values[i];
       if (v == null) continue;
-      final p = point(i, radius * (v.clamp(0, 100) / 100));
+      final p = point(i, radius * (v.clamp(0, 100).toDouble() / 100));
       canvas.drawCircle(p, 3.5, Paint()..color = const Color(0xFFFFD36E));
     }
   }
@@ -392,7 +392,7 @@ class TxHeatmap extends StatelessWidget {
 
   Color _heatColor(double? value) {
     if (value == null) return const Color(0xFF18243A);
-    final intensity = (value.abs() / 100).clamp(0.08, .9);
+    final intensity = (value.abs() / 100).clamp(0.08, .9).toDouble();
     return value >= 0
         ? Color.lerp(const Color(0xFF123C4B), const Color(0xFF28D6B0), intensity)!
         : Color.lerp(const Color(0xFF4A2637), const Color(0xFFFF6678), intensity)!;
@@ -412,7 +412,47 @@ class TxCounterfactualSlider extends StatelessWidget {
       Expanded(child: Text(label, style: const TextStyle(color: Color(0xFFB7C9E8), fontSize: 12))),
       Text('${(value * 100).round()}%', style: const TextStyle(color: Color(0xFFFFD36E), fontWeight: FontWeight.w800)),
     ]),
-    Slider(value: value.clamp(.1, 2), min: .1, max: 2, divisions: 19, onChanged: onChanged,
+    Slider(value: value.clamp(.1, 2).toDouble(), min: .1, max: 2, divisions: 19, onChanged: onChanged,
       activeColor: const Color(0xFF55D9F5), inactiveColor: const Color(0xFF263A58)),
   ]);
+}
+
+
+class TxProcessTimeline extends StatelessWidget {
+  const TxProcessTimeline({super.key, required this.months});
+  final List<TxProcessMonth> months;
+
+  @override
+  Widget build(BuildContext context) {
+    if (months.isEmpty) {
+      return const Text('هنوز داده ماهانه کافی ثبت نشده است.', style: TextStyle(color: Color(0xFF91A5C4), fontSize: 12));
+    }
+    return Column(children: [
+      for (final month in months)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(children: [
+            SizedBox(width: 64, child: Text(month.label, style: const TextStyle(color: Color(0xFFB7C9E8), fontSize: 10))),
+            Expanded(child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                minHeight: 8,
+                value: month.score == null ? 0 : month.score!.clamp(0, 100) / 100,
+                backgroundColor: const Color(0xFF1B2A43),
+                valueColor: AlwaysStoppedAnimation(month.score == null ? const Color(0xFF52627A) : const Color(0xFFFFD36E)),
+              ),
+            )),
+            SizedBox(width: 38, child: Text(month.score?.toString() ?? '—', textAlign: TextAlign.end,
+              style: const TextStyle(color: Color(0xFFFFD36E), fontWeight: FontWeight.w800, fontSize: 12))),
+          ]),
+        ),
+    ]);
+  }
+}
+
+class TxProcessMonth {
+  const TxProcessMonth(this.label, this.score);
+  final String label;
+  /// Null means insufficient evidence, not zero.
+  final int? score;
 }
