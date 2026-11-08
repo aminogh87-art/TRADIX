@@ -90,7 +90,7 @@ fun MoreScreen(nav: NavController) {
                     Column(Modifier.weight(1f)) {
                         Text("ترید‌ر حرفه‌ای", color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                         Text(
-                            "${AppState.trades.size} معامله · " + if (NativeCore.isNative) "هسته Rust فعال" else "هسته Kotlin",
+                            "${AppState.visibleTrades.size} معامله · " + if (NativeCore.isNative) "هسته Rust فعال" else "هسته Kotlin",
                             color = Tx.Muted,
                             fontSize = 11.sp,
                         )
@@ -159,7 +159,7 @@ private fun MenuTile(m: MenuItem, modifier: Modifier, onClick: () -> Unit) {
 @Composable
 fun TagsScreen(nav: NavController) {
     var input by remember { mutableStateOf("") }
-    val n = AppState.trades.size
+    val n = AppState.visibleTrades.size
 
     Page(title = "# هشتگ‌ها", onBack = { nav.popBackStack() }) {
         Reveal(0) {
@@ -180,7 +180,7 @@ fun TagsScreen(nav: NavController) {
             }
         }
         AppState.hashtags
-            .map { tag -> Triple(tag, AppState.trades.filter { tag in it.tags }, 0) }
+            .map { tag -> Triple(tag, AppState.visibleTrades.filter { tag in it.tags }, 0) }
             .sortedByDescending { it.second.size }
             .forEachIndexed { i, (tag, used, _) ->
                 Reveal(i + 2) {
