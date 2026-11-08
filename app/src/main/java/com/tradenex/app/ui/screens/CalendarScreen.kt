@@ -76,16 +76,18 @@ fun CalendarScreen(nav: NavController) {
     var filter by remember { mutableStateOf(0) }
     var remind by remember { mutableStateOf(setOf<Int>()) }
     val today = LocalDate.now()
+    var selectedDate by remember { mutableStateOf(today) }
     val todayJalali = JalaliCalendar.fromGregorian(today)
     val monthIndex = todayJalali.year * 12 + todayJalali.month - 1 + offset
     val selectedJalaliYear = Math.floorDiv(monthIndex, 12)
     val selectedJalaliMonth = Math.floorMod(monthIndex, 12) + 1
     val n = AppState.visibleTrades.size
     val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
+    val selectedTrades = remember(n, selectedDate) { AppState.visibleTrades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis } }
     val settings = AppState.settings
 
     Page(title = "تقویم", onBack = { nav.popBackStack() }, trailing = {
-        TxChip("امروز", false, { offset = 0 })
+        TxChip("امروز", false, { offset = 0; selectedDate = today })
     }) {
         Reveal(0) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -125,13 +127,30 @@ fun CalendarScreen(nav: NavController) {
                                         DayCell(
                                             day = day,
                                             isToday = date == today,
+                                            selected = date == selectedDate,
                                             holiday = settings.weekendHoliday && c < 2,
                                             pnl = dayPnl[date.toEpochDay()],
                                             modifier = Modifier.weight(1f),
+                                            onClick = { selectedDate = date },
                                         )
                                     } else {
                                         Spacer(Modifier.weight(1f))
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("معاملات ${jalaliText(selectedDate)}", color = Tx.Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        if (selectedTrades.isEmpty()) {
+                            Text("برای این روز معامله‌ای ثبت نشده است.", color = Tx.Muted, fontSize = 11.sp)
+                        } else {
+                            selectedTrades.forEach { trade ->
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(trade.symbol + " · " + if (trade.buy) "خرید" else "فروش", color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                                    Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -198,17 +217,17 @@ fun CalendarScreen(nav: NavController) {
 }
 
 @Composable
-private fun DayCell(day: Int, isToday: Boolean, holiday: Boolean, pnl: Double?, modifier: Modifier) {
+private fun DayCell(day: Int, isToday: Boolean, selected: Boolean, holiday: Boolean, pnl: Double?, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(11.dp)
-    val base = modifier.height(42.dp).clip(shape)
+    val base = modifier.height(42.dp).clip(shape).clickable(onClick = onClick)
     val styled = when {
         isToday -> base.background(Brush.verticalGradient(listOf(Color(0xFFFFD978), Tx.GoldDeep)))
         holiday -> base.border(1.dp, Color.White.copy(alpha = 0.10f), shape)
         else -> base.background(Color.White.copy(alpha = 0.04f))
-    }
+    }.then(if (selected && !isToday) Modifier.border(1.dp, Tx.Gold, shape) else Modifier)
     Column(styled, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            day.toString(),
+            fa(day),
             color = when {
                 isToday -> Tx.Ink
                 holiday -> Tx.Muted.copy(alpha = 0.6f)
