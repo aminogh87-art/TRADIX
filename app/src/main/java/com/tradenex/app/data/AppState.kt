@@ -87,6 +87,8 @@ object AppState {
         get() = accounts.firstOrNull { it.id == selectedAccountId && !it.archived }
             ?: accounts.firstOrNull { !it.archived }
             ?: TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10_000.0)
+    val visibleTrades: List<Trade>
+        get() = trades.filter { it.accountId == selectedAccountId }
     val strategies = mutableStateListOf(
         Strategy(1, "ICT", listOf("تایید ساختار بازار", "ریسک حداکثر ۱٪", "فقط سشن لندن/نیویورک"), true),
         Strategy(2, "Supply & Demand", listOf("ناحیه تازه", "تایید کندلی"), true),
@@ -120,7 +122,7 @@ object AppState {
         localStore?.writeSnapshot(payload)
     }
 
-    fun stats(): TradeStats = NativeCore.stats(trades.map { it.pnl }.toDoubleArray())
+    fun stats(): TradeStats = NativeCore.stats(visibleTrades.map { it.pnl }.toDoubleArray())
 
     fun addTrade(t: Trade) {
         FxInstrument.standard(t.symbol)
