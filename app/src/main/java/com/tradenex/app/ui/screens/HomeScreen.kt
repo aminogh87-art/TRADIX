@@ -203,7 +203,7 @@ fun HomeScreen(nav: NavController) {
                         }
                         val chartTrades = visibleTrades.filter { it.epochDay > today - chartWindowDays }
                         val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay <= today - chartWindowDays }.sumOf { it.pnl }
-                        val candles = remember(period, visibleTrades, accountStartBalance) {
+                        val candles = remember(period, visibleTrades, accountStartBalance, today) {
                             Analytics.tradeCandles(chartTrades, openingEquity, 60)
                         }
                         if (candles.isEmpty()) {
