@@ -1,0 +1,186 @@
+package com.tradenex.app.data
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import org.json.JSONArray
+import org.json.JSONObject
+
+/**
+ * Atomic local snapshot store. It deliberately uses Android's built-in SQLite API so the
+ * existing Gradle/Kotlin toolchain and UI remain untouched. The JSON payload is versioned;
+ * a future migration can normalize high-volume trade rows without losing existing user data.
+ */
+internal class LocalStore(context: Context) :
+    SQLiteOpenHelper(context.applicationContext, "tradix_local.db", null, DATABASE_VERSION) {
+
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE app_snapshot (id INTEGER PRIMARY KEY CHECK(id = 1), schema_version INTEGER NOT NULL, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)")
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        // Snapshot schema is versioned independently. Never drop a user's journal on upgrade.
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS app_snapshot (id INTEGER PRIMARY KEY CHECK(id = 1), schema_version INTEGER NOT NULL, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)")
+        }
+    }
+
+    @Synchronized
+    fun readSnapshot(): JSONObject? {
+        readableDatabase.rawQuery(
+            "SELECT payload FROM app_snapshot WHERE id = 1",
+            null,
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            return runCatching { JSONObject(cursor.getString(0)) }.getOrNull()
+        }
+    }
+
+    @Synchronized
+    fun writeSnapshot(payload: JSONObject) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val values = ContentValues().apply {
+                put("id", 1)
+                put("schema_version", SNAPSHOT_VERSION)
+                put("payload", payload.toString())
+                put("updated_at", System.currentTimeMillis())
+            }
+            db.insertWithOnConflict("app_snapshot", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        db.setForeignKeyConstraintsEnabled(true)
+        db.enableWriteAheadLogging()
+    }
+
+    companion object {
+        private const val DATABASE_VERSION = 1
+        private const val SNAPSHOT_VERSION = 1
+    }
+}
+
+internal object SnapshotCodec {
+    fun encode(
+        trades: List<Trade>,
+        strategies: List<Strategy>,
+        hashtags: List<String>,
+        lessons: List<Lesson>,
+        settings: AppSettings,
+    ): JSONObject = JSONObject().apply {
+        put("version", 1)
+        put("trades", JSONArray().apply {
+            trades.forEach { t ->
+                put(JSONObject().apply {
+                    put("id", t.id); put("symbol", t.symbol); put("buy", t.buy)
+                    put("lot", t.lot); put("pnl", t.pnl); put("strategy", t.strategy)
+                    put("tags", JSONArray(t.tags)); put("epochDay", t.epochDay); put("emotion", t.emotion)
+                })
+            }
+        })
+        put("strategies", JSONArray().apply {
+            strategies.forEach { s ->
+                put(JSONObject().apply {
+                    put("id", s.id); put("name", s.name); put("rules", JSONArray(s.rules))
+                    put("active", s.active)
+                })
+            }
+        })
+        put("hashtags", JSONArray(hashtags))
+        put("lessons", JSONArray().apply {
+            lessons.forEach { l ->
+                put(JSONObject().apply {
+                    put("id", l.id); put("title", l.title); put("kind", l.kind.name)
+                    put("progress", l.progress.toDouble())
+                })
+            }
+        })
+        put("settings", JSONObject().apply {
+            put("language", settings.language); put("showGlobe", settings.showGlobe)
+            put("tzMode", settings.tzMode); put("reminderOn", settings.reminderOn)
+            put("reminderHour", settings.reminderHour); put("newsImpact", settings.newsImpact)
+            put("startBalance", settings.startBalance); put("defaultLot", settings.defaultLot)
+            put("riskPercent", settings.riskPercent); put("haptics", settings.haptics)
+            put("animations", settings.animations); put("accent", settings.accent)
+            put("weekendHoliday", settings.weekendHoliday); put("sessionAlerts", settings.sessionAlerts)
+            put("newsAlerts", settings.newsAlerts); put("autoBackup", settings.autoBackup)
+            put("hideBalance", settings.hideBalance)
+        })
+    }
+
+    fun restore(snapshot: JSONObject, target: MutableSnapshot) {
+        if (snapshot.optInt("version", 0) != 1) return
+        target.trades.clear()
+        val tradeRows = snapshot.optJSONArray("trades") ?: JSONArray()
+        for (i in 0 until tradeRows.length()) {
+            val row = tradeRows.optJSONObject(i) ?: continue
+            val tags = row.optJSONArray("tags") ?: JSONArray()
+            target.trades.add(
+                Trade(
+                    id = row.optLong("id"),
+                    symbol = row.optString("symbol", "EURUSD"),
+                    buy = row.optBoolean("buy", true),
+                    lot = row.optDouble("lot", 0.1),
+                    pnl = row.optDouble("pnl", 0.0),
+                    strategy = row.optString("strategy", ""),
+                    tags = (0 until tags.length()).mapNotNull { tags.optString(it).takeIf(String::isNotBlank) },
+                    epochDay = row.optLong("epochDay"),
+                    emotion = row.optString("emotion", ""),
+                ),
+            )
+        }
+        target.strategies.clear()
+        val strategyRows = snapshot.optJSONArray("strategies") ?: JSONArray()
+        for (i in 0 until strategyRows.length()) {
+            val row = strategyRows.optJSONObject(i) ?: continue
+            val rules = row.optJSONArray("rules") ?: JSONArray()
+            target.strategies.add(
+                Strategy(
+                    row.optLong("id"), row.optString("name"),
+                    (0 until rules.length()).mapNotNull { rules.optString(it).takeIf(String::isNotBlank) },
+                    row.optBoolean("active", true),
+                ),
+            )
+        }
+        target.hashtags.clear()
+        val tagRows = snapshot.optJSONArray("hashtags") ?: JSONArray()
+        for (i in 0 until tagRows.length()) tagRows.optString(i).takeIf(String::isNotBlank)?.let(target.hashtags::add)
+
+        target.lessons.clear()
+        val lessonRows = snapshot.optJSONArray("lessons") ?: JSONArray()
+        for (i in 0 until lessonRows.length()) {
+            val row = lessonRows.optJSONObject(i) ?: continue
+            val kind = runCatching { ContentKind.valueOf(row.optString("kind")) }.getOrDefault(ContentKind.TEXT)
+            target.lessons.add(Lesson(row.optLong("id"), row.optString("title"), kind, row.optDouble("progress").toFloat().coerceIn(0f, 1f)))
+        }
+
+        snapshot.optJSONObject("settings")?.let { s ->
+            target.settings = AppSettings(
+                language = s.optInt("language", 0), showGlobe = s.optBoolean("showGlobe", true),
+                tzMode = s.optInt("tzMode", 0), reminderOn = s.optBoolean("reminderOn", true),
+                reminderHour = s.optInt("reminderHour", 22).coerceIn(0, 23),
+                newsImpact = s.optInt("newsImpact", 0), startBalance = s.optDouble("startBalance", 10000.0),
+                defaultLot = s.optDouble("defaultLot", 0.1), riskPercent = s.optDouble("riskPercent", 1.0),
+                haptics = s.optBoolean("haptics", true), animations = s.optInt("animations", 1),
+                accent = s.optInt("accent", 0), weekendHoliday = s.optBoolean("weekendHoliday", true),
+                sessionAlerts = s.optBoolean("sessionAlerts", true), newsAlerts = s.optBoolean("newsAlerts", true),
+                autoBackup = s.optBoolean("autoBackup", false), hideBalance = s.optBoolean("hideBalance", false),
+            )
+        }
+    }
+}
+
+internal data class MutableSnapshot(
+    val trades: MutableList<Trade>,
+    val strategies: MutableList<Strategy>,
+    val hashtags: MutableList<String>,
+    val lessons: MutableList<Lesson>,
+    var settings: AppSettings,
+)
