@@ -1,5 +1,8 @@
 package com.tradenex.app.data
 
+import java.time.LocalDate
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import kotlin.math.max
 import kotlin.math.min
 
@@ -12,11 +15,14 @@ enum class Period(val label: String, val count: Int) {
     MONTH("ماهانه", 12),
     YEAR("سالانه", 3);
 
-    fun bucket(epochDay: Long): Long = when (this) {
-        DAY -> epochDay
-        WEEK -> (epochDay + 5) / 7
-        MONTH -> epochDay / 30
-        YEAR -> epochDay / 365
+    fun bucket(epochDay: Long): Long {
+        val date = LocalDate.ofEpochDay(epochDay)
+        return when (this) {
+            DAY -> epochDay
+            WEEK -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toEpochDay()
+            MONTH -> date.year.toLong() * 12L + date.monthValue - 1L
+            YEAR -> date.year.toLong()
+        }
     }
 }
 
