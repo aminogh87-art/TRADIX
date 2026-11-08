@@ -76,7 +76,7 @@ pub fn performance_metrics(pnls: &[f64]) -> [f64; 10] {
     let mut largest_win: f64 = 0.0;
     let mut largest_loss: f64 = 0.0;
     let mut equity = 0.0;
-    let mut peak = 0.0;
+    let mut peak: f64 = 0.0;
     let mut max_dd: f64 = 0.0;
 
     for value in pnls.iter().copied().filter(|v| v.is_finite()) {
