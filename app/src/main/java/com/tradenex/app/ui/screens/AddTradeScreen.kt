@@ -243,7 +243,8 @@ fun AddTradeScreen(nav: NavController) {
         }
         Reveal(7) {
             GoldButton("ذخیره معامله در دفترچه") {
-                if (!usePriceCalculation || priceResult != null) AppState.addTrade(
+                if (!usePriceCalculation || priceResult != null) {
+                    AppState.addTrade(
                     Trade(
                         id = System.currentTimeMillis(),
                         symbol = symbol,
@@ -262,8 +263,9 @@ fun AddTradeScreen(nav: NavController) {
                         swap = swapText.trim().toDoubleOrNull() ?: 0.0,
                         otherFees = feeText.trim().toDoubleOrNull() ?: 0.0,
                     ),
-                )
-                nav.popBackStack()
+                    )
+                    nav.popBackStack()
+                }
             }
         }
         Spacer(Modifier.height(16.dp))
