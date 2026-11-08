@@ -197,13 +197,14 @@ fun HomeScreen(nav: NavController) {
                         }
                         Spacer(Modifier.height(8.dp))
                         val chartWindowDays = when (period) {
-                            Period.DAY -> 7
-                            Period.WEEK -> 30
-                            Period.MONTH -> 90
+                            Period.DAY -> 1
+                            Period.WEEK -> 7
+                            Period.MONTH -> 30
                             Period.YEAR -> 365
                         }
-                        val chartTrades = visibleTrades.filter { it.epochDay > today - chartWindowDays }
-                        val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay <= today - chartWindowDays }.sumOf { it.pnl }
+                        val chartStartDay = today - (chartWindowDays - 1L)
+                        val chartTrades = visibleTrades.filter { it.epochDay >= chartStartDay }
+                        val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay < chartStartDay }.sumOf { it.pnl }
                         val candles = remember(period, visibleTrades, accountStartBalance, today) {
                             Analytics.tradeCandleSeries(chartTrades, openingEquity, 60)
                         }
