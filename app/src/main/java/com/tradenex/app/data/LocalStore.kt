@@ -72,6 +72,7 @@ internal object SnapshotCodec {
         trades: List<Trade>,
         accounts: List<TradingAccount>,
         strategies: List<Strategy>,
+        strategyRevisions: List<StrategyRevision>,
         hashtags: List<String>,
         lessons: List<Lesson>,
         settings: AppSettings,
@@ -107,7 +108,15 @@ internal object SnapshotCodec {
             strategies.forEach { s ->
                 put(JSONObject().apply {
                     put("id", s.id); put("name", s.name); put("rules", JSONArray(s.rules))
-                    put("active", s.active)
+                    put("active", s.active); put("version", s.version)
+                })
+            }
+        })
+        put("strategyRevisions", JSONArray().apply {
+            strategyRevisions.forEach { v ->
+                put(JSONObject().apply {
+                    put("id", v.id); put("strategyId", v.strategyId); put("version", v.version)
+                    put("name", v.name); put("rules", JSONArray(v.rules)); put("createdAt", v.createdAt)
                 })
             }
         })
@@ -188,6 +197,7 @@ internal object SnapshotCodec {
                     otherFees = row.optDouble("otherFees", 0.0),
                     notes = row.optString("notes", ""),
                     plannedRisk = row.optDouble("plannedRisk").takeIf { row.has("plannedRisk") },
+                    strategyVersion = row.optInt("strategyVersion", 1),
                 ),
             )
         }
@@ -201,6 +211,23 @@ internal object SnapshotCodec {
                     row.optLong("id"), row.optString("name"),
                     (0 until rules.length()).mapNotNull { rules.optString(it).takeIf(String::isNotBlank) },
                     row.optBoolean("active", true),
+                    row.optInt("version", 1),
+                ),
+            )
+        }
+        target.strategyRevisions.clear()
+        val revisionRows = snapshot.optJSONArray("strategyRevisions") ?: JSONArray()
+        for (i in 0 until revisionRows.length()) {
+            val row = revisionRows.optJSONObject(i) ?: continue
+            val rules = row.optJSONArray("rules") ?: JSONArray()
+            target.strategyRevisions.add(
+                StrategyRevision(
+                    id = row.optLong("id"),
+                    strategyId = row.optLong("strategyId"),
+                    version = row.optInt("version", 1),
+                    name = row.optString("name"),
+                    rules = (0 until rules.length()).mapNotNull { rules.optString(it).takeIf(String::isNotBlank) },
+                    createdAt = row.optLong("createdAt"),
                 ),
             )
         }
@@ -236,6 +263,7 @@ internal data class MutableSnapshot(
     val trades: MutableList<Trade>,
     val accounts: MutableList<TradingAccount>,
     val strategies: MutableList<Strategy>,
+    val strategyRevisions: MutableList<StrategyRevision>,
     val hashtags: MutableList<String>,
     val lessons: MutableList<Lesson>,
     var settings: AppSettings,
