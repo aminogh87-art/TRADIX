@@ -125,7 +125,7 @@ fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
             }
         }
 
-        if (weekOffset == 0 && LocalDate.now().dayOfWeek.value in 6..7 && previousWeekRecorded.isNotEmpty()) {
+        if (weekOffset == 0 && LocalDate.now().dayOfWeek.value in 6..7) {
             Reveal(2) {
                 GlassCard(Modifier.fillMaxWidth(), border = Tx.Green) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
