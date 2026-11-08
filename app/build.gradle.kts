@@ -36,6 +36,9 @@ android {
     buildFeatures {
         compose = true
     }
+    if (rootProject.findProject(":flutter") != null) {
+        sourceSets.getByName("main").java.srcDir("src/flutter/java")
+    }
 }
 
 dependencies {
@@ -49,5 +52,8 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.2")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    if (rootProject.findProject(":flutter") != null) {
+        implementation(project(":flutter"))
+    }
     testImplementation("junit:junit:4.13.2")
 }
