@@ -3,6 +3,7 @@ package com.tradenex.app.ui.screens
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ fun PerformanceScreen(nav: NavController) {
     val settings = AppState.settings
     val accountStartBalance = AppState.selectedAccount.startingBalance.coerceAtLeast(1.0)
     var period by remember { mutableStateOf(Period.MONTH) }
+    var selectedHeatmapDay by remember { mutableStateOf<Long?>(null) }
     val trades = AppState.visibleTrades.toList()
     val n = trades.size
     val today = AppState.today()
@@ -135,6 +137,8 @@ fun PerformanceScreen(nav: NavController) {
                                     strength = if (pnl == null) 0f else (abs(pnl) / heatScale).toFloat().coerceIn(0f, 1f),
                                     holiday = settings.weekendHoliday && c < 2,
                                     future = d > today,
+                                    selected = selectedHeatmapDay == d,
+                                    onClick = { if (d <= today) selectedHeatmapDay = d },
                                     index = r * 7 + c,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -146,6 +150,30 @@ fun PerformanceScreen(nav: NavController) {
                                 fontWeight = FontWeight.ExtraBold,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.weight(1f).padding(top = 10.dp),
+                            )
+                        }
+                    }
+                    selectedHeatmapDay?.let { selectedDay ->
+                        val selectedTrades = trades.filter { it.epochDay == selectedDay }
+                        val selectedPnl = dayPnl[selectedDay] ?: 0.0
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "جزئیات " + jalaliText(LocalDate.ofEpochDay(selectedDay)) + " · " + selectedTrades.size + " معامله",
+                            color = Tx.Gold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            Analytics.money(selectedPnl),
+                            color = if (selectedPnl >= 0) Tx.Green else Tx.Red,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                        )
+                        selectedTrades.take(8).forEach { trade ->
+                            Text(
+                                trade.tradeName.ifBlank { trade.symbol } + " · " + trade.symbol + " · " + Analytics.money(trade.pnl),
+                                color = Tx.Muted,
+                                fontSize = 10.sp,
                             )
                         }
                     }
@@ -164,7 +192,17 @@ fun PerformanceScreen(nav: NavController) {
 }
 
 @Composable
-private fun HeatCell(day: Int, pnl: Double?, strength: Float, holiday: Boolean, future: Boolean, index: Int, modifier: Modifier) {
+private fun HeatCell(
+    day: Int,
+    pnl: Double?,
+    strength: Float,
+    holiday: Boolean,
+    future: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+    index: Int,
+    modifier: Modifier,
+) {
     var on by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(index * 18L)
@@ -189,7 +227,14 @@ private fun HeatCell(day: Int, pnl: Double?, strength: Float, holiday: Boolean, 
             }
             .clip(shape)
             .background(bg)
-            .then(if (holiday) Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), shape) else Modifier),
+            .clickable(enabled = !future, onClick = onClick)
+            .then(
+                when {
+                    selected -> Modifier.border(1.5.dp, Tx.Gold, shape)
+                    holiday -> Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), shape)
+                    else -> Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(day.toString(), color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
