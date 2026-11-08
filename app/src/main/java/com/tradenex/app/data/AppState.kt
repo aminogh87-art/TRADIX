@@ -55,7 +55,7 @@ data class AppSettings(
 )
 
 object AppState {
-    val trades = mutableStateListOf<Trade>().apply { addAll(seedTrades()) }
+    val trades = mutableStateListOf<Trade>()
     val strategies = mutableStateListOf(
         Strategy(1, "ICT", listOf("تایید ساختار بازار", "ریسک حداکثر ۱٪", "فقط سشن لندن/نیویورک"), true),
         Strategy(2, "Supply & Demand", listOf("ناحیه تازه", "تایید کندلی"), true),
@@ -68,11 +68,34 @@ object AppState {
         Lesson(3, "الگوهای کندلی کلیدی", ContentKind.IMAGE_TEXT, 0.3f),
     )
     var settings by mutableStateOf(AppSettings())
+    private var localStore: LocalStore? = null
+
+    /** Load durable user data once, before Compose builds the first screen. */
+    fun initialize(context: android.content.Context) {
+        if (localStore != null) return
+        localStore = LocalStore(context)
+        val snapshot = localStore?.readSnapshot()
+        if (snapshot != null) {
+            SnapshotCodec.restore(
+                snapshot,
+                MutableSnapshot(trades, strategies, hashtags, lessons, settings),
+            )
+        }
+    }
+
+    /** Atomic save called after mutations and whenever the activity leaves the foreground. */
+    fun persist() {
+        val payload = SnapshotCodec.encode(trades, strategies, hashtags, lessons, settings)
+        localStore?.writeSnapshot(payload)
+    }
 
     fun stats(): TradeStats = NativeCore.stats(trades.map { it.pnl }.toDoubleArray())
 
     fun addTrade(t: Trade) {
+        require(t.symbol.matches(Regex("[A-Z]{6}"))) { "Only Forex currency pairs are supported." }
+        require(t.lot > 0.0 && t.pnl.isFinite()) { "Trade volume and P&L must be valid." }
         trades.add(t)
+        persist()
     }
 
     fun today(): Long = LocalDate.now().toEpochDay()
