@@ -34,6 +34,7 @@ data class Trade(
     val strategyVersion: Int = 1,
     val timeframe: String = "",
     val marketCondition: String = "",
+    val strategyFollowed: Boolean? = null,
 )
 
 data class TradingAccount(
