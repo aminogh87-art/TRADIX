@@ -50,15 +50,13 @@ class TxRustMetrics {
 /// Dart-to-Rust bridge. The host app must package the matching
 /// libtradenex_core.so for each Android ABI before constructing this class.
 class TxRustAnalytics {
-  TxRustAnalytics._(this._library)
-      : _calculate = _library.lookupFunction<_NativeMetrics, _DartMetrics>(
+  TxRustAnalytics._(DynamicLibrary library)
+      : _calculate = library.lookupFunction<_NativeMetrics, _DartMetrics>(
           'tx_ai_performance_metrics',
         ),
-        _revenge = _library.lookupFunction<_NativeRevenge, _DartRevenge>(
+        _revenge = library.lookupFunction<_NativeRevenge, _DartRevenge>(
           'tx_ai_revenge_evidence',
         );
-
-  final DynamicLibrary _library;
   final _DartMetrics _calculate;
   final _DartRevenge _revenge;
 
