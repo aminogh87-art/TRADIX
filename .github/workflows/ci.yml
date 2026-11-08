@@ -14,8 +14,13 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
       - run: cargo test --manifest-path rust/Cargo.toml
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
       - name: Install Android NDK
-        run: yes | sdkmanager --licenses && sdkmanager --install "ndk;27.0.12077973"
+        run: sdkmanager --install "ndk;27.0.12077973"
       - name: Build Rust shared libraries for Android ABIs
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> "$GITHUB_ENV"
