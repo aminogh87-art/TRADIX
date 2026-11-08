@@ -118,7 +118,7 @@ fun CalendarScreen(nav: NavController) {
 
     Page(title = "تقویم", onBack = { nav.popBackStack() }, trailing = {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconBox(Icons.Rounded.Refresh, "تازه‌سازی اخبار") { refreshCounter++ }
+            IconBox(Icons.Rounded.Refresh, "تازه‌سازی اخبار") { if (!newsLoading) refreshCounter++ }
             TxChip("امروز", false, { offset = 0; selectedDate = today })
         }
     }) {
