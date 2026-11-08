@@ -48,7 +48,8 @@ import kotlin.math.abs
 fun PerformanceScreen(nav: NavController) {
     val settings = AppState.settings
     var period by remember { mutableStateOf(Period.MONTH) }
-    val n = AppState.visibleTrades.size
+    val trades = AppState.visibleTrades.toList()
+    val n = trades.size
     val today = AppState.today()
     val windowDays = when (period) {
         Period.DAY -> 7
@@ -56,15 +57,15 @@ fun PerformanceScreen(nav: NavController) {
         Period.MONTH -> 90
         Period.YEAR -> 365
     }
-    val windowed = remember(period, n) { AppState.visibleTrades.filter { it.epochDay > today - windowDays } }
-    val stats = remember(period, n) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
-    val candles = remember(period, n) { Analytics.tradeCandles(windowed, settings.startBalance, 60) }
-    val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
+    val windowed = remember(period, trades) { trades.filter { it.epochDay > today - windowDays } }
+    val stats = remember(period, windowed) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
+    val candles = remember(period, windowed) { Analytics.tradeCandles(windowed, settings.startBalance, 60) }
+    val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
     val heatScale = (dayPnl.filterKeys { it > today - 35 && it <= today }.values.maxOfOrNull { abs(it) } ?: 0.0).coerceAtLeast(1.0)
     val best = inWindow.values.maxOrNull() ?: 0.0
     val worst = inWindow.values.minOrNull() ?: 0.0
-    val noTrade = Analytics.noTradeDays(AppState.visibleTrades, today, 35, settings.weekendHoliday)
+    val noTrade = Analytics.noTradeDays(trades, today, 35, settings.weekendHoliday)
     val netColor = if (stats.net >= 0) Tx.Green else Tx.Red
 
     Page(title = "عملکرد من") {
