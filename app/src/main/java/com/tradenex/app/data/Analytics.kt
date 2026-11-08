@@ -8,6 +8,16 @@ import kotlin.math.min
 
 data class Candle(val o: Double, val h: Double, val l: Double, val c: Double)
 
+data class TradeCandle(
+    val tradeId: Long,
+    val tradeName: String,
+    val symbol: String,
+    val side: String,
+    val lot: Double,
+    val pnl: Double,
+    val candle: Candle,
+)
+
 /** Equity-curve candles are built per bucket of [bucket] days. Day 0 (1970-01-01) was a Thursday. */
 enum class Period(val label: String, val count: Int) {
     DAY("روزانه", 24),
@@ -32,18 +42,32 @@ object Analytics {
      * With journal-only data the high/low are the two observable equity points
      * (before and after the trade); intratrade excursions are intentionally not invented.
      */
-    fun tradeCandles(trades: List<Trade>, startBalance: Double, limit: Int = 60): List<Candle> {
+    fun tradeCandleSeries(trades: List<Trade>, startBalance: Double, limit: Int = 60): List<TradeCandle> {
+        require(startBalance.isFinite()) { "Starting balance must be finite." }
         var equity = startBalance
-        val out = ArrayList<Candle>(trades.size)
-        val ordered = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
+        val out = ArrayList<TradeCandle>(trades.size)
+        val ordered = trades.asSequence()
+            .filter { it.pnl.isFinite() }
+            .sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis }.thenBy { it.id })
         for (trade in ordered) {
             val open = equity
             val close = equity + trade.pnl
-            out += Candle(open, max(open, close), min(open, close), close)
+            out += TradeCandle(
+                tradeId = trade.id,
+                tradeName = trade.tradeName.trim().ifEmpty { trade.symbol },
+                symbol = trade.symbol,
+                side = if (trade.buy) "BUY" else "SELL",
+                lot = trade.lot,
+                pnl = trade.pnl,
+                candle = Candle(open, max(open, close), min(open, close), close),
+            )
             equity = close
         }
         return out.takeLast(limit.coerceAtLeast(1))
     }
+
+    fun tradeCandles(trades: List<Trade>, startBalance: Double, limit: Int = 60): List<Candle> =
+        tradeCandleSeries(trades, startBalance, limit).map { it.candle }
 
     /** Legacy period aggregation retained for callers that explicitly need bucket candles. */
     fun candles(trades: List<Trade>, period: Period, startBalance: Double): List<Candle> {
@@ -69,13 +93,13 @@ object Analytics {
         trades.groupBy { it.epochDay }.mapValues { (_, v) -> v.sumOf { it.pnl } }
 
     /** Saturday-first column index: 0 Sat, 1 Sun, 2 Mon ... 6 Fri. */
-    fun column(epochDay: Long): Int = ((epochDay + 5) % 7).toInt()
+    fun column(epochDay: Long): Int = Math.floorMod(epochDay + 5L, 7L).toInt()
 
     fun noTradeDays(trades: List<Trade>, today: Long, lookback: Int, weekendHoliday: Boolean): Int {
         val days = trades.map { it.epochDay }.toSet()
         var n = 0
         for (d in (today - lookback + 1)..today) {
-            if (weekendHoliday && column(d) < 2) continue
+            if (weekendHoliday && column(d) == 6) continue
             if (d !in days) n++
         }
         return n
