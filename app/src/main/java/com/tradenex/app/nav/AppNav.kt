@@ -23,6 +23,7 @@ import com.tradenex.app.ui.components.TxBottomBar
 import com.tradenex.app.ui.screens.AccountsScreen
 import com.tradenex.app.ui.screens.AddTradeScreen
 import com.tradenex.app.ui.screens.CalendarScreen
+import com.tradenex.app.ui.screens.CalculatorScreen
 import com.tradenex.app.ui.screens.EducationScreen
 import com.tradenex.app.ui.screens.HomeScreen
 import com.tradenex.app.ui.screens.MoreScreen
@@ -78,6 +79,7 @@ fun AppNav(startDestination: String = "home") {
                     composable("sessions") { SessionsScreen(nav) }
                     composable("strategies") { StrategiesScreen(nav) }
                     composable("calendar") { CalendarScreen(nav) }
+                    composable("calculator") { CalculatorScreen(nav) }
                     composable("tags") { TagsScreen(nav) }
                     composable("settings") { SettingsScreen(nav) }
                 }
