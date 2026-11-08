@@ -1,10 +1,14 @@
 package com.tradenex.app.data
 
+import com.tradenex.app.core.SessionEngine
+import java.time.Instant
+
 /** Observable journal patterns; these labels are not diagnoses or causal claims. */
 enum class TxAiBehaviorPatternType(val label: String) {
     OVERTRADING_AFTER_WIN("افزایش تراکم معاملات پس از برد"),
     SIZE_UP_AFTER_WIN("افزایش حجم پس از برد"),
     EXIT_BEFORE_TARGET("خروج ثبت‌شده پیش از حدسود"),
+    SESSION_DRIFT("معامله خارج از سشن مجاز استراتژی"),
 }
 
 data class TxAiBehaviorPattern(
@@ -28,7 +32,11 @@ object TxAiBehavioralPatternAnalyzer {
     private const val MIN_POST_WIN_TRADES = 3
     private const val INCREASE_THRESHOLD = 1.25
 
-    fun analyze(trades: List<Trade>): List<TxAiBehaviorPattern> {
+    fun analyze(
+        trades: List<Trade>,
+        strategies: List<Strategy> = emptyList(),
+        revisions: List<StrategyRevision> = emptyList(),
+    ): List<TxAiBehaviorPattern> {
         val output = mutableListOf<TxAiBehaviorPattern>()
         trades.groupBy { it.accountId }.forEach { (accountId, accountTrades) ->
             val ordered = accountTrades.sortedWith(
@@ -85,6 +93,53 @@ object TxAiBehavioralPatternAnalyzer {
                         "افزایش حجم یک رفتار قابل مشاهده است؛ انگیزه یا اعتمادبه‌نفس از آن استنباط نمی‌شود.",
                     ),
                 )
+            }
+
+            if (strategies.isNotEmpty()) {
+                ordered.forEach { trade ->
+                    if (trade.openedAtMillis <= 0L || trade.strategy.isBlank()) return@forEach
+                    val revision = revisions.lastOrNull {
+                        it.name.equals(trade.strategy, ignoreCase = true) &&
+                            it.version == trade.strategyVersion
+                    }
+                    val strategy = strategies.firstOrNull {
+                        it.name.equals(trade.strategy, ignoreCase = true)
+                    }
+                    val rules = revision?.rules ?: strategy?.rules.orEmpty()
+                    val ruleText = rules.joinToString(" ").lowercase()
+                    val allowedSessions = listOf(
+                        "Sydney" to listOf("sydney", "سیدنی"),
+                        "Tokyo" to listOf("tokyo", "توکیو"),
+                        "London" to listOf("london", "لندن"),
+                        "New York" to listOf("new york", "نیویورک"),
+                    ).filter { (_, terms) -> terms.any(ruleText::contains) }
+                        .map { it.first }
+                        .toSet()
+                    if (allowedSessions.isEmpty()) return@forEach
+                    val instant = Instant.ofEpochMilli(trade.openedAtMillis)
+                    val actualSession = SessionEngine.defs.firstOrNull { definition ->
+                        val local = instant.atZone(definition.zoneId).toLocalTime()
+                        if (definition.localOpen < definition.localClose) {
+                            !local.isBefore(definition.localOpen) && local.isBefore(definition.localClose)
+                        } else {
+                            !local.isBefore(definition.localOpen) || local.isBefore(definition.localClose)
+                        }
+                    }?.name ?: return@forEach
+                    if (actualSession in allowedSessions) return@forEach
+                    output += TxAiBehaviorPattern(
+                        id = "$accountId:session-drift:${trade.id}",
+                        accountId = accountId,
+                        type = TxAiBehaviorPatternType.SESSION_DRIFT,
+                        triggerTradeId = trade.id,
+                        linkedTradeIds = listOf(trade.id),
+                        evidenceScore = 30,
+                        actualNetPnl = trade.pnl,
+                        reasons = listOf(
+                            "زمان ورود در سشن $actualSession ثبت شده، اما قوانین نسخه استراتژی فقط این سشن‌ها را نام برده‌اند: ${allowedSessions.joinToString("، ")}.",
+                            "این هشدار فقط وقتی فعال می‌شود که قانون استراتژی نام سشن مجاز را صریحاً ثبت کرده باشد.",
+                        ),
+                    )
+                }
             }
 
             ordered.forEach { trade ->
