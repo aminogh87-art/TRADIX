@@ -116,6 +116,28 @@ pub fn performance_metrics(pnls: &[f64]) -> [f64; 10] {
     ]
 }
 
+/// C ABI for Dart FFI. Returns 0 on success, -1 for invalid pointers/length.
+/// The caller owns both buffers and guarantees they are valid for the supplied lengths.
+#[no_mangle]
+pub unsafe extern "C" fn tx_ai_performance_metrics(
+    pnls_ptr: *const f64,
+    pnls_len: usize,
+    output_ptr: *mut f64,
+    output_len: usize,
+) -> i32 {
+    if output_ptr.is_null() || output_len < 10 || (pnls_len > 0 && pnls_ptr.is_null()) {
+        return -1;
+    }
+    let pnls = if pnls_len == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(pnls_ptr, pnls_len)
+    };
+    let metrics = performance_metrics(pnls);
+    std::ptr::copy_nonoverlapping(metrics.as_ptr(), output_ptr, metrics.len());
+    0
+}
+
 /// [net, win_rate (0..1), profit_factor, max_drawdown (<= 0)]
 pub fn stats(pnls: &[f64]) -> [f64; 4] {
     if pnls.is_empty() {
