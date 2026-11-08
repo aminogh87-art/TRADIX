@@ -56,6 +56,7 @@ fun TradesScreen(nav: NavController) {
     var commissionText by remember { mutableStateOf("") }
     var swapText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
+    var complianceEdit by remember { mutableStateOf<Boolean?>(null) }
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri != null) {
@@ -140,6 +141,7 @@ fun TradesScreen(nav: NavController) {
                             commissionText = trade.commission.toString()
                             swapText = trade.swap.toString()
                             notesText = trade.notes
+                            complianceEdit = trade.strategyFollowed
                         })
                         Icon(Icons.Rounded.Delete, "حذف معامله", tint = Tx.Muted, modifier = Modifier.clickable { deleting = trade })
                     }
@@ -171,6 +173,12 @@ fun TradesScreen(nav: NavController) {
                         TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
                     }
                     TxField(notesText, { notesText = it }, "Notes")
+                    Text("پایبندی به استراتژی", color = Tx.Muted, fontSize = 11.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        TxChip("طبق پلن", complianceEdit == true, { complianceEdit = true })
+                        TxChip("خارج از پلن", complianceEdit == false, { complianceEdit = false })
+                        TxChip("ثبت نشده", complianceEdit == null, { complianceEdit = null })
+                    }
                 }
             },
             confirmButton = {
@@ -190,6 +198,7 @@ fun TradesScreen(nav: NavController) {
                                 commission = commissionText.toDoubleOrNull() ?: 0.0,
                                 swap = swapText.toDoubleOrNull() ?: 0.0,
                                 notes = notesText.trim(),
+                                strategyFollowed = complianceEdit,
                             )
                             AppState.persist()
                         }
