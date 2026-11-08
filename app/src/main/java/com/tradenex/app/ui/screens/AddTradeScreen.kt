@@ -128,7 +128,7 @@ fun AddTradeScreen(nav: NavController) {
     val signed = if (usePriceCalculation) priceResult?.netAccountCurrency?.toDouble() ?: 0.0 else if (win) amount else -amount
     val animated by animateFloatAsState(signed.toFloat(), tween(450), label = "net")
     val resColor = if (signed >= 0.0) Tx.Green else Tx.Red
-    val riskUsd = settings.startBalance * settings.riskPercent / 100.0
+    val riskUsd = AppState.selectedAccount.startingBalance * settings.riskPercent / 100.0
     val overRisk = if (usePriceCalculation) signed < -riskUsd else !win && amount > riskUsd
 
     Page(title = "ثبت معامله", onBack = { nav.popBackStack() }) {
@@ -241,7 +241,7 @@ fun AddTradeScreen(nav: NavController) {
                     }
                     Column(Modifier.weight(1f)) {
                         RowLabelCompact("هر لات", Analytics.money(signed / lot), resColor)
-                        RowLabelCompact("از بالانس", String.format(java.util.Locale.US, "%+.2f%%", signed / settings.startBalance * 100), resColor)
+                        RowLabelCompact("از بالانس", String.format(java.util.Locale.US, "%+.2f%%", signed / AppState.selectedAccount.startingBalance.coerceAtLeast(1.0) * 100), resColor)
                         RowLabelCompact("ریسک مجاز", AppState.selectedAccount.baseCurrency + " " + String.format(java.util.Locale.US, "%,.0f", riskUsd), Tx.Muted)
                     }
                 }
