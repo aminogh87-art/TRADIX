@@ -95,7 +95,7 @@ class TxRustAnalytics {
         gapMinutes ?? 0, gapMinutes == null ? 0 : 1, previousWasLoss ? 1 : 0,
         previousRisk ?? 0, currentRisk ?? 0, previousLot ?? 0, currentLot ?? 0,
         planViolation ? 1 : 0, revengeTag ? 1 : 0, emotionalSignal ? 1 : 0,
-        priorLossStreak.clamp(0, 0xFFFFFFFF), output, 3,
+        priorLossStreak.clamp(0, 0xFFFFFFFF).toInt(), output, 3,
       );
       if (status != 0) {
         throw StateError('Rust revenge analyzer rejected the output buffer (status $status).');
