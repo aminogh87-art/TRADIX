@@ -363,7 +363,10 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         ),
         SingleChildScrollView(
           padding: const EdgeInsets.all(12),
-          child: TxBehavioralLab(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TxBehavioralLab(
           accountId: account.accountId,
           episodes: revengeEpisodes,
           onReviewChanged: (episodeId, review) {
@@ -386,6 +389,31 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
             }));
           },
           onShowTrades: (ids) => _showLinkedTrades(context, trades, ids, account.currency),
+              ),
+              TxBehavioralPatternFeed(
+                patterns: account.behavioralPatterns,
+                onReviewChanged: (patternId, review) {
+                  final status = switch (review) {
+                    TxBehavioralReview.confirmed => 'confirmed',
+                    TxBehavioralReview.notRevenge => 'not_revenge',
+                    TxBehavioralReview.unsure => 'unsure',
+                    TxBehavioralReview.unreviewed => 'unsure',
+                  };
+                  unawaited(_bridge.saveEpisodeReview(
+                    accountId: account.accountId,
+                    episodeId: patternId,
+                    status: status,
+                  ).catchError((Object error) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('ذخیره بازبینی ناموفق بود: $error')),
+                      );
+                    }
+                  }));
+                },
+                onShowTrades: (ids) => _showLinkedTrades(context, trades, ids, account.currency),
+              ),
+            ],
           ),
         ),
         ListView(
