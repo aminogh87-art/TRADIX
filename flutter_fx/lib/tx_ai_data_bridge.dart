@@ -26,6 +26,11 @@ class TxAiTradeRecord {
     this.exitPrice,
     this.stopLossPrice,
     this.takeProfitPrice,
+    this.displayHour,
+    this.displayWeekday,
+    this.displayMinute,
+    this.displayDateKey,
+    this.displayMonthKey,
   });
 
   final int id;
@@ -49,6 +54,11 @@ class TxAiTradeRecord {
   final double? exitPrice;
   final double? stopLossPrice;
   final double? takeProfitPrice;
+  final int? displayHour;
+  final int? displayWeekday;
+  final int? displayMinute;
+  final String? displayDateKey;
+  final String? displayMonthKey;
 
   static TxAiTradeRecord? fromMap(
     Map<Object?, Object?> map, {
@@ -90,6 +100,11 @@ class TxAiTradeRecord {
       exitPrice: _finiteNumber(map['exitPrice']),
       stopLossPrice: _finiteNumber(map['stopLossPrice']),
       takeProfitPrice: _finiteNumber(map['takeProfitPrice']),
+      displayHour: map['displayHour'] is int ? map['displayHour'] as int : null,
+      displayWeekday: map['displayWeekday'] is int ? map['displayWeekday'] as int : null,
+      displayMinute: map['displayMinute'] is int ? map['displayMinute'] as int : null,
+      displayDateKey: map['displayDateKey'] is String ? map['displayDateKey'] as String : null,
+      displayMonthKey: map['displayMonthKey'] is String ? map['displayMonthKey'] as String : null,
     );
   }
 }
@@ -102,6 +117,7 @@ class TxAiAccountSnapshot {
     required this.trades,
     this.startingBalance = 0,
     this.riskPercent = 1.0,
+    this.displayTimezone = 'UTC',
     this.episodeReviews = const <String, String>{},
     this.pinnedInsights = const <String>{},
   });
@@ -112,6 +128,7 @@ class TxAiAccountSnapshot {
   final List<TxAiTradeRecord> trades;
   final double startingBalance;
   final double riskPercent;
+  final String displayTimezone;
   final Map<String, String> episodeReviews;
   final Set<String> pinnedInsights;
 
@@ -163,6 +180,7 @@ class TxAiAccountSnapshot {
       trades: List<TxAiTradeRecord>.unmodifiable(trades),
       startingBalance: _finiteNumber(map['startingBalance']) ?? 0,
       riskPercent: _finiteNumber(map['riskPercent']) ?? 1.0,
+      displayTimezone: map['displayTimezone'] is String ? map['displayTimezone'] as String : 'UTC',
       episodeReviews: Map<String, String>.unmodifiable(reviews),
       pinnedInsights: Set<String>.unmodifiable(pins),
     );
