@@ -1,5 +1,12 @@
 package com.tradenex.app.ui.screens
 
+import android.app.Activity
+import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,14 +19,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.TextFields
-import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,166 +42,231 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.navigation.NavController
-import com.tradenex.app.data.AppState
-import com.tradenex.app.data.ContentKind
-import com.tradenex.app.data.Lesson
+import com.google.zxing.integration.android.IntentIntegrator
+import com.tradenex.app.data.EducationBlock
+import com.tradenex.app.data.EducationBlockType
+import com.tradenex.app.data.EducationLesson
+import com.tradenex.app.data.EducationQr
+import com.tradenex.app.data.EducationStore
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
 import com.tradenex.app.ui.components.SectionTitle
 import com.tradenex.app.ui.components.TxChip
 import com.tradenex.app.ui.theme.Tx
-
-private val filters = listOf("همه", "متن", "عکس", "ویدیو", "ترکیبی")
-
-private fun group(k: ContentKind): Int = when (k) {
-    ContentKind.TEXT -> 1
-    ContentKind.IMAGE -> 2
-    ContentKind.VIDEO -> 3
-    else -> 4
-}
-
-private fun icons(k: ContentKind): List<ImageVector> = when (k) {
-    ContentKind.TEXT -> listOf(Icons.Rounded.TextFields)
-    ContentKind.IMAGE -> listOf(Icons.Rounded.Image)
-    ContentKind.VIDEO -> listOf(Icons.Rounded.Videocam)
-    ContentKind.TEXT_IMAGE -> listOf(Icons.Rounded.TextFields, Icons.Rounded.Image)
-    ContentKind.IMAGE_TEXT -> listOf(Icons.Rounded.Image, Icons.Rounded.TextFields)
-    ContentKind.TEXT_VIDEO -> listOf(Icons.Rounded.TextFields, Icons.Rounded.Videocam)
-    ContentKind.VIDEO_TEXT -> listOf(Icons.Rounded.Videocam, Icons.Rounded.TextFields)
-}
-
-private fun tint(k: ContentKind): Color = when (group(k)) {
-    1 -> Tx.Gold
-    2 -> Tx.Green
-    3 -> Tx.Purple
-    else -> Tx.Blue
-}
+import java.io.File
 
 @Composable
 fun EducationScreen(nav: NavController) {
-    var filter by remember { mutableStateOf(0) }
-    var creating by remember { mutableStateOf<ContentKind?>(null) }
-    var title by remember { mutableStateOf("") }
-    var qrInfo by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var filter by remember { mutableStateOf("همه") }
+    var newTitle by remember { mutableStateOf("") }
+    var textDraft by remember { mutableStateOf("") }
+    var creating by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<Long?>(null) }
+    var qrLesson by remember { mutableStateOf<EducationLesson?>(null) }
+    var qrBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var message by remember { mutableStateOf("") }
 
-    val shown = AppState.lessons.filter { filter == 0 || group(it.kind) == filter }
-
-    Page(title = "آموزش و دانش") {
-        Reveal(0) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                filters.forEachIndexed { i, f -> TxChip(f, filter == i, { filter = i }) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { uri ->
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            val lessonId = selected
+            if (lessonId != null) {
+                val mime = context.contentResolver.getType(uri).orEmpty()
+                val type = when {
+                    mime.startsWith("image/") -> EducationBlockType.IMAGE
+                    mime.startsWith("video/") -> EducationBlockType.VIDEO
+                    else -> EducationBlockType.FILE
+                }
+                EducationStore.addBlock(lessonId, EducationBlock(type = type, uri = uri.toString(), mimeType = mime, displayName = uri.lastPathSegment?.substringAfterLast('/') ?: "فایل پیوست"))
             }
         }
-        shown.forEachIndexed { i, l ->
-            Reveal(i + 1) { LessonCard(l, onShare = { qrInfo = true }) }
+    }
+    val scanner = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanned = IntentIntegrator.parseActivityResult(Activity.RESULT_OK, result.data)?.contents
+            val imported = runCatching { scanned?.let(EducationQr::decodePayload) }.getOrNull()
+            if (imported != null) {
+                EducationStore.importTextLesson(imported.first, imported.second)
+                message = "درس متنی با موفقیت دریافت شد."
+            } else if (scanned != null) message = "این QR متعلق به یک درس TRADIX نیست یا قابل خواندن نیست."
         }
-        Reveal(shown.size + 1) {
+    }
+
+    val categories = listOf("همه", "متن", "عکس", "ویدیو", "فایل")
+    val visible = EducationStore.lessons.filter { lesson ->
+        filter == "همه" || lesson.blocks.any { block ->
+            when (filter) {
+                "متن" -> block.type == EducationBlockType.TEXT
+                "عکس" -> block.type == EducationBlockType.IMAGE
+                "ویدیو" -> block.type == EducationBlockType.VIDEO
+                else -> block.type == EducationBlockType.FILE
+            }
+        }
+    }
+
+    Page(title = "آموزش و دانش", onBack = { nav.popBackStack() }) {
+        Reveal(0) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SectionTitle("ساخت محتوای جدید", "هر ترکیبی که بخواهی")
-                    ContentKind.entries.chunked(4).forEach { row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { k -> KindTile(k, Modifier.weight(1f)) { creating = k; title = "" } }
-                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-                        }
+                    SectionTitle("کتابخانه آموزشی", "درس‌ها، فایل‌ها و یادداشت‌های شخصی")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        categories.forEach { TxChip(it, filter == it, { filter = it }) }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .border(1.dp, Tx.Blue.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                                .clickable { qrInfo = true },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(Icons.Rounded.QrCode2, null, tint = Tx.Blue)
-                            Text("  دریافت درس با QR", color = Tx.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
+                        TxChip("＋ ساخت درس", true, { creating = true })
+                        TxChip("اسکن QR", false, {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                val intent = IntentIntegrator(activity).setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                                    .setPrompt("QR درس TRADIX را اسکن کن").setBeepEnabled(false).createScanIntent()
+                                scanner.launch(intent)
+                            } else message = "اسکنر در این محیط در دسترس نیست."
+                        })
                     }
                 }
+            }
+        }
+
+        visible.forEachIndexed { index, lesson ->
+            Reveal(index + 1) {
+                LessonRow(lesson, onOpen = { selected = if (selected == lesson.id) null else lesson.id }, onQr = {
+                    runCatching {
+                        qrLesson = lesson
+                        qrBitmap = EducationQr.bitmap(EducationQr.encode(lesson))
+                    }.onFailure { message = it.message ?: "ساخت QR ممکن نشد." }
+                }, onDelete = { EducationStore.delete(lesson.id); if (selected == lesson.id) selected = null })
+                if (selected == lesson.id) {
+                    LessonEditor(lesson, onText = { text ->
+                        if (text.isNotBlank()) EducationStore.addBlock(lesson.id, EducationBlock(type = EducationBlockType.TEXT, text = text.trim()))
+                    }, onPick = { imagePicker.launch(arrayOf("image/*", "video/*", "application/pdf", "text/plain", "application/*")) },
+                        onProgress = { EducationStore.updateProgress(lesson.id, it) })
+                }
+            }
+        }
+        if (visible.isEmpty()) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("هنوز درسی ثبت نشده. اولین مبحث آموزشی خودت را بساز.", color = Tx.Muted, modifier = Modifier.padding(16.dp), fontSize = 12.sp)
             }
         }
         Spacer(Modifier.height(12.dp))
     }
 
-    creating?.let { kind ->
+    if (creating) {
         AlertDialog(
-            onDismissRequest = { creating = null },
+            onDismissRequest = { creating = false },
             containerColor = Color(0xFF14141A),
-            title = { Text(kind.label, color = Tx.Text) },
-            text = { TxField(title, { title = it }, "عنوان درس") },
+            title = { Text("ساخت مبحث آموزشی", color = Tx.Text) },
+            text = { TxField(newTitle, { newTitle = it }, "عنوان مبحث") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (title.isNotBlank()) {
-                        AppState.lessons.add(Lesson(System.currentTimeMillis(), title.trim(), kind, 0f))
-                    }
-                    creating = null
-                }) { Text("افزودن", color = Tx.Gold) }
+                    if (newTitle.isNotBlank()) selected = EducationStore.add(newTitle).id
+                    newTitle = ""; creating = false
+                }) { Text("ساخت", color = Tx.Gold) }
             },
-            dismissButton = { TextButton(onClick = { creating = null }) { Text("انصراف", color = Tx.Muted) } },
+            dismissButton = { TextButton(onClick = { creating = false }) { Text("انصراف", color = Tx.Muted) } },
         )
     }
-    if (qrInfo) {
+    if (qrLesson != null && qrBitmap != null) {
         AlertDialog(
-            onDismissRequest = { qrInfo = false },
+            onDismissRequest = { qrLesson = null; qrBitmap = null },
             containerColor = Color(0xFF14141A),
-            title = { Text("اشتراک با QR", color = Tx.Text) },
-            text = { Text("ساخت و اسکن QR برای ارسال درس به دوستان در نسخه بعدی اضافه می‌شود.", color = Tx.Muted) },
-            confirmButton = { TextButton(onClick = { qrInfo = false }) { Text("باشه", color = Tx.Gold) } },
+            title = { Text("QR: ${qrLesson!!.title}", color = Tx.Text) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Image(qrBitmap!!.asImageBitmap(), contentDescription = "QR code for lesson", modifier = Modifier.size(240.dp).clip(RoundedCornerShape(8.dp)))
+                    Text("این QR عنوان و متن‌های درس را منتقل می‌کند. فایل‌های عکس، ویدیو و PDF باید همراه QR از طریق اشتراک‌گذاری فایل ارسال شوند.", color = Tx.Muted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        val payload = EducationQr.encode(qrLesson!!)
+                        val dir = File(context.cacheDir, "shared_qr").apply { mkdirs() }
+                        val file = File(dir, "tradix_lesson_${qrLesson!!.id}.png")
+                        file.outputStream().use { qrBitmap!!.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        val attachments = qrLesson!!.blocks.mapNotNull { it.uri.takeIf(String::isNotBlank)?.let(Uri::parse) }
+                        val streams = arrayListOf(uri).apply { addAll(attachments) }
+                        val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = "*/*"
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, streams)
+                            putExtra(Intent.EXTRA_TEXT, "درس TRADIX: ${qrLesson!!.title}\nکد واردسازی: $payload")
+                            clipData = ClipData.newUri(context.contentResolver, "درس TRADIX", uri)
+                            attachments.forEach { clipData?.addItem(ClipData.Item(it)) }
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(send, "اشتراک‌گذاری درس TRADIX"))
+                    }.onFailure { message = it.message ?: "اشتراک‌گذاری انجام نشد." }
+                }) { Text("اشتراک‌گذاری QR و فایل‌ها", color = Tx.Gold) }
+            },
+            dismissButton = { TextButton(onClick = { qrLesson = null; qrBitmap = null }) { Text("بستن", color = Tx.Muted) } },
         )
+    }
+    if (message.isNotBlank()) {
+        AlertDialog(onDismissRequest = { message = "" }, containerColor = Color(0xFF14141A),
+            text = { Text(message, color = Tx.Text) },
+            confirmButton = { TextButton(onClick = { message = "" }) { Text("باشه", color = Tx.Gold) } })
     }
 }
 
 @Composable
-private fun LessonCard(l: Lesson, onShare: () -> Unit) {
-    val color = tint(l.kind)
-    GlassCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(color.copy(alpha = 0.12f))
-                    .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row { icons(l.kind).forEach { Icon(it, null, tint = color, modifier = Modifier.size(if (icons(l.kind).size > 1) 20.dp else 28.dp)) } }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(l.title, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-                Text(l.kind.label, color = Tx.Muted, fontSize = 11.sp)
-                Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.1f))) {
-                    Box(Modifier.fillMaxWidth(l.progress.coerceIn(0.02f, 1f)).height(5.dp).clip(RoundedCornerShape(3.dp)).background(color))
+private fun LessonRow(lesson: EducationLesson, onOpen: () -> Unit, onQr: () -> Unit, onDelete: () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(lesson.title, color = Tx.Text, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                    Text("${lesson.blocks.size} بخش آموزشی · ${lesson.blocks.count { it.type == EducationBlockType.TEXT }} متن", color = Tx.Muted, fontSize = 10.sp)
                 }
+                IconBox(Icons.Rounded.QrCode2, "ساخت و اشتراک QR", onQr)
+                IconBox(Icons.Rounded.Delete, "حذف درس", onDelete)
             }
-            IconBox(Icons.Rounded.QrCode2, "اشتراک با QR", onShare)
+            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(4.dp)).background(Color.White.copy(alpha = 0.08f))) {
+                Box(Modifier.fillMaxWidth(lesson.progress.coerceIn(0f, 1f)).height(5.dp).background(Tx.Green))
+            }
         }
     }
 }
 
 @Composable
-private fun KindTile(k: ContentKind, modifier: Modifier, onClick: () -> Unit) {
-    val color = tint(k)
-    val shape = RoundedCornerShape(14.dp)
-    Column(
-        modifier
-            .height(72.dp)
-            .clip(shape)
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Tx.Gold.copy(alpha = 0.3f), shape)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Row { icons(k).forEach { Icon(it, null, tint = color, modifier = Modifier.size(20.dp)) } }
-        Text(k.label, color = Tx.Text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+private fun LessonEditor(lesson: EducationLesson, onText: (String) -> Unit, onPick: () -> Unit, onProgress: (Float) -> Unit) {
+    var text by remember(lesson.id, lesson.blocks.size) { mutableStateOf("") }
+    GlassCard(Modifier.fillMaxWidth(), border = Tx.Gold) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionTitle("محتوای مبحث", "ترتیب متن و فایل‌ها حفظ می‌شود")
+            lesson.blocks.forEach { block ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.035f)).padding(9.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    val (icon, label) = when (block.type) {
+                        EducationBlockType.TEXT -> Icons.Rounded.TextFields to block.text
+                        EducationBlockType.IMAGE -> Icons.Rounded.Image to block.displayName
+                        EducationBlockType.VIDEO -> Icons.Rounded.VideoLibrary to block.displayName
+                        EducationBlockType.FILE -> Icons.Rounded.Description to block.displayName
+                    }
+                    androidx.compose.material3.Icon(icon, null, tint = Tx.Gold, modifier = Modifier.size(20.dp))
+                    Text(label, color = Tx.Text, fontSize = 11.sp, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                }
+            }
+            TxField(text, { text = it }, "متن آموزشی یا توضیح این فایل")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TxChip("افزودن متن", false, { onText(text); text = "" })
+                TxChip("افزودن عکس/ویدیو/فایل", true, onPick)
+            }
+            Text("میزان مطالعه", color = Tx.Muted, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(0f, .25f, .5f, .75f, 1f).forEach { value ->
+                    TxChip("${(value * 100).toInt()}٪", lesson.progress == value, { onProgress(value) })
+                }
+            }
+        }
     }
 }
