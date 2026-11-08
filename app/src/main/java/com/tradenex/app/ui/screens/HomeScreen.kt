@@ -58,6 +58,8 @@ import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
 import com.tradenex.app.ui.components.TradeCandleChart
+import com.tradenex.app.ui.components.CrownMark
+import com.tradenex.app.ui.theme.ThemeController
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.PulseDot
 import com.tradenex.app.ui.components.SessionTimeline
@@ -98,6 +100,9 @@ fun HomeScreen(nav: NavController) {
         ) {
             RoundBtn(Icons.Rounded.Person, "پروفایل") { nav.navigate("more") }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                if (Tx.isGilded && ThemeController.crown) {
+                    CrownMark(Modifier.size(width = 24.dp, height = 14.dp))
+                }
                 Text(
                     "TRADENEX",
                     fontSize = 22.sp,
@@ -232,7 +237,7 @@ fun HomeScreen(nav: NavController) {
                             Box(
                                 Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Brush.verticalGradient(listOf(Color(0xFFFFD978), Tx.GoldDeep)))
+                                    .background(Brush.verticalGradient(listOf(Tx.GoldHi, Tx.GoldDeep)))
                                     .clickable { nav.navigate("add") }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) { Text("ثبت", color = Tx.Ink, fontWeight = FontWeight.Bold, fontSize = 12.sp) }

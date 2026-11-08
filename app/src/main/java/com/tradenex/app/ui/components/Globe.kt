@@ -30,7 +30,8 @@ import kotlin.math.sqrt
 
 private class City(val name: String, val lat: Double, val lon: Double, val color: Color, val session: Int)
 
-private val cities = listOf(
+private val cities: List<City>
+    get() = listOf(
     City("Sydney", -33.9, 151.2, Tx.Blue, 0),
     City("Tokyo", 35.7, 139.7, Tx.Purple, 1),
     City("London", 51.5, -0.1, Tx.Gold, 2),
@@ -122,6 +123,8 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
     Canvas(modifier.aspectRatio(1f)) {
         val c = center
         val r = size.minDimension * 0.40f
+        val gilded = Tx.isGilded
+        val cityList = cities
         val lon0 = 20.0 + spin
         val tilt = 0.35
 
@@ -149,9 +152,19 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
                 style = Stroke(1.2.dp.toPx()),
             )
         }
+        if (gilded) {
+            rotate(26f, c) {
+                drawOval(
+                    Tx.Red.copy(alpha = 0.30f),
+                    Offset(c.x - r * 1.2f, c.y - r * 0.3f),
+                    Size(r * 2.4f, r * 0.6f),
+                    style = Stroke(1.2.dp.toPx()),
+                )
+            }
+        }
         drawCircle(
             Brush.radialGradient(
-                listOf(Color.Transparent, Tx.Blue.copy(alpha = 0.45f), Color.Transparent),
+                listOf(Color.Transparent, (if (gilded) Tx.Gold else Tx.Blue).copy(alpha = if (gilded) 0.5f else 0.45f), Color.Transparent),
                 center = c,
                 radius = r * 1.22f,
             ),
@@ -160,7 +173,7 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
         )
         drawCircle(
             Brush.radialGradient(
-                listOf(Color(0xFF1D5FBF), Color(0xFF0C2C66), Color(0xFF040C22)),
+                if (gilded) listOf(Color(0xFF2B1F0D), Color(0xFF120D07), Color(0xFF050403)) else listOf(Color(0xFF1D5FBF), Color(0xFF0C2C66), Color(0xFF040C22)),
                 center = Offset(c.x - r * 0.3f, c.y - r * 0.3f),
                 radius = r * 1.5f,
             ),
@@ -175,27 +188,33 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
             while (lonDeg <= 180) {
                 val p = rotated(unit(latDeg.toDouble(), lonDeg.toDouble()))
                 val o = if (p[2] > 0) screen(p) else null
-                if (prev != null && o != null) drawLine(Color(0xFF7FB8FF).copy(alpha = 0.22f), prev, o, 0.8.dp.toPx())
+                if (prev != null && o != null) drawLine((if (gilded) Tx.Gold else Color(0xFF7FB8FF)).copy(alpha = if (gilded) 0.16f else 0.22f), prev, o, 0.8.dp.toPx())
                 prev = o
                 lonDeg += 6
             }
         }
 
         // land dots with night shading
-        for ((lat, lon) in landDots) {
+        for ((idx, ll) in landDots.withIndex()) {
+            val lat = ll.first
+            val lon = ll.second
             val v = unit(lat, lon)
             val p = rotated(v)
             if (p[2] <= 0.02) continue
             val day = max(0.0, v[0] * sun[0] + v[1] * sun[1] + v[2] * sun[2])
             val a = (0.25 + 0.75 * day).toFloat() * (0.4f + 0.6f * p[2].toFloat())
-            drawCircle(Color(0xFF7FE3D0).copy(alpha = a.coerceIn(0f, 1f)), 1.5.dp.toPx(), screen(p))
+            drawCircle((if (gilded) Tx.GoldHi else Color(0xFF7FE3D0)).copy(alpha = a.coerceIn(0f, 1f)), 1.5.dp.toPx(), screen(p))
+            if (gilded && day < 0.25 && idx % 4 == 0) {
+                // city-light sparkle on the night side
+                drawCircle(Color(0xFFFFB347).copy(alpha = ((0.25 - day) * 3.2).toFloat().coerceIn(0f, 0.85f)), 1.1.dp.toPx(), screen(p))
+            }
         }
 
         // trade-flow arcs
         val arcs = listOf(2 to 3, 2 to 1, 1 to 0)
         for ((ia, ib) in arcs) {
-            val a = unit(cities[ia].lat, cities[ia].lon)
-            val b = unit(cities[ib].lat, cities[ib].lon)
+            val a = unit(cityList[ia].lat, cityList[ia].lon)
+            val b = unit(cityList[ib].lat, cityList[ib].lon)
             var prev: Offset? = null
             val path = androidx.compose.ui.graphics.Path()
             for (s in 0..28) {
@@ -213,13 +232,13 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
             }
             drawPath(
                 path,
-                cities[ia].color.copy(alpha = 0.85f),
+                cityList[ia].color.copy(alpha = 0.85f),
                 style = Stroke(1.6.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), dash)),
             )
         }
 
         // cities
-        for (city in cities) {
+        for (city in cityList) {
             val p = rotated(unit(city.lat, city.lon))
             if (p[2] <= 0) continue
             val o = screen(p)
@@ -240,7 +259,7 @@ fun SpinningGlobe(openMask: Int, utcMinute: Int, modifier: Modifier = Modifier, 
         }
 
         // rim light and a satellite on the orbit
-        drawCircle(Tx.Blue.copy(alpha = 0.55f), r, c, style = Stroke(1.5.dp.toPx()))
+        drawCircle((if (gilded) Tx.GoldHi else Tx.Blue).copy(alpha = 0.55f), r, c, style = Stroke(1.5.dp.toPx()))
         val ang = (spin * 2f) * PI / 180.0
         rotate(-18f, c) {
             drawCircle(

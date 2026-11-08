@@ -20,6 +20,19 @@ multi-account profiles (real/demo/prop, base currency, active account), performa
 strategies (create/edit/delete and version snapshots), DST-aware sessions (globe/timeline), education,
 calendar (personal trades + sample news), tags, and settings.
 
+## Themes (Settings > تم‌ها)
+
+| Theme | Look |
+|---|---|
+| **Default** | The original translucent glass look. Accent colour: gold / teal / violet. |
+| **Gold** | Black-gold panels with a gold edge, strong glow, shimmering borders, gold dust, crown on the logo, a dark-amber globe with night-side city lights. |
+
+The switch is animated: every colour is mixed in OKLab by the Rust core (`rust/src/fx.rs`, Kotlin fallback with the same maths)
+and a gold ripple expands over the screen. Choice, accent, glow level (off / soft / normal / intense) and the Gold-only
+effects (dust, shimmer, crown) are saved in SharedPreferences. The gold dust is simulated in Rust per frame
+(`particles_step`). `flutter_fx/` has the same effects in Dart (`TxPanel`, `AmbientDust`, `CrownPulse`, `ThemeReveal`);
+`flutter run` there shows a Default/Gold toggle.
+
 ## Build
 
 1. Open in Android Studio (Koala+), let it sync. No Gradle wrapper is committed: use Studio's Gradle or run

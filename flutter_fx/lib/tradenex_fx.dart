@@ -1,9 +1,14 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+export 'gold_fx.dart';
+
 /// Spinning dotted globe with pulsing city markers.
 class GlobeFx extends StatefulWidget {
-  const GlobeFx({super.key, this.openSessions = const {2}});
+  const GlobeFx({super.key, this.openSessions = const {2}, this.gold = false});
+
+  /// Gold theme look: dark amber ocean, golden land dots, city-light sparkle on the night side.
+  final bool gold;
 
   /// Indexes of open sessions: 0 Sydney, 1 Tokyo, 2 London, 3 New York.
   final Set<int> openSessions;
@@ -27,7 +32,7 @@ class _GlobeFxState extends State<GlobeFx> with SingleTickerProviderStateMixin {
     return AnimatedBuilder(
       animation: _c,
       builder: (_, __) => CustomPaint(
-        painter: _GlobePainter(_c.value, widget.openSessions),
+        painter: _GlobePainter(_c.value, widget.openSessions, widget.gold),
         child: const SizedBox.expand(),
       ),
     );
@@ -49,9 +54,10 @@ const _cities = [
 ];
 
 class _GlobePainter extends CustomPainter {
-  _GlobePainter(this.t, this.open);
+  _GlobePainter(this.t, this.open, this.gold);
   final double t;
   final Set<int> open;
+  final bool gold;
 
   static const double _tilt = 0.35;
 
@@ -75,12 +81,14 @@ class _GlobePainter extends CustomPainter {
       c,
       r,
       Paint()
-        ..shader = const RadialGradient(
-          colors: [Color(0xFF1D5FBF), Color(0xFF0C2C66), Color(0xFF040C22)],
+        ..shader = RadialGradient(
+          colors: gold
+              ? const [Color(0xFF2B1F0D), Color(0xFF120D07), Color(0xFF050403)]
+              : const [Color(0xFF1D5FBF), Color(0xFF0C2C66), Color(0xFF040C22)],
         ).createShader(Rect.fromCircle(center: c, radius: r)),
     );
     final grid = Paint()
-      ..color = const Color(0x337FB8FF)
+      ..color = gold ? const Color(0x29F2B53D) : const Color(0x337FB8FF)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     for (var lat = -60; lat <= 60; lat += 30) {
@@ -97,7 +105,7 @@ class _GlobePainter extends CustomPainter {
       }
       canvas.drawPath(path, grid);
     }
-    final dot = Paint()..color = const Color(0xAA7FE3D0);
+    final dot = Paint()..color = gold ? const Color(0xCCFFD884) : const Color(0xAA7FE3D0);
     for (var lat = -60; lat <= 70; lat += 5) {
       for (var lon = -180; lon < 180; lon += 5) {
         if (!_isLand(lat.toDouble(), lon.toDouble())) continue;
@@ -126,7 +134,7 @@ class _GlobePainter extends CustomPainter {
       c,
       r + 3,
       Paint()
-        ..color = const Color(0x554DA3FF)
+        ..color = gold ? const Color(0x66F2B53D) : const Color(0x554DA3FF)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
@@ -150,7 +158,7 @@ class _GlobePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _GlobePainter old) => old.t != t || old.open != open;
+  bool shouldRepaint(covariant _GlobePainter old) => old.t != t || old.open != open || old.gold != gold;
 }
 
 /// Number that counts up to [value] with a glow.

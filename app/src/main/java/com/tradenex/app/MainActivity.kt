@@ -13,12 +13,14 @@ import com.tradenex.app.data.WeeklyPlannerStore
 import com.tradenex.app.data.EducationStore
 import com.tradenex.app.nav.AppNav
 import com.tradenex.app.reminders.ReminderScheduler
+import com.tradenex.app.ui.theme.ThemeController
 import com.tradenex.app.ui.theme.TradenexTheme
 
 class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemeController.init(this)
         enableEdgeToEdge()
         AppState.initialize(applicationContext)
         WeeklyPlannerStore.initialize(applicationContext)

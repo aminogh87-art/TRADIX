@@ -95,7 +95,7 @@ fun AccountsScreen(nav: NavController) {
     if (creating) {
         AlertDialog(
             onDismissRequest = { creating = false },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("حساب جدید", color = Tx.Text) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

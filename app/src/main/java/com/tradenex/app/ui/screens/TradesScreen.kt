@@ -157,7 +157,7 @@ fun TradesScreen(nav: NavController) {
     editing?.let { original ->
         AlertDialog(
             onDismissRequest = { editing = null },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("ویرایش ${original.symbol}", color = Tx.Text) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -216,7 +216,7 @@ fun TradesScreen(nav: NavController) {
     deleting?.let { trade ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("حذف معامله؟", color = Tx.Text) },
             text = { Text("معامله ${trade.symbol} از ژورنال این حساب حذف شود؟", color = Tx.Muted) },
             confirmButton = {

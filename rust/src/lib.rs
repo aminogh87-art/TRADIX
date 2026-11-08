@@ -1,9 +1,12 @@
 //! TRADENEX native core: session maths and trade statistics.
 //! Exposed to Kotlin through JNI (see app/.../core/NativeCore.kt).
 //! Every function has a pure-Kotlin fallback, so the app still runs without this library.
+//! `fx` holds the theme-switch colour mixing and the gold-dust particle simulation.
 
-use jni::objects::{JDoubleArray, JObject};
-use jni::sys::jint;
+pub mod fx;
+
+use jni::objects::{JDoubleArray, JFloatArray, JIntArray, JObject};
+use jni::sys::{jfloat, jint};
 use jni::JNIEnv;
 
 /// Session table in UTC minutes of the day: (start, end).
@@ -356,6 +359,64 @@ pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nPerformanceMetrics
         }
         Err(_) => unsafe { JDoubleArray::from_raw(std::ptr::null_mut()) },
     }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nMixColors<'l>(
+    mut env: JNIEnv<'l>,
+    _this: JObject<'l>,
+    a: JIntArray<'l>,
+    b: JIntArray<'l>,
+    t: jfloat,
+) -> JIntArray<'l> {
+    let la = env.get_array_length(&a).unwrap_or(0) as usize;
+    let lb = env.get_array_length(&b).unwrap_or(0) as usize;
+    let n = la.min(lb);
+    let mut ba = vec![0i32; la];
+    let mut bb = vec![0i32; lb];
+    let _ = env.get_int_array_region(&a, 0, &mut ba);
+    let _ = env.get_int_array_region(&b, 0, &mut bb);
+    let ua: Vec<u32> = ba.iter().take(n).map(|v| *v as u32).collect();
+    let ub: Vec<u32> = bb.iter().take(n).map(|v| *v as u32).collect();
+    let out: Vec<i32> = fx::mix_palette(&ua, &ub, t).into_iter().map(|v| v as i32).collect();
+    match env.new_int_array(n as i32) {
+        Ok(arr) => {
+            let _ = env.set_int_array_region(&arr, 0, &out);
+            arr
+        }
+        Err(_) => unsafe { JIntArray::from_raw(std::ptr::null_mut()) },
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nParticlesInit<'l>(
+    mut env: JNIEnv<'l>,
+    _this: JObject<'l>,
+    state: JFloatArray<'l>,
+    seed: jint,
+) {
+    let len = env.get_array_length(&state).unwrap_or(0) as usize;
+    let mut buf = vec![0f32; len];
+    fx::particles_init(&mut buf, seed as u32);
+    let _ = env.set_float_array_region(&state, 0, &buf);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nParticlesStep<'l>(
+    mut env: JNIEnv<'l>,
+    _this: JObject<'l>,
+    state: JFloatArray<'l>,
+    dt: jfloat,
+    t: jfloat,
+    seed: jint,
+) {
+    let len = env.get_array_length(&state).unwrap_or(0) as usize;
+    let mut buf = vec![0f32; len];
+    if env.get_float_array_region(&state, 0, &mut buf).is_err() {
+        return;
+    }
+    fx::particles_step(&mut buf, dt, t, seed as u32);
+    let _ = env.set_float_array_region(&state, 0, &buf);
 }
 
 #[cfg(test)]

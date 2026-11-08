@@ -37,7 +37,9 @@ import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,8 +53,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tradenex.app.data.AppState
+import com.tradenex.app.ui.theme.ThemeController
 import com.tradenex.app.ui.theme.Tx
 
+/** Animated aurora background shared by every screen (+ gold dust and the shared shimmer clock in Gold). */
 @Composable
 fun TxBackground(content: @Composable BoxScope.() -> Unit) {
     val t = rememberInfiniteTransition(label = "aurora")
@@ -62,11 +67,18 @@ fun TxBackground(content: @Composable BoxScope.() -> Unit) {
         animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Reverse),
         label = "a",
     )
+    val shimmer: State<Float> = t.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(4800, easing = LinearEasing)),
+        label = "shimmer",
+    )
+    val boost = if (Tx.isGilded) 1.45f else 1f
     Box(Modifier.fillMaxSize().background(Tx.Bg)) {
         Canvas(Modifier.fillMaxSize()) {
             drawRect(
                 Brush.radialGradient(
-                    listOf(Tx.Gold.copy(alpha = 0.22f), Color.Transparent),
+                    listOf(Tx.Gold.copy(alpha = (0.22f * boost).coerceAtMost(0.6f)), Color.Transparent),
                     center = Offset(size.width * (0.95f - 0.35f * a), size.height * 0.04f),
                     radius = size.width * 0.9f,
                 ),
@@ -86,23 +98,31 @@ fun TxBackground(content: @Composable BoxScope.() -> Unit) {
                 ),
             )
         }
-        content()
+        if (Tx.isGilded && ThemeController.particles && AppState.settings.animations > 0) {
+            AmbientDust(Modifier.fillMaxSize(), count = if (AppState.settings.animations == 2) 80 else 48)
+        }
+        CompositionLocalProvider(LocalShimmerPhase provides shimmer) {
+            content()
+        }
+        ThemeRipple()
     }
 }
 
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    border: Color = Tx.Gold.copy(alpha = 0.38f),
+    border: Color = Tx.Gold.copy(alpha = Tx.borderAlpha),
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(Tx.radius.dp)
+    val glow = Tx.Gold.copy(alpha = Tx.glowAlpha)
     Box(
         modifier
-            .shadow(10.dp, shape, ambientColor = Tx.Gold.copy(alpha = 0.25f), spotColor = Tx.Gold.copy(alpha = 0.25f))
+            .shadow((10f * Tx.glowLevel).dp, shape, ambientColor = glow, spotColor = glow)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.02f))))
-            .border(1.dp, border, shape),
+            .background(Brush.linearGradient(listOf(Tx.PanelTop, Tx.PanelBottom)))
+            .border(1.dp, border, shape)
+            .shimmerBorder(shape),
         content = content,
     )
 }
@@ -170,7 +190,7 @@ fun GoldButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit)
             .height(54.dp)
             .shadow(14.dp, shape, ambientColor = Tx.Gold.copy(alpha = glow), spotColor = Tx.Gold.copy(alpha = glow))
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFD978), Tx.GoldDeep)))
+            .background(Brush.verticalGradient(listOf(Tx.GoldHi, Tx.GoldDeep)))
             .border(1.dp, Tx.GoldPale, shape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -230,8 +250,9 @@ fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
                 .fillMaxWidth()
                 .height(68.dp)
                 .clip(shape)
-                .background(Brush.verticalGradient(listOf(Color(0xEB1E1A0E), Color(0xF50A0A0C))))
-                .border(1.dp, Tx.Gold.copy(alpha = 0.45f), shape),
+                .background(Brush.verticalGradient(listOf(Tx.BarTop, Tx.BarBottom)))
+                .border(1.dp, Tx.Gold.copy(alpha = (Tx.borderAlpha + 0.07f).coerceAtMost(1f)), shape)
+                .shimmerBorder(shape, offset = 0.5f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
@@ -249,12 +270,12 @@ fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
                 .size(58.dp)
                 .shadow(18.dp, CircleShape, ambientColor = Tx.Gold, spotColor = Tx.Gold)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color(0xFF3A3320), Color(0xFF0B0B0E))))
+                .background(Brush.radialGradient(listOf(Tx.FabCore, Tx.FabEdge)))
                 .border(2.dp, Tx.GoldPale, CircleShape)
                 .clickable { onNavigate("add") },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Add, "ثبت معامله جدید", tint = Tx.Gold, modifier = Modifier.size(30.dp))
+            Icon(Icons.Rounded.Add, "ثبت معامله جدید", tint = Tx.FabIcon, modifier = Modifier.size(30.dp))
         }
     }
 }

@@ -140,7 +140,7 @@ fun StrategiesScreen(nav: NavController) {
     editingStrategy?.let { selected ->
         AlertDialog(
             onDismissRequest = { editingStrategy = null },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("ویرایش استراتژی", color = Tx.Text) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

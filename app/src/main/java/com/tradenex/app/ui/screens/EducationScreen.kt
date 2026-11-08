@@ -165,7 +165,7 @@ fun EducationScreen(nav: NavController) {
     if (creating) {
         AlertDialog(
             onDismissRequest = { creating = false },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("ساخت مبحث آموزشی", color = Tx.Text) },
             text = { TxField(newTitle, { newTitle = it }, "عنوان مبحث") },
             confirmButton = {
@@ -180,7 +180,7 @@ fun EducationScreen(nav: NavController) {
     if (qrLesson != null && qrBitmap != null) {
         AlertDialog(
             onDismissRequest = { qrLesson = null; qrBitmap = null },
-            containerColor = Color(0xFF14141A),
+            containerColor = Tx.Dialog,
             title = { Text("QR: ${qrLesson!!.title}", color = Tx.Text) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -214,7 +214,7 @@ fun EducationScreen(nav: NavController) {
         )
     }
     if (message.isNotBlank()) {
-        AlertDialog(onDismissRequest = { message = "" }, containerColor = Color(0xFF14141A),
+        AlertDialog(onDismissRequest = { message = "" }, containerColor = Tx.Dialog,
             text = { Text(message, color = Tx.Text) },
             confirmButton = { TextButton(onClick = { message = "" }) { Text("باشه", color = Tx.Gold) } })
     }

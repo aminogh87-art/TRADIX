@@ -32,7 +32,8 @@ data class SessionState(
 data class OverlapInfo(val a: String, val b: String, val minutes: Int, val percent: Int, val activeNow: Boolean)
 
 object SessionEngine {
-    val defs = listOf(
+    val defs: List<SessionDef>
+        get() = listOf(
         SessionDef("Sydney", 1320, 420, Tx.Blue, ZoneId.of("Australia/Sydney"), LocalTime.of(8, 0), LocalTime.of(17, 0)),
         SessionDef("Tokyo", 0, 540, Tx.Purple, ZoneId.of("Asia/Tokyo"), LocalTime.of(9, 0), LocalTime.of(18, 0)),
         SessionDef("London", 480, 1020, Tx.Gold, ZoneId.of("Europe/London"), LocalTime.of(8, 0), LocalTime.of(17, 0)),

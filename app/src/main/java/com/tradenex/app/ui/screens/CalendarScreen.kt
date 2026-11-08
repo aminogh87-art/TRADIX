@@ -229,7 +229,7 @@ private fun DayCell(day: Int, isToday: Boolean, selected: Boolean, holiday: Bool
     val shape = RoundedCornerShape(11.dp)
     val base = modifier.height(42.dp).clip(shape).clickable(onClick = onClick)
     val styled = when {
-        isToday -> base.background(Brush.verticalGradient(listOf(Color(0xFFFFD978), Tx.GoldDeep)))
+        isToday -> base.background(Brush.verticalGradient(listOf(Tx.GoldHi, Tx.GoldDeep)))
         holiday -> base.border(1.dp, Color.White.copy(alpha = 0.10f), shape)
         else -> base.background(Color.White.copy(alpha = 0.04f))
     }.then(if (selected && !isToday) Modifier.border(1.dp, Tx.Gold, shape) else Modifier)

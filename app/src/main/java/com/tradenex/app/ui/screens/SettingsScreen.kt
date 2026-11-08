@@ -28,6 +28,7 @@ import com.tradenex.app.core.NativeCore
 import com.tradenex.app.data.AppSettings
 import com.tradenex.app.data.AppState
 import com.tradenex.app.ui.components.GoldButton
+import com.tradenex.app.ui.theme.ThemeController
 import com.tradenex.app.ui.theme.Tx
 import java.util.Locale
 import kotlin.math.round
@@ -79,6 +80,7 @@ fun SettingsScreen(nav: NavController) {
     }
 
     Page(title = "تنظیمات", onBack = { nav.popBackStack() }) {
+        Reveal(0) { ThemesGroup() }
         Reveal(0) {
             SettingGroup("ظاهر و زبان") {
                 Text("زبان برنامه", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -152,7 +154,7 @@ fun SettingsScreen(nav: NavController) {
             }
         }
         Reveal(5) {
-            GoldButton("بازنشانی همه تنظیمات") { AppState.settings = AppSettings(); AppState.persist() }
+            GoldButton("بازنشانی همه تنظیمات") { AppState.settings = AppSettings(); AppState.persist(); ThemeController.reset() }
         }
         Spacer(Modifier.height(16.dp))
     }
