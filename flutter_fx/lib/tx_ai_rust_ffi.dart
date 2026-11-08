@@ -9,6 +9,14 @@ typedef _NativeMetrics = Int32 Function(
 typedef _DartMetrics = int Function(
   Pointer<Double>, int, Pointer<Double>, int,
 );
+typedef _NativeRevenge = Int32 Function(
+  Int64, Int32, Int32, Double, Double, Double, Double,
+  Int32, Int32, Int32, Uint32, Pointer<Int32>, UintPtr,
+);
+typedef _DartRevenge = int Function(
+  int, int, int, double, double, double, double,
+  int, int, int, int, Pointer<Int32>, int,
+);
 
 /// Structured result from the deterministic Rust analytics engine.
 class TxRustMetrics {
@@ -45,10 +53,14 @@ class TxRustAnalytics {
   TxRustAnalytics._(this._library)
       : _calculate = _library.lookupFunction<_NativeMetrics, _DartMetrics>(
           'tx_ai_performance_metrics',
+        ),
+        _revenge = _library.lookupFunction<_NativeRevenge, _DartRevenge>(
+          'tx_ai_revenge_evidence',
         );
 
   final DynamicLibrary _library;
   final _DartMetrics _calculate;
+  final _DartRevenge _revenge;
 
   static TxRustAnalytics openAndroid() {
     if (!Platform.isAndroid) {
@@ -62,6 +74,37 @@ class TxRustAnalytics {
       return openAndroid();
     } on Object {
       return null;
+    }
+  }
+
+  TxRustRevengeEvidence revengeEvidence({
+    required int? gapMinutes,
+    required bool previousWasLoss,
+    required double? previousRisk,
+    required double? currentRisk,
+    required double? previousLot,
+    required double? currentLot,
+    required bool planViolation,
+    required bool revengeTag,
+    required bool emotionalSignal,
+    required int priorLossStreak,
+  }) {
+    final output = calloc<Int32>(3);
+    try {
+      final status = _revenge(
+        gapMinutes ?? 0, gapMinutes == null ? 0 : 1, previousWasLoss ? 1 : 0,
+        previousRisk ?? 0, currentRisk ?? 0, previousLot ?? 0, currentLot ?? 0,
+        planViolation ? 1 : 0, revengeTag ? 1 : 0, emotionalSignal ? 1 : 0,
+        priorLossStreak.clamp(0, 0xFFFFFFFF), output, 3,
+      );
+      if (status != 0) {
+        throw StateError('Rust revenge analyzer rejected the output buffer (status $status).');
+      }
+      return TxRustRevengeEvidence(
+        score: output[0], flags: output[1], classificationCode: output[2],
+      );
+    } finally {
+      calloc.free(output);
     }
   }
 
@@ -94,4 +137,23 @@ class TxRustAnalytics {
       calloc.free(output);
     }
   }
+}
+
+/// Bit flags: rapid=1, risk-up=2, size-up=4, plan-break=8,
+/// user revenge tag=16, emotion=32, prior loss streak=64.
+class TxRustRevengeEvidence {
+  const TxRustRevengeEvidence({
+    required this.score, required this.flags, required this.classificationCode,
+  });
+  final int score;
+  final int flags;
+  /// 0 none, 1 loss sequence, 2 possible, 3 strong, 4 user-tagged.
+  final int classificationCode;
+  bool get rapidReentry => (flags & 1) != 0;
+  bool get riskIncreased => (flags & 2) != 0;
+  bool get sizeIncreased => (flags & 4) != 0;
+  bool get planViolation => (flags & 8) != 0;
+  bool get revengeTag => (flags & 16) != 0;
+  bool get emotionalSignal => (flags & 32) != 0;
+  bool get lossSequence => (flags & 64) != 0;
 }
