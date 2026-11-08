@@ -166,7 +166,7 @@ class TxAiBehaviorPatternRecord {
       title: title,
       triggerTradeId: triggerTradeId,
       linkedTradeIds: List<int>.unmodifiable(linkedIds),
-      evidenceScore: evidenceScore.clamp(0, 100),
+      evidenceScore: evidenceScore.clamp(0, 100).toInt(),
       actualNetPnl: actualNetPnl,
       reasons: List<String>.unmodifiable(reasons),
       reviewStatus: reviews[id],
