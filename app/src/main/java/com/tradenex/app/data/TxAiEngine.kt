@@ -69,9 +69,10 @@ object TxAiEngine {
         val monthTrades = ordered.filter { LocalDate.ofEpochDay(it.epochDay).let { d -> d.year == month.year && d.month == month.month } }
         val knownRisk = monthTrades.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
         val strategyKnown = monthTrades.filter { it.strategy.isNotBlank() }
-        val discipline = if (monthTrades.size >= 5 && monthTrades.any { it.tags.isNotEmpty() }) {
-            val violations = monthTrades.count { hasBehaviorFlag(it) }
-            ((1.0 - violations.toDouble() / monthTrades.size) * 100).roundToInt().coerceIn(0, 100)
+        val taggedTrades = monthTrades.filter { it.tags.isNotEmpty() }
+        val discipline = if (monthTrades.size >= 5 && taggedTrades.size >= 3) {
+            val violations = taggedTrades.count { hasBehaviorFlag(it) }
+            ((1.0 - violations.toDouble() / taggedTrades.size) * 100).roundToInt().coerceIn(0, 100)
         } else null
         val strategyScore = if (monthTrades.size >= 5) {
             (strategyKnown.size.toDouble() / monthTrades.size * 100).roundToInt()
@@ -94,7 +95,6 @@ object TxAiEngine {
             strategySlices.firstOrNull()?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ قبل از نتیجه‌گیری تعداد نمونه را بررسی کن.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
             if (knownRisk.size < 3) add("برای امتیاز دقیق مدیریت ریسک، ریسک برنامه‌ریزی‌شده را هنگام ثبت هر معامله وارد کن.")
-            add("تایم‌فریم و وضعیت بازار در مدل فعلی معامله ذخیره نمی‌شوند؛ برای تحلیل معتبر این دو مورد باید به فرم ثبت معامله افزوده شوند.")
         }
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
