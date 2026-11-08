@@ -118,8 +118,10 @@ object TxAiEngine {
             val violations = tagged.count { hasBehaviorFlag(it) }
             ((1.0 - violations.toDouble() / tagged.size) * 100).roundToInt().coerceIn(0, 100)
         } else null
-        val strategy = if (rows.size >= 5) {
-            (rows.count { it.strategy.isNotBlank() }.toDouble() / rows.size * 100).roundToInt()
+        val complianceRows = rows.filter { it.strategyFollowed != null }
+        val complianceCoverage = complianceRows.size.toDouble() / rows.size.coerceAtLeast(1)
+        val strategy = if (rows.size >= 5 && complianceRows.size >= 3 && complianceCoverage >= 0.70) {
+            (complianceRows.count { it.strategyFollowed == true }.toDouble() / complianceRows.size * 100).roundToInt()
         } else null
         val knownRisk = rows.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
         val risk = if (knownRisk.size >= 3) {
@@ -143,7 +145,7 @@ object TxAiEngine {
 
     private fun isOutsideStrategy(t: Trade): Boolean {
         val tags = t.tags.map { it.lowercase() }
-        return tags.any {
+        return t.strategyFollowed == false || tags.any {
             it.contains("fomo") || it.contains("revenge") || it.contains("no-plan") ||
                 it.contains("off-strategy") || it.contains("خارج از استراتژی") || it.contains("بدون پلن")
         }
