@@ -48,6 +48,12 @@ fun TxAiScreen(nav: NavController) {
                     Text("سشن‌ها از زمان بازشدن معامله و ساعت محلی بازارها استخراج شده‌اند.", color = Tx.Muted, fontSize = 10.sp)
                     if (report.sessions.isEmpty()) EmptyAi("زمان بازشدن معاملات ثبت نشده است.")
                     report.sessions.forEach { AiSliceRow(it, money(it.net)) }
+                    Text("بهترین تایم‌فریم‌ها", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (report.timeframes.isEmpty()) EmptyAi("از این نسخه به بعد تایم‌فریم هنگام ثبت معامله ذخیره می‌شود.")
+                    report.timeframes.take(5).forEach { AiSliceRow(it, money(it.net)) }
+                    Text("شرایط بازار", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (report.marketConditions.isEmpty()) EmptyAi("هنوز شرایط بازار برای معامله‌ها ثبت نشده است.")
+                    report.marketConditions.forEach { AiSliceRow(it, money(it.net)) }
                     report.bestStrategy?.let { Text("استراتژی شاخص: " + it.label, color = Tx.Gold, fontSize = 12.sp) }
                 }
             }
@@ -81,7 +87,8 @@ fun TxAiScreen(nav: NavController) {
                         StatTile("واقعی", money(report.allNet), Tx.Text, Modifier.weight(1f))
                         StatTile("ریسک ۵۰٪", money(report.halfRiskNet), Tx.Gold, Modifier.weight(1f))
                     }
-                    Text("تغییر فرضی: " + money(report.halfRiskDelta), color = if (report.halfRiskDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("سود/زیان کل اگر معاملات خارج از پلن حذف می‌شد: " + money(report.withoutOutsideStrategyNet), color = if (report.withoutOutsideStrategyNet >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("تغییر سناریوی ریسک نصف: " + money(report.halfRiskDelta), color = if (report.halfRiskDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن بر اساس تگ‌های رفتاری یا خالی‌بودن نام استراتژی است.", color = Tx.Muted, fontSize = 10.sp)
                 }
             }
@@ -104,7 +111,7 @@ fun TxAiScreen(nav: NavController) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("پیشنهادهای TX AI")
                     report.insights.forEachIndexed { i, insight -> Text((i + 1).toString() + ". " + insight, color = Tx.Text, fontSize = 11.sp) }
-                    Text("تایم‌فریم و وضعیت بازار (رنج/ترند/خبر/نوسان) هنوز در مدل معامله ذخیره نمی‌شود؛ TX AI عمداً برای آن‌ها نتیجه ساختگی نشان نمی‌دهد.", color = Tx.Gold, fontSize = 10.sp)
+                    Text("تایم‌فریم و شرایط بازار از معاملات جدیدی که این فیلدها در آن‌ها تکمیل شده استخراج می‌شوند؛ معاملات قدیمی فاقد این اطلاعات‌اند.", color = Tx.Gold, fontSize = 10.sp)
                 }
             }
         }
