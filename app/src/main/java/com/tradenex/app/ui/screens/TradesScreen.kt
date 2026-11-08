@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
@@ -52,6 +56,31 @@ fun TradesScreen(nav: NavController) {
     var commissionText by remember { mutableStateOf("") }
     var swapText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                    writer.appendLine("id,date,symbol,side,lots,net_pnl,currency,strategy,strategy_version,emotion,entry,exit,stop_loss,take_profit,commission,swap,fees,notes")
+                    AppState.visibleTrades.sortedBy { it.epochDay }.forEach { t ->
+                        val values = listOf(
+                            t.id.toString(), t.epochDay.toString(), t.symbol, if (t.buy) "BUY" else "SELL",
+                            t.lot.toString(), t.pnl.toString(), AppState.selectedAccount.baseCurrency,
+                            t.strategy, t.strategyVersion.toString(), t.emotion,
+                            t.entryPrice?.toString().orEmpty(), t.exitPrice?.toString().orEmpty(),
+                            t.stopLossPrice?.toString().orEmpty(), t.takeProfitPrice?.toString().orEmpty(),
+                            t.commission.toString(), t.swap.toString(), t.otherFees.toString(), t.notes,
+                        )
+                        writer.appendLine(values.joinToString(",") { csvCell(it) })
+                    }
+                } ?: error("Unable to open the selected file.")
+            }.onSuccess {
+                Toast.makeText(context, "CSV export completed", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "CSV export failed", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     val all = AppState.visibleTrades.sortedByDescending { it.epochDay }
     val shown = all.filter {
@@ -75,7 +104,10 @@ fun TradesScreen(nav: NavController) {
                 Text("${shown.size} معامله", color = Tx.Muted, fontSize = 11.sp)
                 Text(Analytics.money(shown.sumOf { it.pnl }), color = if (shown.sumOf { it.pnl } >= 0) Tx.Green else Tx.Red, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
             }
-            GoldButton("ثبت معامله جدید") { nav.navigate("add") }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { exportLauncher.launch("tradix-trades.csv") }) { Text("CSV", color = Tx.Gold) }
+                GoldButton("ثبت معامله جدید") { nav.navigate("add") }
+            }
         }
         if (shown.isEmpty()) {
             GlassCard(Modifier.fillMaxWidth()) {
@@ -184,3 +216,7 @@ fun TradesScreen(nav: NavController) {
         )
     }
 }
+
+
+private fun csvCell(value: String): String =
+    "\"" + value.replace("\"", "\"\"") + "\""
