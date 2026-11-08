@@ -13,4 +13,11 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "TRADENEX"
+
+// The add-to-app project is generated from flutter_fx by scripts/bootstrap_flutter_module.sh.
+// Keep native-only development builds working until the module has been bootstrapped.
+val flutterInclude = file("flutter_module/.android/include_flutter.groovy")
+if (flutterInclude.exists()) {
+    apply(from = flutterInclude)
+}
 include(":app")
