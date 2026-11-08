@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.WeeklyPlannerStore
+import com.tradenex.app.data.EducationStore
 import com.tradenex.app.nav.AppNav
 import com.tradenex.app.reminders.ReminderScheduler
 import com.tradenex.app.ui.theme.TradenexTheme
@@ -21,6 +22,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         AppState.initialize(applicationContext)
         WeeklyPlannerStore.initialize(applicationContext)
+        EducationStore.initialize(applicationContext)
+        EducationStore.migrateLegacy(AppState.lessons.toList())
         ReminderScheduler.schedule(applicationContext, AppState.settings.reminderOn, AppState.settings.reminderHour)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
