@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tradenex.app.core.SessionEngine
@@ -74,17 +75,21 @@ fun Page(
 /** Staggered fade + slide entrance. Shows immediately when animations are set to "low". */
 @Composable
 fun Reveal(index: Int, content: @Composable () -> Unit) {
-    val instant = AppState.settings.animations == 0
+    val level = AppState.settings.animations
+    val instant = level == 0
+    val duration = if (level == 1) 150 else 420
     var shown by remember { mutableStateOf(instant) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(level, index) {
         if (!instant) {
-            delay(index * 70L)
+            delay(index * if (level == 1) 18L else 70L)
+            shown = true
+        } else {
             shown = true
         }
     }
     AnimatedVisibility(
         visible = shown,
-        enter = fadeIn(tween(450)) + slideInVertically(tween(450)) { it / 6 },
+        enter = fadeIn(tween(duration)) + slideInVertically(tween(duration)) { it / 8 },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
     }
@@ -110,7 +115,7 @@ fun TxField(value: String, onValue: (String) -> Unit, hint: String, modifier: Mo
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                if (value.isEmpty()) Text(hint, color = Tx.Muted, fontSize = 13.sp)
+                if (value.isEmpty()) Text(hint, color = Tx.Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 inner()
             }
         },
