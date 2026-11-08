@@ -113,7 +113,7 @@ fun MoreScreen(nav: NavController) {
         Reveal(6) {
             GlassCard(Modifier.fillMaxWidth(), border = Tx.Gold) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("TRADENEX Pro", color = Tx.Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("TRADIX Pro", color = Tx.Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                     Text("تحلیل عمیق‌تر، پشتیبان‌گیری و بدون محدودیت", color = Tx.Muted, fontSize = 12.sp)
                     Spacer(Modifier.height(10.dp))
                     Box(
@@ -132,7 +132,7 @@ fun MoreScreen(nav: NavController) {
         AlertDialog(
             onDismissRequest = { about = false },
             containerColor = Color(0xFF14141A),
-            title = { Text("TRADENEX 0.1.0", color = Tx.Text) },
+            title = { Text("TRADIX 0.1.0", color = Tx.Text) },
             text = {
                 Text(
                     "دفترچه معاملات و آموزش فارکس. این برنامه سیگنال نمی‌دهد و معامله انجام نمی‌دهد.\nهسته محاسبات: " +
