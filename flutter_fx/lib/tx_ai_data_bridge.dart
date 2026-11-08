@@ -124,6 +124,8 @@ class TxAiAccountSnapshot {
     this.startingBalance = 0,
     this.riskPercent = 1.0,
     this.displayTimezone = 'UTC',
+    this.currentDisplayDateKey,
+    this.currentMonthKey,
     this.episodeReviews = const <String, String>{},
     this.pinnedInsights = const <String>{},
   });
@@ -135,6 +137,8 @@ class TxAiAccountSnapshot {
   final double startingBalance;
   final double riskPercent;
   final String displayTimezone;
+  final String? currentDisplayDateKey;
+  final String? currentMonthKey;
   final Map<String, String> episodeReviews;
   final Set<String> pinnedInsights;
 
@@ -187,6 +191,8 @@ class TxAiAccountSnapshot {
       startingBalance: _finiteNumber(map['startingBalance']) ?? 0,
       riskPercent: _finiteNumber(map['riskPercent']) ?? 1.0,
       displayTimezone: map['displayTimezone'] is String ? map['displayTimezone'] as String : 'UTC',
+      currentDisplayDateKey: map['currentDisplayDateKey'] is String ? map['currentDisplayDateKey'] as String : null,
+      currentMonthKey: map['currentMonthKey'] is String ? map['currentMonthKey'] as String : null,
       episodeReviews: Map<String, String>.unmodifiable(reviews),
       pinnedInsights: Set<String>.unmodifiable(pins),
     );
