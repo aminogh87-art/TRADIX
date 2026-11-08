@@ -15,7 +15,9 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // TRADIX ships ARM64 only. Keep every native dependency (including Flutter/Rust)
+            // aligned to the same ABI without removing any app features.
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
