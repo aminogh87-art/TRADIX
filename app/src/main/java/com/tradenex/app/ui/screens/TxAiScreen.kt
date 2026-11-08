@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.tradenex.app.core.NativeCore
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.TxAiEngine
@@ -29,6 +30,9 @@ fun TxAiScreen(nav: NavController) {
     val account = AppState.selectedAccount
     val riskPercent = AppState.settings.riskPercent
     val report = remember(trades, account, riskPercent) { TxAiEngine.analyze(trades, account, riskPercent) }
+    val performance = remember(trades) {
+        NativeCore.performanceMetrics(trades.map { it.pnl }.toDoubleArray())
+    }
     val revengeEpisodes = remember(trades) { com.tradenex.app.data.RevengeTradingAnalyzer.analyze(trades) }
     fun money(v: Double) = Analytics.money(v)
     Page(title = "TX AI", onBack = { nav.popBackStack() }) {
@@ -42,6 +46,46 @@ fun TxAiScreen(nav: NavController) {
                         StatTile("نرخ برد", (report.winRate * 100).toInt().toString() + "%", Tx.Gold, Modifier.weight(1f))
                         StatTile("معاملات", report.totalTrades.toString(), Tx.Blue, Modifier.weight(1f))
                     }
+                    Text("معیارهای آماری هسته Rust", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        StatTile(
+                            "Profit Factor",
+                            if (performance.sampleSize == 0) "—" else if (performance.profitFactor >= 99.0) "≥99" else String.format(java.util.Locale.US, "%.2f", performance.profitFactor),
+                            Tx.Gold, Modifier.weight(1f),
+                        )
+                        StatTile(
+                            "Expectancy",
+                            if (performance.sampleSize == 0) "—" else money(performance.expectancy),
+                            Tx.Blue, Modifier.weight(1f),
+                        )
+                        StatTile(
+                            "Max Drawdown",
+                            if (performance.sampleSize == 0) "—" else money(performance.maxDrawdown),
+                            Tx.Red, Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        StatTile(
+                            "میانگین برد",
+                            if (performance.sampleSize == 0) "—" else money(performance.averageWin),
+                            Tx.Green, Modifier.weight(1f),
+                        )
+                        StatTile(
+                            "میانگین باخت",
+                            if (performance.sampleSize == 0) "—" else money(-performance.averageLoss),
+                            Tx.Red, Modifier.weight(1f),
+                        )
+                        StatTile(
+                            "Recovery",
+                            if (performance.sampleSize == 0) "—" else String.format(java.util.Locale.US, "%.2f", performance.recoveryFactor),
+                            Tx.Gold, Modifier.weight(1f),
+                        )
+                    }
+                    Text(
+                        if (performance.sampleSize == 0) "برای محاسبه معیارها، معامله بسته‌شده با P&L معتبر ثبت کن."
+                        else "بزرگ‌ترین برد: ${(performance.largestWinShare * 100).toInt()}٪ از سودهای مثبت · بزرگ‌ترین باخت: ${(performance.largestLossShare * 100).toInt()}٪ از زیان‌های منفی · نمونه معتبر: ${performance.sampleSize}",
+                        color = Tx.Muted, fontSize = 10.sp,
+                    )
                     Text("پروفایل رفتاری فعلی: " + report.personality, color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(report.bestSession?.let { "سشن برتر فعلی: " + it.label + " · " + it.trades + " معامله" } ?: "برای اعلام سشن برتر، حداقل ۵ معامله زمان‌دار در یک سشن لازم است.", color = Tx.Text, fontSize = 12.sp)
                 }
