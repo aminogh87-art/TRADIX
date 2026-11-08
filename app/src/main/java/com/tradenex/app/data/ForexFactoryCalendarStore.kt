@@ -41,6 +41,7 @@ object ForexFactoryCalendarStore {
     private const val PREFS = "tradenex_forex_factory_calendar"
     private const val PAYLOAD_KEY = "payload"
     private const val FETCHED_AT_KEY = "fetched_at"
+    private const val ATTEMPTED_AT_KEY = "attempted_at"
     private const val HOUR_MS = 60L * 60L * 1000L
     private const val COOLDOWN_MS = 5L * 60L * 1000L
 
@@ -49,21 +50,27 @@ object ForexFactoryCalendarStore {
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val cachedPayload = prefs.getString(PAYLOAD_KEY, null)
             val cachedAt = prefs.getLong(FETCHED_AT_KEY, 0L)
+            val attemptedAt = prefs.getLong(ATTEMPTED_AT_KEY, 0L)
             val cachedEvents = cachedPayload?.let(::parseEvents).orEmpty()
             val now = System.currentTimeMillis()
             val age = if (cachedAt > 0L) now - cachedAt else Long.MAX_VALUE
+            val attemptAge = if (attemptedAt > 0L) now - attemptedAt else Long.MAX_VALUE
 
             if (cachedEvents.isNotEmpty() && !forceRefresh && age < HOUR_MS) {
                 return@withContext ForexFactoryCalendarResult(
                     cachedEvents, cachedAt, true, "دادهٔ ذخیره‌شده · دریافت خودکار هر یک ساعت",
                 )
             }
-            if (cachedEvents.isNotEmpty() && age < COOLDOWN_MS) {
+            if (attemptAge < COOLDOWN_MS) {
                 return@withContext ForexFactoryCalendarResult(
-                    cachedEvents, cachedAt, true, "برای جلوگیری از محدودیت منبع، تازه‌سازی بعد از ۵ دقیقه ممکن است",
+                    cachedEvents,
+                    cachedAt,
+                    cachedEvents.isNotEmpty(),
+                    "برای رعایت محدودیت Forex Factory، تلاش بعدی پس از ۵ دقیقه ممکن است",
                 )
             }
 
+            prefs.edit().putLong(ATTEMPTED_AT_KEY, now).apply()
             var connection: HttpURLConnection? = null
             try {
                 connection = (URL(FEED_URL).openConnection() as HttpURLConnection).apply {
