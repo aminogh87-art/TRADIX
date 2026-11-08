@@ -241,7 +241,14 @@ private fun DayEditor(date: LocalDate, onClose: () -> Unit) {
             TxField(risk, { risk = it }, "مثلاً 1")
             if (trades == 0) {
                 Text("امروز معامله‌ای نداشتی؛ دلیلش را ثبت کن تا گزارش هفتگی دقیق‌تر شود.", color = Tx.Gold, fontSize = 12.sp)
-                TxField(reason, { reason = it }, "دلیل نداشتن معامله")
+                WeeklyPlannerStore.noTradeReasons.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEach { option ->
+                            TxChip(option, reason.contains(option), { reason = option }, Modifier.weight(1f))
+                        }
+                    }
+                }
+                TxField(reason, { reason = it }, "توضیح بیشتر یا دلیل شخصی")
             }
             Text("چک‌لیست انضباط معاملاتی", color = Tx.Text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             WeeklyPlannerStore.checklist.forEach { task ->
