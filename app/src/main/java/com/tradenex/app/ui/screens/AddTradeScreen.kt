@@ -165,6 +165,9 @@ fun AddTradeScreen(nav: NavController) {
                     }
                     Text("تاریخ معامله", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
                     TxField(tradeDateText, { tradeDateText = it }, "میلادی YYYY-MM-DD یا شمسی 1405/08/17")
+                    if (parsedTradeDate != null) {
+                        Text("تاریخ شمسی: " + jalaliText(parsedTradeDate), color = Tx.Gold, fontSize = 10.sp)
+                    }
                     Text("ساعت بازشدن معامله", color = Tx.Muted, fontSize = 11.sp)
                     TxField(tradeTimeText, { tradeTimeText = it }, "HH:mm")
                     Text("نام معامله یا ستاپ (اختیاری)", color = Tx.Muted, fontSize = 11.sp)
