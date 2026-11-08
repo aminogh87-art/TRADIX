@@ -61,6 +61,9 @@ object Analytics {
         return n
     }
 
-    fun money(v: Double): String =
-        (if (v >= 0) "+" else "-") + "$" + String.format(java.util.Locale.US, "%,.2f", kotlin.math.abs(v))
+    fun money(v: Double, currency: String = AppState.selectedAccount.baseCurrency): String {
+        val digits = if (currency == "JPY") 0 else 2
+        return (if (v >= 0) "+" else "-") + currency + " " +
+            String.format(java.util.Locale.US, "%,.${digits}f", kotlin.math.abs(v))
+    }
 }
