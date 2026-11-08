@@ -67,12 +67,15 @@ fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
             val available = constraints.maxWidth.toFloat().coerceAtLeast(1f)
             val needWidth = if (series.isEmpty()) available else max(available, series.size * minSlotPx)
             val chartWidthDp = with(density) { needWidth.toDp() }
+            // Read the measured BoxWithConstraints height from constraints to avoid
+            // the receiver-resolution clash with the maxHeight property in this scope.
+            val chartHeightDp = with(density) { constraints.maxHeight.toDp() }
 
             Row(Modifier.horizontalScroll(scroll)) {
                 Canvas(
                     Modifier
                         .width(chartWidthDp)
-                        .height(maxHeight)
+                        .height(chartHeightDp)
                         .pointerInput(series, needWidth) {
                             detectTapGestures { tap ->
                                 if (series.isNotEmpty()) {
