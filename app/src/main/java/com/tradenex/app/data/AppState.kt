@@ -102,20 +102,15 @@ object AppState {
             ?: TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10_000.0)
     val visibleTrades: List<Trade>
         get() = trades.filter { it.accountId == selectedAccountId }
-    val strategies = mutableStateListOf(
-        Strategy(1, "ICT", listOf("تایید ساختار بازار", "ریسک حداکثر ۱٪", "فقط سشن لندن/نیویورک"), true),
-        Strategy(2, "Supply & Demand", listOf("ناحیه تازه", "تایید کندلی"), true),
-        Strategy(3, "Breakout", listOf("شکست با حجم", "استاپ زیر کندل شکست"), false),
-    )
+    // User-created content only: no preloaded strategy templates or sample records.
+    val strategies = mutableStateListOf<Strategy>()
     val strategyRevisions = mutableStateListOf<StrategyRevision>()
     val txAiEpisodeReviews = mutableStateListOf<TxAiEpisodeReview>()
     val txAiInsightPins = mutableStateListOf<TxAiInsightPin>()
-    val hashtags = mutableStateListOf("#london", "#news", "#fomo", "#breakout", "#discipline", "#revenge")
-    val lessons = mutableStateListOf(
-        Lesson(1, "پرایس اکشن از صفر", ContentKind.VIDEO_TEXT, 0.65f),
-        Lesson(2, "قوانین مدیریت ریسک", ContentKind.TEXT, 1f),
-        Lesson(3, "الگوهای کندلی کلیدی", ContentKind.IMAGE_TEXT, 0.3f),
-    )
+    // Tags are created by the user; never seed demo hashtags into a new journal.
+    val hashtags = mutableStateListOf<String>()
+    // The education library starts empty and is populated only by the user.
+    val lessons = mutableStateListOf<Lesson>()
     var settings by mutableStateOf(AppSettings())
     private var localStore: LocalStore? = null
 
