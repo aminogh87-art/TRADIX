@@ -272,6 +272,7 @@ fun AddTradeScreen(nav: NavController) {
                         tags = tags.toList(),
                         epochDay = parsedTradeDate.toEpochDay(),
                         emotion = emotion,
+                        accountId = AppState.selectedAccountId,
                         openedAtMillis = parsedTradeDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         closedAtMillis = parsedTradeDate.atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         entryPrice = entryText.trim().toDoubleOrNull(),
