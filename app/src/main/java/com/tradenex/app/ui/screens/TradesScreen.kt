@@ -1,0 +1,186 @@
+package com.tradenex.app.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.tradenex.app.data.Analytics
+import com.tradenex.app.data.AppState
+import com.tradenex.app.data.Trade
+import com.tradenex.app.ui.components.GlassCard
+import com.tradenex.app.ui.components.GoldButton
+import com.tradenex.app.ui.components.TxChip
+import com.tradenex.app.ui.theme.Tx
+
+@Composable
+fun TradesScreen(nav: NavController) {
+    var filter by remember { mutableStateOf("ALL") }
+    var editing by remember { mutableStateOf<Trade?>(null) }
+    var deleting by remember { mutableStateOf<Trade?>(null) }
+    var pnlText by remember { mutableStateOf("") }
+    var lotText by remember { mutableStateOf("") }
+    var entryText by remember { mutableStateOf("") }
+    var exitText by remember { mutableStateOf("") }
+    var slText by remember { mutableStateOf("") }
+    var tpText by remember { mutableStateOf("") }
+    var commissionText by remember { mutableStateOf("") }
+    var swapText by remember { mutableStateOf("") }
+    var notesText by remember { mutableStateOf("") }
+
+    val all = AppState.visibleTrades.sortedByDescending { it.epochDay }
+    val shown = all.filter {
+        when (filter) {
+            "BUY" -> it.buy
+            "SELL" -> !it.buy
+            "WIN" -> it.pnl > 0
+            "LOSS" -> it.pnl < 0
+            else -> true
+        }
+    }
+
+    Page(title = "ژورنال معاملات", onBack = { nav.popBackStack() }) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("ALL", "BUY", "SELL", "WIN", "LOSS").forEach {
+                TxChip(it, filter == it, { filter = it })
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("${shown.size} معامله", color = Tx.Muted, fontSize = 11.sp)
+                Text(Analytics.money(shown.sumOf { it.pnl }), color = if (shown.sumOf { it.pnl } >= 0) Tx.Green else Tx.Red, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            GoldButton("ثبت معامله جدید") { nav.navigate("add") }
+        }
+        if (shown.isEmpty()) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("هنوز معامله‌ای برای این حساب ثبت نشده است.", color = Tx.Muted, modifier = Modifier.padding(18.dp))
+            }
+        }
+        shown.forEach { trade ->
+            GlassCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(trade.symbol, color = Tx.Text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(if (trade.buy) "  BUY" else "  SELL", color = if (trade.buy) Tx.Green else Tx.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · روز ${trade.epochDay}", color = Tx.Muted, fontSize = 10.sp)
+                        if (trade.notes.isNotBlank()) Text(trade.notes, color = Tx.Muted, fontSize = 11.sp, maxLines = 2)
+                    }
+                    Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Rounded.Edit, "ویرایش معامله", tint = Tx.Gold, modifier = Modifier.clickable {
+                            editing = trade
+                            pnlText = trade.pnl.toString()
+                            lotText = trade.lot.toString()
+                            entryText = trade.entryPrice?.toString().orEmpty()
+                            exitText = trade.exitPrice?.toString().orEmpty()
+                            slText = trade.stopLossPrice?.toString().orEmpty()
+                            tpText = trade.takeProfitPrice?.toString().orEmpty()
+                            commissionText = trade.commission.toString()
+                            swapText = trade.swap.toString()
+                            notesText = trade.notes
+                        })
+                        Icon(Icons.Rounded.Delete, "حذف معامله", tint = Tx.Muted, modifier = Modifier.clickable { deleting = trade })
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+
+    editing?.let { original ->
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            containerColor = Color(0xFF14141A),
+            title = { Text("ویرایش ${original.symbol}", color = Tx.Text) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    TxField(pnlText, { pnlText = it }, "Net P&L (${AppState.selectedAccount.baseCurrency})")
+                    TxField(lotText, { lotText = it }, "Lots")
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        TxField(entryText, { entryText = it }, "Entry", Modifier.weight(1f))
+                        TxField(exitText, { exitText = it }, "Exit", Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        TxField(slText, { slText = it }, "Stop Loss", Modifier.weight(1f))
+                        TxField(tpText, { tpText = it }, "Take Profit", Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
+                        TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
+                    }
+                    TxField(notesText, { notesText = it }, "Notes")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val pnl = pnlText.toDoubleOrNull()
+                    val lot = lotText.toDoubleOrNull()
+                    if (pnl != null && pnl.isFinite() && lot != null && lot > 0.0 && lot.isFinite()) {
+                        val index = AppState.trades.indexOfFirst { it.id == original.id }
+                        if (index >= 0) {
+                            AppState.trades[index] = original.copy(
+                                pnl = pnl,
+                                lot = lot,
+                                entryPrice = entryText.toDoubleOrNull(),
+                                exitPrice = exitText.toDoubleOrNull(),
+                                stopLossPrice = slText.toDoubleOrNull(),
+                                takeProfitPrice = tpText.toDoubleOrNull(),
+                                commission = commissionText.toDoubleOrNull() ?: 0.0,
+                                swap = swapText.toDoubleOrNull() ?: 0.0,
+                                notes = notesText.trim(),
+                            )
+                            AppState.persist()
+                        }
+                        editing = null
+                    }
+                }) { Text("ذخیره تغییرات", color = Tx.Gold) }
+            },
+            dismissButton = { TextButton(onClick = { editing = null }) { Text("انصراف", color = Tx.Muted) } },
+        )
+    }
+
+    deleting?.let { trade ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            containerColor = Color(0xFF14141A),
+            title = { Text("حذف معامله؟", color = Tx.Text) },
+            text = { Text("معامله ${trade.symbol} از ژورنال این حساب حذف شود؟", color = Tx.Muted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    AppState.trades.removeAll { it.id == trade.id }
+                    AppState.persist()
+                    deleting = null
+                }) { Text("حذف", color = Tx.Red) }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("انصراف", color = Tx.Muted) } },
+        )
+    }
+}
