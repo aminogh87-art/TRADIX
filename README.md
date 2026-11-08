@@ -51,3 +51,15 @@ calendar (personal trades + sample news), tags, and settings.
 - **Forex sessions:** device-local timezone is now the default display mode. Session calculations use IANA market timezones so London/New York/Sydney DST shifts and current overlaps are reflected in the displayed local clock.
 
 The weekly and education modules use isolated local stores so existing trade journal snapshots and other feature models are not rewritten by these additions.
+
+
+## TX AI — Explainable trader analytics
+
+The hamburger menu includes **TX AI**, a local, account-scoped analysis view built from the user's saved journal:
+- Performance by trading session, calendar day, weekday, week, strategy, recorded timeframe and market condition.
+- Trader profile labels are conservative, sample-aware summaries of observed session/strategy concentration, not psychological diagnoses.
+- Counterfactual views show the net result after excluding trades flagged as outside-plan and a simple 50%-size risk scenario. The latter assumes P&L scales linearly and is not a backtest.
+- Monthly process scores separately cover discipline tags, planned-risk records, strategy-field coverage and decision-record completeness. Scores are withheld when sample coverage is insufficient.
+- New trade entries capture actual open time, timeframe, market condition and planned cash risk. Older entries remain compatible; fields not present in historical records are not inferred.
+
+TX AI is descriptive coaching, not investment advice, not a prediction engine, and it never places trades. The analytics are deterministic and explainable; no external AI service or cloud upload is used.
