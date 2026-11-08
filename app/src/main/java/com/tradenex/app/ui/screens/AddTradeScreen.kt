@@ -100,6 +100,7 @@ fun AddTradeScreen(nav: NavController) {
     var marketCondition by remember { mutableStateOf("رونددار") }
     var plannedRiskText by remember { mutableStateOf("") }
     val parsedTradeDate = remember(tradeDateText) { runCatching { LocalDate.parse(tradeDateText.trim()) }.getOrNull() }
+    val parsedTradeTime = remember(tradeTimeText) { runCatching { java.time.LocalTime.parse(tradeTimeText.trim()) }.getOrNull() }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var emotion by remember { mutableStateOf("آرام") }
     var tags by remember { mutableStateOf(setOf<String>()) }
@@ -276,11 +277,10 @@ fun AddTradeScreen(nav: NavController) {
         }
         Reveal(7) {
             TxField(notesText, { notesText = it }, "یادداشت معامله (اختیاری)")
-            if (parsedTradeDate == null) {
-                Text("تاریخ باید با قالب YYYY-MM-DD وارد شود.", color = Tx.Red, fontSize = 11.sp)
-            }
+            if (parsedTradeDate == null) Text("تاریخ باید با قالب YYYY-MM-DD وارد شود.", color = Tx.Red, fontSize = 11.sp)
+            if (parsedTradeTime == null) Text("ساعت باید با قالب HH:mm وارد شود.", color = Tx.Red, fontSize = 11.sp)
             GoldButton("ذخیره معامله در دفترچه") {
-                if (parsedTradeDate != null && (!usePriceCalculation || priceResult != null)) {
+                if (parsedTradeDate != null && parsedTradeTime != null && (!usePriceCalculation || priceResult != null)) {
                     AppState.addTrade(
                     Trade(
                         id = System.currentTimeMillis(),
@@ -294,7 +294,7 @@ fun AddTradeScreen(nav: NavController) {
                         epochDay = parsedTradeDate.toEpochDay(),
                         emotion = emotion,
                         accountId = AppState.selectedAccountId,
-                        openedAtMillis = runCatching { parsedTradeDate.atTime(java.time.LocalTime.parse(tradeTimeText.trim())).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() }.getOrDefault(0L),
+                        openedAtMillis = parsedTradeDate.atTime(parsedTradeTime).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         closedAtMillis = parsedTradeDate.atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         entryPrice = entryText.trim().toDoubleOrNull(),
                         exitPrice = exitText.trim().toDoubleOrNull(),
