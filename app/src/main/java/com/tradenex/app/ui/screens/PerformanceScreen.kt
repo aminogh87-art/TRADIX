@@ -58,9 +58,10 @@ fun PerformanceScreen(nav: NavController) {
     }
     val windowed = remember(period, n) { AppState.visibleTrades.filter { it.epochDay > today - windowDays } }
     val stats = remember(period, n) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
-    val candles = remember(period, n) { Analytics.candles(AppState.visibleTrades, period, settings.startBalance) }
+    val candles = remember(period, n) { Analytics.tradeCandles(windowed, settings.startBalance, 60) }
     val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
+    val heatScale = (dayPnl.filterKeys { it > today - 35 && it <= today }.values.maxOfOrNull { abs(it) } ?: 0.0).coerceAtLeast(1.0)
     val best = inWindow.values.maxOrNull() ?: 0.0
     val worst = inWindow.values.minOrNull() ?: 0.0
     val noTrade = Analytics.noTradeDays(AppState.visibleTrades, today, 35, settings.weekendHoliday)
@@ -89,6 +90,7 @@ fun PerformanceScreen(nav: NavController) {
                     }
                     Spacer(Modifier.height(8.dp))
                     CandleChart(candles, Modifier.fillMaxWidth().height(140.dp))
+                    Text("هر کندل = یک معامله ثبت‌شده · نمایش ${candles.size} معامله اخیر در بازه انتخابی", color = Tx.Muted, fontSize = 9.sp)
                 }
             }
         }
@@ -121,6 +123,7 @@ fun PerformanceScreen(nav: NavController) {
                                 HeatCell(
                                     day = LocalDate.ofEpochDay(d).dayOfMonth,
                                     pnl = pnl,
+                                    strength = if (pnl == null) 0f else (abs(pnl) / heatScale).toFloat().coerceIn(0f, 1f),
                                     holiday = settings.weekendHoliday && c < 2,
                                     future = d > today,
                                     index = r * 7 + c,
@@ -152,7 +155,7 @@ fun PerformanceScreen(nav: NavController) {
 }
 
 @Composable
-private fun HeatCell(day: Int, pnl: Double?, holiday: Boolean, future: Boolean, index: Int, modifier: Modifier) {
+private fun HeatCell(day: Int, pnl: Double?, strength: Float, holiday: Boolean, future: Boolean, index: Int, modifier: Modifier) {
     var on by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(index * 18L)
@@ -164,8 +167,8 @@ private fun HeatCell(day: Int, pnl: Double?, holiday: Boolean, future: Boolean, 
         holiday -> Color.Transparent to Tx.Muted.copy(alpha = 0.5f)
         future -> Color.Transparent to Tx.Muted.copy(alpha = 0.35f)
         pnl == null -> Color.White.copy(alpha = 0.10f) to Tx.Muted
-        pnl >= 0 -> (if (pnl > 150) Tx.Green else Tx.GreenDeep) to (if (pnl > 150) Tx.Ink else Color(0xFFE9FFF6))
-        else -> (if (pnl < -120) Tx.RedDeep else Color(0xFF6B2530)) to Color.White
+        pnl >= 0 -> Tx.Green.copy(alpha = 0.14f + strength * 0.82f) to (if (strength > 0.65f) Tx.Ink else Color(0xFFE9FFF6))
+        else -> Tx.Red.copy(alpha = 0.14f + strength * 0.82f) to Color.White
     }
     Box(
         modifier
