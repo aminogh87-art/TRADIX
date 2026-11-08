@@ -14,6 +14,7 @@ void main() {
       'currentMonthKey': '2026-11',
       'episodeReviews': [
         {'episodeId': 'a:1:2', 'status': 'confirmed'},
+        {'episodeId': 'account-1:session-drift:1', 'status': 'confirmed'},
       ],
       'pinnedInsights': [
         {'insightId': 'summary-win-rate', 'pinned': true},
