@@ -102,6 +102,7 @@ internal object SnapshotCodec {
                     put("commission", t.commission); put("swap", t.swap); put("otherFees", t.otherFees)
                     put("notes", t.notes); t.plannedRisk?.let { put("plannedRisk", it) }
                     put("strategyVersion", t.strategyVersion); put("timeframe", t.timeframe); put("marketCondition", t.marketCondition)
+                    t.strategyFollowed?.let { put("strategyFollowed", it) }
                 })
             }
         })
@@ -201,6 +202,7 @@ internal object SnapshotCodec {
                     strategyVersion = row.optInt("strategyVersion", 1),
                     timeframe = row.optString("timeframe", ""),
                     marketCondition = row.optString("marketCondition", ""),
+                    strategyFollowed = if (row.has("strategyFollowed") && !row.isNull("strategyFollowed")) row.optBoolean("strategyFollowed") else null,
                 ),
             )
         }
