@@ -20,9 +20,11 @@ import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,10 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.JalaliCalendar
+import com.tradenex.app.data.ForexFactoryCalendarStore
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.IconBox
 import com.tradenex.app.ui.components.SectionTitle
@@ -48,6 +52,9 @@ import com.tradenex.app.ui.theme.Tx
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private val jalaliMonths = listOf("فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند")
 
@@ -64,7 +71,7 @@ fun jalaliText(d: LocalDate): String {
     return "${fa(day)} ${jalaliMonths[m - 1]} ${fa(y)}"
 }
 
-private data class NewsEvent(val id: Int, val time: String, val cur: String, val title: String, val impact: Int)
+
 
 // Sample data. The real feed (ForexFactory) will replace this.
 private val sampleNews = emptyList<NewsEvent>()
@@ -75,6 +82,20 @@ fun CalendarScreen(nav: NavController) {
     var offset by remember { mutableStateOf(0) }
     var filter by remember { mutableStateOf(0) }
     var remind by remember { mutableStateOf(setOf<Int>()) }
+    val context = LocalContext.current
+    var refreshCounter by remember { mutableStateOf(0) }
+    var newsEvents by remember { mutableStateOf(emptyList<com.tradenex.app.data.ForexFactoryEvent>()) }
+    var newsLoading by remember { mutableStateOf(true) }
+    var newsMessage by remember { mutableStateOf("در حال اتصال به Forex Factory…") }
+    var newsFetchedAt by remember { mutableStateOf(0L) }
+    LaunchedEffect(refreshCounter) {
+        newsLoading = true
+        val result = ForexFactoryCalendarStore.load(context, forceRefresh = refreshCounter > 0)
+        newsEvents = result.events
+        newsFetchedAt = result.fetchedAtMillis
+        newsMessage = result.message
+        newsLoading = false
+    }
     val today = LocalDate.now()
     var selectedDate by remember { mutableStateOf(today) }
     val todayJalali = JalaliCalendar.fromGregorian(today)
