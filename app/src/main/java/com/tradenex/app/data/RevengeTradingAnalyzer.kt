@@ -47,13 +47,18 @@ object RevengeTradingAnalyzer {
                 compareBy<Trade> { it.openedAtMillis.takeIf { t -> t > 0L } ?: Long.MAX_VALUE }
                     .thenBy { it.epochDay }.thenBy { it.id },
             )
-            var lossStreak = 0
             for (index in ordered.indices) {
                 val current = ordered[index]
-                if (current.pnl < 0.0) lossStreak++ else if (current.pnl > 0.0) lossStreak = 0
                 if (index == 0) continue
                 val previous = ordered[index - 1]
                 if (previous.pnl >= 0.0) continue
+                // Count losses strictly before the current re-entry, not including it.
+                var priorLossStreak = 0
+                var cursor = index - 1
+                while (cursor >= 0 && ordered[cursor].pnl < 0.0) {
+                    priorLossStreak++
+                    cursor--
+                }
 
                 val gap = if (current.openedAtMillis > 0L && previous.openedAtMillis > 0L &&
                     current.openedAtMillis >= previous.openedAtMillis
@@ -76,7 +81,7 @@ object RevengeTradingAnalyzer {
                     if (planViolation) add("ثبت صریح معامله به‌عنوان خارج از پلن")
                     if (revengeTag) add("تگ Revenge به‌صورت دستی ثبت شده")
                     if (emotion) add("ثبت حالت ذهنی یا تگ مرتبط با خشم/FOMO")
-                    if (lossStreak >= 2) add("ورود پس از حداقل دو زیان متوالی")
+                    if (priorLossStreak >= 2) add("ورود پس از حداقل دو زیان متوالی")
                 }
                 val score = (
                     (if (rapid) 15 else 0) +
@@ -85,7 +90,7 @@ object RevengeTradingAnalyzer {
                     (if (planViolation) 20 else 0) +
                     (if (revengeTag) 30 else 0) +
                     (if (emotion) 10 else 0) +
-                    (if (lossStreak >= 2) 10 else 0)
+                    (if (priorLossStreak >= 2) 10 else 0)
                 ).coerceAtMost(100)
                 if (score == 0) continue
 
@@ -100,7 +105,7 @@ object RevengeTradingAnalyzer {
                     previousWasLoss = true, rapidReentry = rapid, riskIncreased = riskUp,
                     volumeIncreased = sizeUp, explicitPlanViolation = planViolation,
                     explicitRevengeTag = revengeTag, emotionalSignal = emotion,
-                    consecutiveLosses = lossStreak, score = score,
+                    consecutiveLosses = priorLossStreak, score = score,
                     classification = classification, reasons = reasons,
                 )
                 episodes += RevengeEpisode(
