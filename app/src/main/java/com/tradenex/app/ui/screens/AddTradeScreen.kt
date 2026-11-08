@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,7 +84,10 @@ fun AddTradeScreen(nav: NavController) {
     var usePriceCalculation by remember { mutableStateOf(false) }
     var entryText by remember { mutableStateOf("") }
     var exitText by remember { mutableStateOf("") }
-    var conversionText by remember { mutableStateOf("1.0") }
+    var conversionText by remember { mutableStateOf(if (symbol.endsWith(AppState.selectedAccount.baseCurrency)) "1.0" else "") }
+    LaunchedEffect(symbol, AppState.selectedAccountId) {
+        conversionText = if (symbol.endsWith(AppState.selectedAccount.baseCurrency)) "1.0" else ""
+    }
     var commissionText by remember { mutableStateOf("0") }
     var swapText by remember { mutableStateOf("0") }
     var feeText by remember { mutableStateOf("0") }
@@ -163,8 +167,8 @@ fun AddTradeScreen(nav: NavController) {
                             TxField(entryText, { entryText = it }, "Entry", Modifier.weight(1f))
                             TxField(exitText, { exitText = it }, "Exit", Modifier.weight(1f))
                         }
-                        Text("نرخ تبدیل ارز مظنه به ارز حساب (USD)", color = Tx.Muted, fontSize = 10.sp)
-                        TxField(conversionText, { conversionText = it }, "مثلاً 1.0 برای EURUSD")
+                        Text("نرخ تبدیل ارز مظنه به ارز حساب (${AppState.selectedAccount.baseCurrency})", color = Tx.Muted, fontSize = 10.sp)
+                        TxField(conversionText, { conversionText = it }, "نرخ تبدیل را وارد کن")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
                             TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
