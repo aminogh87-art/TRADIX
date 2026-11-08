@@ -14,7 +14,7 @@ Forex trade journal, learning hub and live session clock. It never trades and ne
 
 ## Screens
 
-Home dashboard, trade history (filters, edit/delete), manual trade entry (manual P&L or price-based FX calculation),
+Home dashboard, trade history (filters, edit/delete, CSV export), manual trade entry (manual P&L or price-based FX calculation),
 multi-account profiles (real/demo/prop, base currency, active account), performance (equity candles and heatmaps),
 strategies (create/edit/delete and version snapshots), DST-aware sessions (globe/timeline), education,
 calendar (personal trades + sample news), tags, and settings.
@@ -34,7 +34,8 @@ calendar (personal trades + sample news), tags, and settings.
 - Synthetic trade fixtures were removed. The quick-add symbol list and domain validator are restricted to supported fiat FX pairs (no BTC, gold or index symbols).
 - Trade records now carry optional entry/exit, stop-loss/take-profit, commission, swap, fees, notes, account reference, date, and strategy-version metadata. Quick-add supports manual realized P&L or price-derived Forex P&L.
 - The calculation engine uses pair-aware pip sizes, explicit quote-to-account conversion, costs, and optional R multiple. Unit tests cover major-pair, JPY, short-side, invalid-conversion, and FX-only validation cases.
-- Multiple account profiles can be created, selected, and archived. Home, performance, strategy comparisons, calendar, and tags are scoped to the selected account.
+- Multiple account profiles can be created, selected, and archived. Home, performance, strategy comparisons, calendar, tags, trade history, and CSV exports are scoped to the selected account.
+- Trade history supports BUY/SELL/WIN/LOSS filters, edit/delete with confirmation, and account-scoped CSV export.
 - Strategy edits create revision snapshots and increment the active version; new trades retain the strategy version used.
 - Sydney, Tokyo, London, and New York session state and overlap use IANA market timezones with daylight-saving transitions, while the existing globe/timeline components are retained.
 - Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, local no-trade reminders, backup/import/export, and complete Persian/English localization.
