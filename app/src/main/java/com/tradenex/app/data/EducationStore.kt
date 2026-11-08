@@ -78,6 +78,11 @@ object EducationStore {
         persist()
     }
 
+    fun removeBlock(lessonId: Long, blockId: Long) {
+        val index = lessons.indexOfFirst { it.id == lessonId }
+        if (index >= 0) { lessons[index] = lessons[index].copy(blocks = lessons[index].blocks.filterNot { it.id == blockId }); persist() }
+    }
+
     fun updateProgress(lessonId: Long, progress: Float) {
         val index = lessons.indexOfFirst { it.id == lessonId }
         if (index >= 0) { lessons[index] = lessons[index].copy(progress = progress.coerceIn(0f, 1f)); persist() }
