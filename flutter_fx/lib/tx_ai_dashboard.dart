@@ -326,7 +326,9 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
             _heatmapCard(heatmap, account.displayTimezone),
           ],
         ),
-        TxBehavioralLab(
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: TxBehavioralLab(
           accountId: account.accountId,
           episodes: revengeEpisodes,
           onReviewChanged: (episodeId, review) {
@@ -357,7 +359,9 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
             ),
           ],
         ),
-        TxInsightFeed(
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: TxInsightFeed(
           insights: insights,
           onPinChanged: (id, pinned) => _bridge.setInsightPinned(
             accountId: account.accountId,
@@ -366,6 +370,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
           ),
           onOpenEvidence: (ids) => ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('شواهد معاملات: ${ids.map((id) => "#$id").join("، ")}')),
+          ),
           ),
         ),
       ],
