@@ -18,7 +18,7 @@ Forex trade journal, learning hub and live session clock. It never trades and ne
 Home dashboard, trade history (filters, edit/delete, CSV export), manual trade entry (manual P&L or price-based FX calculation),
 multi-account profiles (real/demo/prop, base currency, active account), performance (equity candles and heatmaps),
 strategies (create/edit/delete and version snapshots), DST-aware sessions (globe/timeline), education,
-calendar (personal trades + sample news), tags, and settings.
+calendar (personal trades + cached Forex Factory weekly economic feed), tags, and settings.
 
 ## Themes (Settings > تم‌ها)
 
@@ -53,7 +53,7 @@ effects (dust, shimmer, crown) are saved in SharedPreferences. The gold dust is 
 - Trade history supports BUY/SELL/WIN/LOSS filters, edit/delete with confirmation, and account-scoped CSV export.
 - Strategy edits create revision snapshots and increment the active version; new trades retain the strategy version used.
 - Sydney, Tokyo, London, and New York session state and overlap use IANA market timezones with daylight-saving transitions, while the existing globe/timeline components are retained.
-- Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, backup/import/export, and complete Persian/English localization. Flutter add-to-app generation and Android embedding must pass the current CI and device launch checks before release.
+- Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, and complete Persian/English localization. The economic calendar now reads Forex Factory's public weekly JSON export with local caching and request throttling; it is an unofficial feed endpoint and can be unavailable or change. Flutter add-to-app generation and Android embedding must pass the current CI and device launch checks before release.
 - Existing theme tokens, colors, reusable components, and navigation styling were preserved; screens were extended additively. Run the latest Android unit tests/build and Rust tests before considering this branch release-ready.
 
 
