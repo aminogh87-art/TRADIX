@@ -41,6 +41,11 @@ import androidx.navigation.NavController
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Trade
+import com.tradenex.app.domain.FxInstrument
+import com.tradenex.app.domain.FxPnlInput
+import com.tradenex.app.domain.FxSide
+import com.tradenex.app.domain.ForexPnlCalculator
+import java.math.BigDecimal
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.GoldButton
 import com.tradenex.app.ui.components.TxChip
@@ -73,11 +78,35 @@ fun AddTradeScreen(nav: NavController) {
     var lot by remember { mutableStateOf(settings.defaultLot) }
     var win by remember { mutableStateOf(true) }
     var amount by remember { mutableStateOf(250.0) }
+    var usePriceCalculation by remember { mutableStateOf(false) }
+    var entryText by remember { mutableStateOf("") }
+    var exitText by remember { mutableStateOf("") }
+    var conversionText by remember { mutableStateOf("1.0") }
+    var commissionText by remember { mutableStateOf("0") }
+    var swapText by remember { mutableStateOf("0") }
+    var feeText by remember { mutableStateOf("0") }
     var strategy by remember { mutableStateOf(AppState.strategies.firstOrNull { it.active }?.name ?: "") }
     var emotion by remember { mutableStateOf("آرام") }
     var tags by remember { mutableStateOf(setOf<String>()) }
 
-    val signed = if (win) amount else -amount
+    val priceResult = remember(symbol, buy, lot, entryText, exitText, conversionText, commissionText, swapText, feeText) {
+        runCatching {
+            ForexPnlCalculator.calculate(
+                FxPnlInput(
+                    instrument = FxInstrument.standard(symbol),
+                    side = if (buy) FxSide.BUY else FxSide.SELL,
+                    lots = BigDecimal.valueOf(lot),
+                    entryPrice = entryText.trim().toBigDecimal(),
+                    exitPrice = exitText.trim().toBigDecimal(),
+                    quoteToAccountRate = conversionText.trim().toBigDecimal(),
+                    commissionAccountCurrency = commissionText.trim().toBigDecimal(),
+                    swapAccountCurrency = swapText.trim().toBigDecimal(),
+                    otherFeesAccountCurrency = feeText.trim().toBigDecimal(),
+                ),
+            )
+        }.getOrNull()
+    }
+    val signed = if (usePriceCalculation) priceResult?.netAccountCurrency?.toDouble() ?: 0.0 else if (win) amount else -amount
     val animated by animateFloatAsState(signed.toFloat(), tween(450), label = "net")
     val resColor = if (win) Tx.Green else Tx.Red
     val riskUsd = settings.startBalance * settings.riskPercent / 100.0
@@ -112,23 +141,59 @@ fun AddTradeScreen(nav: NavController) {
             }
         }
         Reveal(3) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("روش ثبت نتیجه", color = Tx.Muted, fontSize = 11.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TxChip("مبلغ دستی", !usePriceCalculation, { usePriceCalculation = false })
+                        TxChip("محاسبه از قیمت", usePriceCalculation, { usePriceCalculation = true })
+                    }
+                    if (usePriceCalculation) {
+                        Text("قیمت ورود و خروج", color = Tx.Muted, fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TxField(entryText, { entryText = it }, "Entry", Modifier.weight(1f))
+                            TxField(exitText, { exitText = it }, "Exit", Modifier.weight(1f))
+                        }
+                        Text("نرخ تبدیل ارز مظنه به ارز حساب (USD)", color = Tx.Muted, fontSize = 10.sp)
+                        TxField(conversionText, { conversionText = it }, "مثلاً 1.0 برای EURUSD")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TxField(commissionText, { commissionText = it }, "Commission", Modifier.weight(1f))
+                            TxField(swapText, { swapText = it }, "Swap", Modifier.weight(1f))
+                            TxField(feeText, { feeText = it }, "Other fees", Modifier.weight(1f))
+                        }
+                        Text(
+                            if (priceResult == null) "برای محاسبه، قیمت ورود، خروج و نرخ تبدیل معتبر وارد کن."
+                            else "حرکت ${priceResult.pips} پیپ · ارزش هر پیپ ${priceResult.pipValueQuoteCurrency}",
+                            color = if (priceResult == null) Tx.Red else Tx.Muted,
+                            fontSize = 10.sp,
+                        )
+                    } else {
+                        Text("نتیجه خالص را به ارز حساب وارد کن.", color = Tx.Muted, fontSize = 10.sp)
+                    }
+                }
+            }
+        }
+        Reveal(5) {
             GlassCard(Modifier.fillMaxWidth(), border = resColor.copy(alpha = 0.5f)) {
                 Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ResultToggle("سود (Profit)", win, Tx.Green, Modifier.weight(1f)) { win = true }
-                        ResultToggle("ضرر (Loss)", !win, Tx.Red, Modifier.weight(1f)) { win = false }
-                    }
+                    if (!usePriceCalculation) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ResultToggle("سود (Profit)", win, Tx.Green, Modifier.weight(1f)) { win = true }
+                            ResultToggle("ضرر (Loss)", !win, Tx.Red, Modifier.weight(1f)) { win = false }
+                        }
                     Spacer(Modifier.height(8.dp))
-                    Stepper(
-                        valueText = "$" + String.format(java.util.Locale.US, "%,.2f", amount),
-                        onMinus = { amount = (amount - 25).coerceAtLeast(0.0) },
-                        onPlus = { amount += 25 },
-                        valueColor = resColor,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        amountPresets.forEach { p ->
-                            TxChip("+${p.toInt()}", false, { amount += p })
+                    if (!usePriceCalculation) {
+                        Stepper(
+                            valueText = "$" + String.format(java.util.Locale.US, "%,.2f", amount),
+                            onMinus = { amount = (amount - 25).coerceAtLeast(0.0) },
+                            onPlus = { amount += 25 },
+                            valueColor = resColor,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            amountPresets.forEach { p ->
+                                TxChip("+${p.toInt()}", false, { amount += p })
+                            }
                         }
                     }
                 }
@@ -157,7 +222,7 @@ fun AddTradeScreen(nav: NavController) {
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
-        Reveal(5) {
+        Reveal(6) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("استراتژی", color = Tx.Muted, fontSize = 11.sp)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -175,9 +240,9 @@ fun AddTradeScreen(nav: NavController) {
                 }
             }
         }
-        Reveal(6) {
+        Reveal(7) {
             GoldButton("ذخیره معامله در دفترچه") {
-                AppState.addTrade(
+                if (!usePriceCalculation || priceResult != null) AppState.addTrade(
                     Trade(
                         id = System.currentTimeMillis(),
                         symbol = symbol,
@@ -188,6 +253,13 @@ fun AddTradeScreen(nav: NavController) {
                         tags = tags.toList(),
                         epochDay = AppState.today(),
                         emotion = emotion,
+                        openedAtMillis = System.currentTimeMillis(),
+                        closedAtMillis = System.currentTimeMillis(),
+                        entryPrice = entryText.trim().toDoubleOrNull(),
+                        exitPrice = exitText.trim().toDoubleOrNull(),
+                        commission = commissionText.trim().toDoubleOrNull() ?: 0.0,
+                        swap = swapText.trim().toDoubleOrNull() ?: 0.0,
+                        otherFees = feeText.trim().toDoubleOrNull() ?: 0.0,
                     ),
                 )
                 nav.popBackStack()
