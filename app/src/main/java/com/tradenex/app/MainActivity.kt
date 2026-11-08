@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.tradenex.app.data.AppState
+import com.tradenex.app.data.WeeklyPlannerStore
 import com.tradenex.app.nav.AppNav
 import com.tradenex.app.ui.theme.TradenexTheme
 
@@ -13,6 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AppState.initialize(applicationContext)
+        WeeklyPlannerStore.initialize(applicationContext)
         setContent {
             TradenexTheme {
                 AppNav()
@@ -21,6 +23,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onPause() {
         AppState.persist()
+        WeeklyPlannerStore.persist()
         super.onPause()
     }
 }
