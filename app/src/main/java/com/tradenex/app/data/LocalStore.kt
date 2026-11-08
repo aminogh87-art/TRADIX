@@ -70,12 +70,24 @@ internal class LocalStore(context: Context) :
 internal object SnapshotCodec {
     fun encode(
         trades: List<Trade>,
+        accounts: List<TradingAccount>,
         strategies: List<Strategy>,
         hashtags: List<String>,
         lessons: List<Lesson>,
         settings: AppSettings,
+        selectedAccountId: String,
     ): JSONObject = JSONObject().apply {
         put("version", 1)
+        put("selectedAccountId", selectedAccountId)
+        put("accounts", JSONArray().apply {
+            accounts.forEach { a ->
+                put(JSONObject().apply {
+                    put("id", a.id); put("name", a.name); put("broker", a.broker)
+                    put("type", a.type); put("baseCurrency", a.baseCurrency)
+                    put("startingBalance", a.startingBalance); put("archived", a.archived)
+                })
+            }
+        })
         put("trades", JSONArray().apply {
             trades.forEach { t ->
                 put(JSONObject().apply {
@@ -123,6 +135,26 @@ internal object SnapshotCodec {
 
     fun restore(snapshot: JSONObject, target: MutableSnapshot) {
         if (snapshot.optInt("version", 0) != 1) return
+        target.accounts.clear()
+        val accountRows = snapshot.optJSONArray("accounts") ?: JSONArray()
+        for (i in 0 until accountRows.length()) {
+            val row = accountRows.optJSONObject(i) ?: continue
+            target.accounts.add(
+                TradingAccount(
+                    id = row.optString("id"),
+                    name = row.optString("name"),
+                    broker = row.optString("broker"),
+                    type = row.optString("type", "REAL"),
+                    baseCurrency = row.optString("baseCurrency", "USD"),
+                    startingBalance = row.optDouble("startingBalance", 10000.0),
+                    archived = row.optBoolean("archived", false),
+                ),
+            )
+        }
+        if (target.accounts.isEmpty()) {
+            target.accounts.add(TradingAccount("default", "حساب اصلی", "", "REAL", "USD", 10000.0))
+        }
+        target.selectedAccountId = snapshot.optString("selectedAccountId", target.accounts.first().id)
         target.trades.clear()
         val tradeRows = snapshot.optJSONArray("trades") ?: JSONArray()
         for (i in 0 until tradeRows.length()) {
@@ -197,8 +229,10 @@ internal object SnapshotCodec {
 
 internal data class MutableSnapshot(
     val trades: MutableList<Trade>,
+    val accounts: MutableList<TradingAccount>,
     val strategies: MutableList<Strategy>,
     val hashtags: MutableList<String>,
     val lessons: MutableList<Lesson>,
     var settings: AppSettings,
+    var selectedAccountId: String,
 )
