@@ -96,6 +96,30 @@ class TxAiEngineTest {
     }
 
     @Test
+    fun advancedAnalyticsCompareStrategyVersionsTimeBucketsHoldTimeRAndStreaks() {
+        val base = LocalDate.of(2026, 11, 2).atTime(9, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val rows = listOf(
+            trade(1, 10.0).copy(openedAtMillis = base + 60_000, closedAtMillis = base + 6 * 60_000, plannedRisk = 5.0, strategyVersion = 1),
+            trade(2, 20.0).copy(openedAtMillis = base + 10 * 60_000, closedAtMillis = base + 20 * 60_000, plannedRisk = 10.0, strategyVersion = 1),
+            trade(3, -10.0).copy(openedAtMillis = base + 16 * 60_000, closedAtMillis = base + 31 * 60_000, plannedRisk = 5.0, strategyVersion = 1),
+            trade(4, -20.0).copy(openedAtMillis = base + 17 * 60_000, closedAtMillis = base + 37 * 60_000, plannedRisk = 10.0, strategyVersion = 2),
+            trade(5, -5.0).copy(openedAtMillis = base + 18 * 60_000, closedAtMillis = base + 43 * 60_000, plannedRisk = 5.0, strategyVersion = 2),
+        )
+        val report = TxAiEngine.analyze(rows, account, 1.0, ZoneOffset.UTC)
+
+        assertEquals(2, report.strategyVersions.size)
+        assertTrue(report.strategyVersions.any { it.label == "ICT · v1" && it.trades == 3 })
+        assertTrue(report.strategyVersions.any { it.label == "ICT · v2" && it.trades == 2 })
+        assertTrue(report.timeOfDay.any { it.label == "09:00–09:15" && it.trades == 2 })
+        assertTrue(report.timeOfDay.any { it.label == "09:15–09:30" && it.trades == 3 })
+        assertEquals(15.0, report.averageHoldMinutes!!, 0.001)
+        assertEquals(15.0, report.medianHoldMinutes!!, 0.001)
+        assertEquals(-0.2, report.averageRMultiple!!, 0.001)
+        assertEquals(2, report.maxWinStreak)
+        assertEquals(3, report.maxLossStreak)
+    }
+
+    @Test
     fun reportGroupsContextAndComputesHalfRisk() {
         val report = TxAiEngine.analyze((1L..6L).map { trade(it, 40.0) }, account, 1.0)
         assertEquals("M15", report.timeframes.single().label)
