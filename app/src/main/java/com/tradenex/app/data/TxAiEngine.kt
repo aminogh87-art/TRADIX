@@ -77,9 +77,9 @@ object TxAiEngine {
         val halfRisk = ordered.sumOf { it.pnl * 0.5 }
         val insights = buildList {
             if (ordered.size < 10) add("برای تشخیص الگوی پایدار، حداقل ۱۰ معامله ثبت کن؛ نتیجه فعلی مقدماتی است.")
-            sessions.firstOrNull()?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }
-            timeframes.firstOrNull()?.let { add("بهترین تایم‌فریم ثبت‌شده: ${it.label}؛ این نتیجه فقط از معاملات دارای برچسب تایم‌فریم محاسبه شده است.") }
-            marketConditions.firstOrNull()?.let { add("بهترین شرایط بازار ثبت‌شده: ${it.label}؛ نمونه ${it.trades} معامله.") }
+            sessions.firstOrNull { it.trades >= 3 }?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }
+            timeframes.firstOrNull { it.trades >= 3 }?.let { add("بهترین تایم‌فریم ثبت‌شده: ${it.label}؛ این نتیجه فقط از معاملات دارای برچسب تایم‌فریم محاسبه شده است.") }
+            marketConditions.firstOrNull { it.trades >= 3 }?.let { add("بهترین شرایط بازار ثبت‌شده: ${it.label}؛ نمونه ${it.trades} معامله.") }
             weekdays.firstOrNull()?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}.") }
             strategySlices.firstOrNull()?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ قبل از نتیجه‌گیری تعداد نمونه را بررسی کن.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
@@ -88,10 +88,10 @@ object TxAiEngine {
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
-            bestSession = sessions.firstOrNull(), sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
+            bestSession = sessions.firstOrNull { it.trades >= 3 }, sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
             weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
-            bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
+            bestStrategy = strategySlices.firstOrNull { it.trades >= 3 }, outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
             scores = scores,
