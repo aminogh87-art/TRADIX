@@ -74,18 +74,20 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
             if (state.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (state.hasError || state.data == null) {
+            final snapshot = state.data;
+            final analytics = _analytics;
+            if (state.hasError || snapshot == null) {
               return _errorState(
                 state.error?.toString() ??
                     'داده حساب انتخاب‌شده از میزبان اندروید دریافت نشد.',
               );
             }
-            if (_analytics == null) {
+            if (analytics == null) {
               return _errorState(
                 'کتابخانه Rust برای این دستگاه بارگذاری نشد. ساخت native library و ABI دستگاه را بررسی کن.',
               );
             }
-            return _dashboard(context, state.data!, _analytics!);
+            return _dashboard(context, snapshot, analytics);
           },
         ),
       ),
