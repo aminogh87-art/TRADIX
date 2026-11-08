@@ -128,3 +128,25 @@ Acceptance: planned quick re-entry is not automatically revenge; missing data is
 5. Embed Flutter TX AI UI without changing existing theme or unrelated Compose routes.
 6. Add replay/backtesting only after market data and execution model are real.
 7. Add export/backup, localization/accessibility and final device validation.
+
+
+## Implementation update — current coding batch
+
+Implemented on `feature/tradix-forex-journal` after the initial blueprint:
+
+- Rust: deterministic realized-P&L metrics for net, win rate, profit factor, drawdown, expectancy, average win/loss, recovery factor and largest win/loss concentration; non-finite values are excluded.
+- Rust: C ABI entry point `tx_ai_performance_metrics` for a future Dart FFI boundary.
+- Dart: `TxRustAnalytics` FFI wrapper and typed `TxRustMetrics` result contract.
+- Flutter: six-axis `TxRadar`, `TxInsightCard`, `TxBehavioralBadge`, `TxHeatmap`, `TxCounterfactualSlider`, `TxProcessTimeline`, `TxAiCommandCenter`, and an interactive filtered `TxEdgeExplorer` with a risk/reward scatter.
+- Flutter tests: widget tests for radar interaction, insight pin action, heatmap interaction and unavailable process scores.
+- CI: separate Flutter format/analyze/widget-test job.
+
+Integration boundary (important): `flutter_fx` is still a standalone Flutter package/app, not yet embedded in the Android application. The FFI wrapper requires the Rust shared library to be packaged for each target ABI and is not yet wired to a live account snapshot. The new UI components accept host-provided account-scoped data; they do not create fake journal data. Do not claim the Flutter screens are visible inside the production Android app until the add-to-app bridge, native library packaging, and end-to-end account-data mapping are completed and tested.
+
+Next coding gates:
+1. Confirm the latest Android, Rust and Flutter CI jobs pass on the branch HEAD.
+2. Integrate Flutter add-to-app with the smallest possible Android host bridge; do not rewrite existing Compose screens or theme.
+3. Build/package Rust `cdylib` for arm64-v8a, armeabi-v7a and x86_64 and validate Dart FFI on device.
+4. Connect the selected-account journal snapshot to typed Dart models and test account isolation end-to-end.
+5. Persist behavioral review corrections and add the remaining Behavioral Lab detectors.
+6. Implement saved views, cross-analysis matrix, scenario engine and insight lifecycle with persistence.
