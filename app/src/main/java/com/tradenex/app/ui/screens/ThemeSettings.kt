@@ -57,11 +57,11 @@ fun ThemesGroup() {
             Modifier.fillMaxWidth().padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ThemeId.values().forEach { id ->
+            ThemeId.values().filter { it == ThemeId.DEFAULT || ThemeController.goldAvailable }.forEach { id ->
                 ThemeCard(id, id == selected, Modifier.weight(1f)) { ThemeController.select(id) }
             }
         }
-        if (selected == ThemeId.DEFAULT) {
+        if (selected == ThemeId.GOLD) {\n            Text("حذف تم Gold", color = Tx.Red, fontSize = 11.sp, modifier = Modifier.clickable { ThemeController.removeGoldTheme() }.padding(vertical = 8.dp))\n        }\n        if (selected == ThemeId.DEFAULT) {
             SmallLabel("رنگ تأکید")
             ChipsRow(listOf("طلایی", "فیروزه‌ای", "بنفش"), ThemeController.accent) { ThemeController.setAccent(it) }
             Spacer(Modifier.height(8.dp))
