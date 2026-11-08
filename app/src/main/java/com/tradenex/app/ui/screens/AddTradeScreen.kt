@@ -94,6 +94,7 @@ fun AddTradeScreen(nav: NavController) {
     var stopLossText by remember { mutableStateOf("") }
     var takeProfitText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
+    var tradeNameText by remember { mutableStateOf("") }
     var tradeDateText by remember { mutableStateOf(LocalDate.now().toString()) }
     var tradeTimeText by remember { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0).toString()) }
     var timeframe by remember { mutableStateOf("") }
@@ -158,6 +159,8 @@ fun AddTradeScreen(nav: NavController) {
                     TxField(tradeDateText, { tradeDateText = it }, "YYYY-MM-DD")
                     Text("ساعت بازشدن معامله", color = Tx.Muted, fontSize = 11.sp)
                     TxField(tradeTimeText, { tradeTimeText = it }, "HH:mm")
+                    Text("نام معامله یا ستاپ (اختیاری)", color = Tx.Muted, fontSize = 11.sp)
+                    TxField(tradeNameText, { tradeNameText = it }, "مثلاً London Breakout · ستاپ ICT")
                 }
             }
         }
@@ -315,6 +318,7 @@ fun AddTradeScreen(nav: NavController) {
                         timeframe = timeframe,
                         marketCondition = marketCondition,
                         strategyFollowed = strategyFollowed,
+                        tradeName = tradeNameText.trim(),
                     ),
                     )
                     nav.popBackStack()
