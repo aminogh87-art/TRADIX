@@ -305,8 +305,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
     final processMonths = _processMonths(trades, account);
     final insights = _insights(account, analytics, weekTrades, monthTrades, monthDiscipline);
     final hasOffPlanEvidence = trades.any((trade) =>
-        trade.strategyFollowed != null ||
-        trade.tags.any((tag) => _isOffPlan(trade)));
+        trade.strategyFollowed != null || _isOffPlan(trade));
     final offPlanMask = hasOffPlanEvidence
         ? trades.map(_isOffPlan).toList(growable: false)
         : null;
