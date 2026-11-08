@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,8 +85,6 @@ fun MoreScreen(nav: NavController) {
         MenuItem("تنظیمات", "همه جزئیات برنامه", Icons.Rounded.Settings, "settings", Tx.Muted),
         MenuItem("درباره", "نسخه و هسته", Icons.Rounded.Info, "about", Tx.Blue),
     )
-    val pulse = rememberInfiniteTransition(label = "crown")
-    val s by pulse.animateFloat(1f, 1.1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "s")
 
     Page(title = "بیشتر") {
         Reveal(0) {
@@ -96,14 +95,14 @@ fun MoreScreen(nav: NavController) {
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.Person, null, tint = Tx.Gold, modifier = Modifier.size(30.dp)) }
                     Column(Modifier.weight(1f)) {
-                        Text("ترید‌ر حرفه‌ای", color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("فضای معاملاتی شخصی", color = Tx.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             "${AppState.visibleTrades.size} معامله · " + if (NativeCore.isNative) "هسته Rust فعال" else "هسته Kotlin",
                             color = Tx.Muted,
                             fontSize = 11.sp,
                         )
                     }
-                    Icon(Icons.Rounded.EmojiEvents, null, tint = Tx.Gold, modifier = Modifier.size(30.dp).scale(s))
+                    Icon(Icons.Rounded.EmojiEvents, null, tint = Tx.Gold, modifier = Modifier.size(30.dp))
                 }
             }
         }
