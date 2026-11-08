@@ -95,7 +95,7 @@ fun TxAiScreen(nav: NavController) {
                     Text("سود/زیان کل اگر معاملات خارج از پلن حذف می‌شد: " + money(report.withoutOutsideStrategyNet), color = if (report.withoutOutsideStrategyNet >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("تغییر نسبت به عملکرد واقعی: " + money(report.withoutOutsideStrategyDelta), color = if (report.withoutOutsideStrategyDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("تغییر سناریوی ریسک نصف: " + money(report.halfRiskDelta), color = if (report.halfRiskDelta >= 0) Tx.Green else Tx.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن فقط بر اساس تگ‌های صریح FOMO، Revenge، No-plan یا Off-strategy است؛ خالی‌بودن نام استراتژی به‌تنهایی تخلف محسوب نمی‌شود.", color = Tx.Muted, fontSize = 10.sp)
+                    Text("این شبیه‌سازی بک‌تست نیست؛ اسلیپیج، مارجین و تغییر رفتار اجرای سفارش را مدل نمی‌کند. تشخیص خارج از پلن بر اساس انتخاب صریح «خارج از پلن» یا تگ‌های FOMO، Revenge، No-plan و Off-strategy است؛ داده ثبت‌نشده به‌تنهایی تخلف محسوب نمی‌شود.", color = Tx.Muted, fontSize = 10.sp)
                 }
             }
         }
@@ -106,7 +106,7 @@ fun TxAiScreen(nav: NavController) {
                     Text("امتیاز ۰ تا ۱۰۰؛ خط تیره یعنی داده کافی موجود نیست.", color = Tx.Muted, fontSize = 10.sp)
                     ScoreRow("نظم معاملاتی", report.scores.discipline, "نبود تگ‌های FOMO، Revenge و Overtrading")
                     ScoreRow("مدیریت ریسک", report.scores.risk, "نیازمند ثبت ریسک برنامه‌ریزی‌شده")
-                    ScoreRow("پایبندی به استراتژی", report.scores.strategy, "بر اساس ثبت نام استراتژی؛ نه اثبات اجرای قوانین")
+                    ScoreRow("پایبندی به استراتژی", report.scores.strategy, "بر اساس ثبت صریح «طبق پلن / خارج از پلن»؛ پوشش داده باید حداقل ۷۰٪ باشد")
                     ScoreRow("کیفیت تصمیم‌گیری", report.scores.decision, "کامل‌بودن ورود، خروج، حدضرر و استراتژی")
                     Text("نمونه این ماه: " + report.scores.sampleSize + " معامله · امتیاز فقط با پوشش داده کافی نمایش داده می‌شود.", color = Tx.Muted, fontSize = 10.sp)
                     Text("روند امتیازها در ماه‌های ثبت‌شده", color = Tx.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
