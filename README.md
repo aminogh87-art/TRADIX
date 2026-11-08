@@ -7,10 +7,11 @@ Forex trade journal, learning hub and live session clock. It never trades and ne
 
 | Layer | Tech | Where |
 |---|---|---|
-| App + UI | Kotlin, Jetpack Compose (RTL, Persian first) | `app/` |
-| Fast core | Rust (JNI): session maths, trade statistics | `rust/` |
-| Animation kit | Dart / Flutter: globe, glow numbers | `flutter_fx/` |
-| CI | GitHub Actions: `cargo test` + `testDebugUnitTest` + `assembleDebug` | `.github/workflows/ci.yml` |
+| Android host + existing app UI | Kotlin, Jetpack Compose (RTL, Persian first) | `app/` |
+| TX AI UI | Dart / Flutter add-to-app module; account data through a read-only MethodChannel | `flutter_fx/` |
+| Deterministic native core | Rust (JNI + C ABI): sessions, performance metrics, revenge evidence and scenarios | `rust/` |
+| Flutter module output | Generated from canonical Dart sources; do not edit generated files | `flutter_module/` |
+| CI | GitHub Actions: Rust tests + Android unit tests/APK + Flutter analyze/widget tests | `.github/workflows/ci.yml` |
 
 ## Screens
 
@@ -25,8 +26,9 @@ calendar (personal trades + sample news), tags, and settings.
    `gradle wrapper --gradle-version 8.9` once.
 2. Optional, for the Rust core: `cargo install cargo-ndk`, set `ANDROID_NDK_HOME`, then `./rust/build-android.sh`.
    Without the `.so` the app uses the identical Kotlin fallback (`NativeCore.isNative` tells which one is active).
-3. Dart animation kit: `cd flutter_fx && flutter run`. It is a standalone module for now and is not yet embedded in the
-   Android app (the Compose globe in `Globe.kt` implements the same effect natively).
+3. Install Flutter stable, then run `bash scripts/bootstrap_flutter_module.sh` from the repository root. This generates
+   the Android add-to-app project from `flutter_fx/lib`. Run the Gradle build after bootstrapping. Without the generated
+   module, native-only development still falls back to the existing Compose TX AI screen.
 
 ## Status / honest notes
 
@@ -38,7 +40,7 @@ calendar (personal trades + sample news), tags, and settings.
 - Trade history supports BUY/SELL/WIN/LOSS filters, edit/delete with confirmation, and account-scoped CSV export.
 - Strategy edits create revision snapshots and increment the active version; new trades retain the strategy version used.
 - Sydney, Tokyo, London, and New York session state and overlap use IANA market timezones with daylight-saving transitions, while the existing globe/timeline components are retained.
-- Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, local no-trade reminders, backup/import/export, and complete Persian/English localization.
+- Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, backup/import/export, and complete Persian/English localization. Flutter add-to-app generation and Android embedding must pass the current CI and device launch checks before release.
 - Existing theme tokens, colors, reusable components, and navigation styling were preserved; screens were extended additively. Run the latest Android unit tests/build and Rust tests before considering this branch release-ready.
 
 
@@ -56,10 +58,14 @@ The weekly and education modules use isolated local stores so existing trade jou
 ## TX AI — Explainable trader analytics
 
 The hamburger menu includes **TX AI**, a local, account-scoped analysis view built from the user's saved journal:
-- Performance by trading session, calendar day, weekday, week, strategy, recorded timeframe and market condition.
+- Performance by trading session, calendar day, weekday, week, strategy and recorded strategy version, 15-minute entry window, timeframe, market condition and emotion.
+- Rust-backed command-center metrics: expectancy, profit factor, drawdown, recovery factor, average win/loss and profit/loss concentration.
+- Holding-time mean/median, realized R multiple, consecutive win/loss streaks and confidence-gated best/weakest sessions.
 - Trader profile labels are conservative, sample-aware summaries of observed session/strategy concentration, not psychological diagnoses.
 - Counterfactual views show the net result after excluding trades flagged as outside-plan and a simple 50%-size risk scenario. The latter assumes P&L scales linearly and is not a backtest.
 - Monthly process scores separately cover discipline tags, planned-risk records, strategy-field coverage and decision-record completeness. Scores are withheld when sample coverage is insufficient.
+- Behavioral Lab includes explainable Revenge evidence, post-win activity density, post-win size increase and recorded exit-before-target patterns. User review decisions and pinned insights persist locally with account-scoped keys.
 - New trade entries capture actual open time, timeframe, market condition and planned cash risk. Older entries remain compatible; fields not present in historical records are not inferred.
+- Flutter TX AI reads only the currently selected account's journal snapshot. It never receives broker credentials; reviews and insight pins are written back through a validated host channel.
 
 TX AI is descriptive coaching, not investment advice, not a prediction engine, and it never places trades. The analytics are deterministic and explainable; no external AI service or cloud upload is used.
