@@ -102,7 +102,13 @@ fun AddTradeScreen(nav: NavController) {
     var marketCondition by remember { mutableStateOf("") }
     var plannedRiskText by remember { mutableStateOf("") }
     val parsedTradeDate = remember(tradeDateText) {
-        val raw = tradeDateText.trim().replace('/', '-')
+        val normalized = buildString {
+            tradeDateText.trim().forEach { char ->
+                val digit = "۰۱۲۳۴۵۶۷۸۹".indexOf(char)
+                append(if (digit >= 0) ('0' + digit) else char)
+            }
+        }
+        val raw = normalized.replace('/', '-')
         val parts = raw.split('-')
         val year = parts.getOrNull(0)?.toIntOrNull()
         if (parts.size == 3 && year != null && year in 1200..1600) {
