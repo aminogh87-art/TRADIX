@@ -54,6 +54,16 @@ object EducationStore {
         }
     }
 
+    fun migrateLegacy(legacy: List<Lesson>) {
+        if (lessons.isNotEmpty()) return
+        legacy.forEach { old ->
+            val kindText = old.kind.name.contains("TEXT")
+            val blocks = if (kindText) listOf(EducationBlock(type = EducationBlockType.TEXT, text = "")) else emptyList()
+            lessons.add(EducationLesson(old.id, old.title, old.id, blocks, old.progress))
+        }
+        if (lessons.isNotEmpty()) persist()
+    }
+
     fun add(title: String): EducationLesson {
         val lesson = EducationLesson(System.currentTimeMillis(), title.trim(), System.currentTimeMillis())
         lessons.add(0, lesson)
