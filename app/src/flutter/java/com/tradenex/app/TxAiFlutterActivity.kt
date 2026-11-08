@@ -55,13 +55,17 @@ class TxAiFlutterActivity : FlutterActivity() {
     private fun selectedAccountSnapshot(): Map<String, Any?> {
         val account = AppState.selectedAccount
         val trades = AppState.visibleTrades
+        val displayZone = SessionEngine.displayZone(AppState.settings.tzMode)
+        val nowDisplay = Instant.now().atZone(displayZone)
         return mapOf(
             "accountId" to account.id,
             "accountName" to account.name,
             "currency" to account.baseCurrency,
             "startingBalance" to account.startingBalance,
             "riskPercent" to AppState.settings.riskPercent,
-            "displayTimezone" to SessionEngine.displayZone(AppState.settings.tzMode).id,
+            "displayTimezone" to displayZone.id,
+            "currentDisplayDateKey" to nowDisplay.toLocalDate().toString(),
+            "currentMonthKey" to "%04d-%02d".format(java.util.Locale.US, nowDisplay.year, nowDisplay.monthValue),
             "trades" to trades.map(::tradePayload),
             "episodeReviews" to AppState.txAiEpisodeReviews
                 .filter { it.accountId == account.id }
