@@ -105,27 +105,30 @@ object TxAiBehavioralPatternAnalyzer {
                     val strategy = strategies.firstOrNull {
                         it.name.equals(trade.strategy, ignoreCase = true)
                     }
-                    val rules = revision?.rules ?: strategy?.rules.orEmpty()
+                    val rules = revision?.rules
+                        ?: strategy?.takeIf { it.version == trade.strategyVersion }?.rules
+                        ?: emptyList()
                     val ruleText = rules.joinToString(" ").lowercase()
                     val allowedSessions = listOf(
                         "Sydney" to listOf("sydney", "سیدنی"),
                         "Tokyo" to listOf("tokyo", "توکیو"),
                         "London" to listOf("london", "لندن"),
                         "New York" to listOf("new york", "نیویورک"),
-                    ).filter { (_, terms) -> terms.any(ruleText::contains) }
+                    ).filter { (_, terms) -> terms.any { term -> ruleText.contains(term) } }
                         .map { it.first }
                         .toSet()
                     if (allowedSessions.isEmpty()) return@forEach
                     val instant = Instant.ofEpochMilli(trade.openedAtMillis)
-                    val actualSession = SessionEngine.defs.firstOrNull { definition ->
+                    val activeSessions = SessionEngine.defs.filter { definition ->
                         val local = instant.atZone(definition.zoneId).toLocalTime()
                         if (definition.localOpen < definition.localClose) {
                             !local.isBefore(definition.localOpen) && local.isBefore(definition.localClose)
                         } else {
                             !local.isBefore(definition.localOpen) || local.isBefore(definition.localClose)
                         }
-                    }?.name ?: return@forEach
-                    if (actualSession in allowedSessions) return@forEach
+                    }.map { it.name }
+                    if (activeSessions.any { it in allowedSessions }) return@forEach
+                    val actualSession = activeSessions.ifEmpty { listOf("بین سشن‌ها") }
                     output += TxAiBehaviorPattern(
                         id = "$accountId:session-drift:${trade.id}",
                         accountId = accountId,
@@ -135,8 +138,8 @@ object TxAiBehavioralPatternAnalyzer {
                         evidenceScore = 30,
                         actualNetPnl = trade.pnl,
                         reasons = listOf(
-                            "زمان ورود در سشن $actualSession ثبت شده، اما قوانین نسخه استراتژی فقط این سشن‌ها را نام برده‌اند: ${allowedSessions.joinToString("، ")}.",
-                            "این هشدار فقط وقتی فعال می‌شود که قانون استراتژی نام سشن مجاز را صریحاً ثبت کرده باشد.",
+                            "زمان ورود در ${actualSession.joinToString(" / ")} ثبت شده، اما قوانین نسخه استراتژی فقط این سشن‌ها را مجاز دانسته‌اند: ${allowedSessions.joinToString("، ")}.",
+                            "در هم‌پوشانی سشن‌ها، وجود هر سشن مجاز مانع هشدار اشتباه می‌شود.",
                         ),
                     )
                 }
