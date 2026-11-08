@@ -73,6 +73,21 @@ class TxAiFlutterActivity : FlutterActivity() {
             "pinnedInsights" to AppState.txAiInsightPins
                 .filter { it.accountId == account.id }
                 .map { mapOf("insightId" to it.insightId, "pinned" to it.pinned) },
+            "behavioralPatterns" to com.tradenex.app.data.TxAiBehavioralPatternAnalyzer.analyze(
+                trades,
+                AppState.strategies.toList(),
+                AppState.strategyRevisions.toList(),
+            ).map { pattern ->
+                mapOf(
+                    "id" to pattern.id,
+                    "title" to pattern.type.label,
+                    "triggerTradeId" to pattern.triggerTradeId,
+                    "linkedTradeIds" to pattern.linkedTradeIds,
+                    "evidenceScore" to pattern.evidenceScore,
+                    "actualNetPnl" to pattern.actualNetPnl,
+                    "reasons" to pattern.reasons,
+                )
+            },
         )
     }
 
