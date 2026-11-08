@@ -34,6 +34,7 @@ import com.tradenex.app.core.NativeCore
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
+import com.tradenex.app.data.JalaliCalendar
 import com.tradenex.app.ui.components.CandleChart
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.SectionTitle
@@ -90,8 +91,12 @@ fun PerformanceScreen(nav: NavController) {
                         Text(if (settings.hideBalance) "••••" else Analytics.money(stats.net), color = netColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(8.dp))
-                    CandleChart(candles, Modifier.fillMaxWidth().height(140.dp))
-                    Text("هر کندل = یک معامله ثبت‌شده · نمایش ${candles.size} معامله اخیر در بازه انتخابی", color = Tx.Muted, fontSize = 9.sp)
+                    if (candles.isEmpty()) {
+                        Text("برای ساخت نمودار، ابتدا معامله‌ای در این بازه ثبت کن.", color = Tx.Muted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 28.dp))
+                    } else {
+                        CandleChart(candles, Modifier.fillMaxWidth().height(140.dp))
+                        Text("هر کندل = یک معامله ثبت‌شده · نمایش ${candles.size} معامله اخیر در بازه انتخابی", color = Tx.Muted, fontSize = 9.sp)
+                    }
                 }
             }
         }
@@ -122,7 +127,7 @@ fun PerformanceScreen(nav: NavController) {
                                 val pnl = dayPnl[d]
                                 if (pnl != null) sum += pnl
                                 HeatCell(
-                                    day = LocalDate.ofEpochDay(d).dayOfMonth,
+                                    day = JalaliCalendar.fromGregorian(LocalDate.ofEpochDay(d)).day,
                                     pnl = pnl,
                                     strength = if (pnl == null) 0f else (abs(pnl) / heatScale).toFloat().coerceIn(0f, 1f),
                                     holiday = settings.weekendHoliday && c < 2,
