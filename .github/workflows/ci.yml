@@ -56,12 +56,19 @@ jobs:
         with:
           gradle-version: '8.14.3'
           cache-provider: basic
-      - run: gradle :app:testDebugUnitTest :app:assembleDebug --stacktrace
+      - run: gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --stacktrace
       - uses: actions/upload-artifact@v6
         if: success()
         with:
           name: TRADIX-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: TRADIX-release-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
           retention-days: 14
 
