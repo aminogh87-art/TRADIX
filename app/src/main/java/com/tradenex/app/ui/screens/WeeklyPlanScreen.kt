@@ -140,7 +140,9 @@ fun WeeklyPlanScreen(nav: NavController, openToday: Boolean = false) {
                         }
                         Text("نتیجه خالص: ${money(prevProfit - prevLoss)} · روزهای ثبت‌شده: ${previousWeekRecorded.size}/5",
                             color = if (prevProfit >= prevLoss) Tx.Green else Tx.Red, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        if (previousWeekRecorded.any { !it.followedPlan }) {
+                        if (previousWeekRecorded.isEmpty()) {
+                            Text("هفته گذشته گزارشی ثبت نشده؛ از این هفته عملکرد روزانه را ثبت کن تا تحلیل دقیق‌تری داشته باشی.", color = Tx.Muted, fontSize = 11.sp)
+                        } else if (previousWeekRecorded.any { !it.followedPlan }) {
                             Text("پیشنهاد: روزهایی که از پلن خارج شدی را بررسی و علت را در یادداشت همان روز مرور کن.", color = Tx.Muted, fontSize = 11.sp)
                         } else {
                             Text("پیشنهاد: قوانین معاملاتی و کیفیت ستاپ‌های موفق را برای هفته جدید حفظ کن.", color = Tx.Muted, fontSize = 11.sp)
