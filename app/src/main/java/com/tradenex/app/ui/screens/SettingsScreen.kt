@@ -57,7 +57,7 @@ fun SettingsScreen(nav: NavController) {
         }
         Reveal(2) {
             SettingGroup("معامله و ریسک") {
-                StepRow("بالانس اولیه", "$" + String.format(Locale.US, "%,.0f", s.startBalance),
+                StepRow("بالانس اولیه", AppState.selectedAccount.baseCurrency + " " + String.format(Locale.US, "%,.0f", s.startBalance),
                     { update { it.copy(startBalance = (it.startBalance - 500).coerceAtLeast(100.0)) } },
                     { update { it.copy(startBalance = it.startBalance + 500) } })
                 StepRow("لات پیش‌فرض", String.format(Locale.US, "%.2f", s.defaultLot),
