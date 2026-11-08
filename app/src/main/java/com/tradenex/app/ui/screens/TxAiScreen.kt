@@ -28,6 +28,7 @@ fun TxAiScreen(nav: NavController) {
     val account = AppState.selectedAccount
     val riskPercent = AppState.settings.riskPercent
     val report = remember(trades, account, riskPercent) { TxAiEngine.analyze(trades, account, riskPercent) }
+    val revengeEpisodes = remember(trades) { com.tradenex.app.data.RevengeTradingAnalyzer.analyze(trades) }
     fun money(v: Double) = Analytics.money(v)
     Page(title = "TX AI", onBack = { nav.popBackStack() }) {
         Reveal(0) {
@@ -127,6 +128,67 @@ fun TxAiScreen(nav: NavController) {
                     if (report.insights.isEmpty()) EmptyAi("برای ارائه پیشنهاد معتبر، معاملات و اطلاعات زمینه‌ای بیشتری ثبت کن.")
                     report.insights.forEachIndexed { i, insight -> Text((i + 1).toString() + ". " + insight, color = Tx.Text, fontSize = 11.sp) }
                     Text("تایم‌فریم و شرایط بازار از معاملات جدیدی که این فیلدها در آن‌ها تکمیل شده استخراج می‌شوند؛ معاملات قدیمی فاقد این اطلاعات‌اند.", color = Tx.Gold, fontSize = 10.sp)
+                }
+            }
+        }
+        Reveal(6) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    SectionTitle("Behavioral Lab · Revenge Trading")
+                    Text(
+                        "این بخش فقط الگوهای قابل مشاهده در ژورنال را نشان می‌دهد؛ امتیاز، احتمال روان‌شناختی یا تشخیص قطعی نیست.",
+                        color = Tx.Muted, fontSize = 10.sp,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        StatTile("اپیزودها", revengeEpisodes.size.toString(), Tx.Gold, Modifier.weight(1f))
+                        StatTile("شواهد قوی", revengeEpisodes.count { it.evidence.classification == com.tradenex.app.data.RevengeClass.STRONG_EVIDENCE }.toString(), Tx.Red, Modifier.weight(1f))
+                        StatTile("تگ دستی", revengeEpisodes.count { it.evidence.classification == com.tradenex.app.data.RevengeClass.USER_TAGGED }.toString(), Tx.Blue, Modifier.weight(1f))
+                    }
+                    if (revengeEpisodes.isEmpty()) {
+                        EmptyAi("در معاملات این حساب، اپیزود قابل‌نمایشی با شواهد ثبت‌شده پیدا نشد. ورود سریع پس از ضرر به‌تنهایی برای برچسب Revenge کافی نیست.")
+                    }
+                    revengeEpisodes.take(20).forEach { episode ->
+                        val previous = trades.firstOrNull { it.id == episode.previousLossTradeId }
+                        val trigger = trades.firstOrNull { it.id == episode.triggerTradeId }
+                        Column(
+                            Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.035f), RoundedCornerShape(12.dp)).padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    when (episode.evidence.classification) {
+                                        com.tradenex.app.data.RevengeClass.USER_TAGGED -> "با تگ دستی کاربر"
+                                        com.tradenex.app.data.RevengeClass.STRONG_EVIDENCE -> "شواهد رفتاری قوی"
+                                        com.tradenex.app.data.RevengeClass.POSSIBLE -> "الگوی احتمالی"
+                                        com.tradenex.app.data.RevengeClass.LOSS_SEQUENCE_ONLY -> "توالی زیان"
+                                    },
+                                    color = if (episode.evidence.score >= 45) Tx.Red else Tx.Gold,
+                                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text("Evidence ${episode.evidence.score}/100", color = Tx.Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                "معامله قبلی: ${previous?.symbol ?: "—"} · ${previous?.let { if (it.buy) "BUY" else "SELL" } ?: "—"} · ${previous?.let { money(it.pnl) } ?: "—"}",
+                                color = Tx.Text, fontSize = 11.sp,
+                            )
+                            Text(
+                                "ورود بعدی: ${trigger?.symbol ?: "—"} · ${trigger?.let { if (it.buy) "BUY" else "SELL" } ?: "—"} · ${trigger?.let { money(it.pnl) } ?: "—"}",
+                                color = Tx.Text, fontSize = 11.sp,
+                            )
+                            Text(
+                                "فاصله زمانی: ${episode.evidence.gapMinutes?.let { "$it دقیقه" } ?: "ثبت نشده"} · خالص دو معامله مرتبط: ${money(episode.actualNetPnl)}",
+                                color = Tx.Muted, fontSize = 10.sp,
+                            )
+                            episode.evidence.reasons.forEach { reason ->
+                                Text("• $reason", color = Tx.Muted, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                    Text(
+                        "روش تشخیص: فاصله حداکثر ۱۵ دقیقه، افزایش ریسک/حجم بیش از ۲۵٪، تخلف صریح از پلن، تگ Revenge، نشانه‌های خشم/FOMO و توالی ضرر. داده ناقص امتیاز نمی‌گیرد. هر اپیزود فقط دو معامله مرتبط را نمایش می‌دهد و جمع آن‌ها برای محاسبه هزینه کل حساب تجمیع نشده تا زیان تکراری شمرده نشود.",
+                        color = Tx.Muted, fontSize = 9.sp,
+                    )
                 }
             }
         }
