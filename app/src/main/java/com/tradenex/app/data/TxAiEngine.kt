@@ -3,6 +3,7 @@ package com.tradenex.app.data
 import com.tradenex.app.core.SessionEngine
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.roundToInt
 
 data class TxAiSlice(
@@ -49,10 +50,23 @@ data class TxAiReport(
     val monthlyProgress: List<TxAiScores>,
     val timeframeDataAvailable: Boolean = false,
     val marketRegimeDataAvailable: Boolean = false,
+    val worstSession: TxAiSlice? = null,
+    val strategyVersions: List<TxAiSlice> = emptyList(),
+    val timeOfDay: List<TxAiSlice> = emptyList(),
+    val averageHoldMinutes: Double? = null,
+    val medianHoldMinutes: Double? = null,
+    val averageRMultiple: Double? = null,
+    val maxWinStreak: Int = 0,
+    val maxLossStreak: Int = 0,
 )
 
 object TxAiEngine {
-    fun analyze(trades: List<Trade>, account: TradingAccount, riskPercent: Double): TxAiReport {
+    fun analyze(
+        trades: List<Trade>,
+        account: TradingAccount,
+        riskPercent: Double,
+        localZone: ZoneId = ZoneId.systemDefault(),
+    ): TxAiReport {
         val ordered = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis })
         val sessions = ordered.filter { it.openedAtMillis > 0L }.groupBy { sessionOf(it.openedAtMillis) }
             .filterKeys { it != "نامشخص" }.map { (name, rows) -> slice(name, rows) }
@@ -70,6 +84,31 @@ object TxAiEngine {
         }.toSortedMap().map { (start, rows) -> slice("${start.dayOfMonth}/${start.monthValue}", rows) }
         val strategySlices = ordered.filter { it.strategy.isNotBlank() }.groupBy { it.strategy }
             .map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
+        val strategyVersions = ordered.filter { it.strategy.isNotBlank() }
+            .groupBy { "${it.strategy} · v${it.strategyVersion}" }
+            .map { (name, rows) -> slice(name, rows) }
+            .sortedByDescending { it.average }
+        val timeOfDay = ordered.filter { it.openedAtMillis > 0L }.groupBy { trade ->
+            val local = Instant.ofEpochMilli(trade.openedAtMillis).atZone(localZone).toLocalTime()
+            (local.hour * 60 + local.minute) / 15 * 15
+        }.map { (startMinute, rows) ->
+            val endMinute = (startMinute + 15) % (24 * 60)
+            slice("${clockLabel(startMinute)}–${clockLabel(endMinute)}", rows)
+        }.sortedByDescending { it.average }
+        val holdMinutes = ordered.mapNotNull { trade ->
+            if (trade.openedAtMillis > 0L && trade.closedAtMillis >= trade.openedAtMillis && trade.closedAtMillis > 0L) {
+                (trade.closedAtMillis - trade.openedAtMillis) / 60_000.0
+            } else null
+        }.sorted()
+        val averageHoldMinutes = holdMinutes.takeIf { it.isNotEmpty() }?.average()
+        val medianHoldMinutes = holdMinutes.takeIf { it.isNotEmpty() }?.let { values ->
+            if (values.size % 2 == 1) values[values.size / 2]
+            else (values[values.size / 2 - 1] + values[values.size / 2]) / 2.0
+        }
+        val knownRiskTrades = ordered.filter { it.plannedRisk != null && it.plannedRisk > 0.0 && it.plannedRisk.isFinite() && it.pnl.isFinite() }
+        val averageRMultiple = knownRiskTrades.takeIf { it.isNotEmpty() }
+            ?.map { it.pnl / it.plannedRisk!! }?.average()
+        val streaks = streaks(ordered)
         val outside = ordered.filter { isOutsideStrategy(it) }
         val currentMonth = java.time.YearMonth.now()
         val monthlyProgress = (5 downTo 0).map { monthsAgo ->
@@ -97,6 +136,8 @@ object TxAiEngine {
             emotions.firstOrNull { it.trades >= 5 }?.let { add("بهترین نتیجه در حالت ذهنی «${it.label}» ثبت شده؛ نمونه ${it.trades} معامله.") }
             weekdays.firstOrNull { it.trades >= 3 }?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}؛ نمونه ${it.trades} معامله.") }
             strategySlices.firstOrNull { it.trades >= 5 }?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ نمونه ${it.trades} معامله.") }
+            strategyVersions.firstOrNull { it.trades >= 5 }?.let { add("نسخه شاخص استراتژی: ${it.label}؛ نتیجه فقط از معاملات دارای نسخه ثبت‌شده محاسبه شده است.") }
+            timeOfDay.firstOrNull { it.trades >= 5 }?.let { add("بازه ۱۵ دقیقه‌ای شاخص: ${it.label}؛ نمونه ${it.trades} معامله.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
             if (monthTrades.count { it.plannedRisk != null && it.plannedRisk > 0.0 } < 3) add("برای امتیاز دقیق مدیریت ریسک، ریسک برنامه‌ریزی‌شده را هنگام ثبت هر معامله وارد کن.")
         }
@@ -115,6 +156,14 @@ object TxAiEngine {
             insights = insights, monthlyProgress = monthlyProgress,
             timeframeDataAvailable = timeframes.isNotEmpty(),
             marketRegimeDataAvailable = marketConditions.isNotEmpty(),
+            worstSession = sessions.filter { it.trades >= 5 && it.label != "بین سشن‌ها" }.minByOrNull { it.average },
+            strategyVersions = strategyVersions,
+            timeOfDay = timeOfDay,
+            averageHoldMinutes = averageHoldMinutes,
+            medianHoldMinutes = medianHoldMinutes,
+            averageRMultiple = averageRMultiple,
+            maxWinStreak = streaks.first,
+            maxLossStreak = streaks.second,
         )
     }
 
@@ -141,6 +190,40 @@ object TxAiEngine {
             (rows.count { it.entryPrice != null && it.exitPrice != null && it.stopLossPrice != null && it.strategy.isNotBlank() }.toDouble() / rows.size * 100).roundToInt()
         } else null
         return TxAiScores(discipline, risk, strategy, decision, label, rows.size)
+    }
+
+    private fun clockLabel(minutes: Int): String =
+        String.format(java.util.Locale.US, "%02d:%02d", minutes / 60, minutes % 60)
+
+    /** Returns maximum consecutive winning and losing closed-trade streaks. */
+    private fun streaks(trades: List<Trade>): Pair<Int, Int> {
+        val chronological = trades.sortedWith(
+            compareBy<Trade> { it.closedAtMillis.takeIf { value -> value > 0L } ?: it.epochDay * 86_400_000L }
+                .thenBy { it.id },
+        )
+        var wins = 0
+        var losses = 0
+        var maxWins = 0
+        var maxLosses = 0
+        chronological.forEach { trade ->
+            when {
+                trade.pnl > 0.0 -> {
+                    wins++
+                    losses = 0
+                    maxWins = maxOf(maxWins, wins)
+                }
+                trade.pnl < 0.0 -> {
+                    losses++
+                    wins = 0
+                    maxLosses = maxOf(maxLosses, losses)
+                }
+                else -> {
+                    wins = 0
+                    losses = 0
+                }
+            }
+        }
+        return maxWins to maxLosses
     }
 
     private fun sessionOf(millis: Long): String {
