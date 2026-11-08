@@ -48,6 +48,7 @@ import kotlin.math.abs
 @Composable
 fun PerformanceScreen(nav: NavController) {
     val settings = AppState.settings
+    val accountStartBalance = AppState.selectedAccount.startingBalance.coerceAtLeast(1.0)
     var period by remember { mutableStateOf(Period.MONTH) }
     val trades = AppState.visibleTrades.toList()
     val n = trades.size
@@ -60,7 +61,8 @@ fun PerformanceScreen(nav: NavController) {
     }
     val windowed = remember(period, trades) { trades.filter { it.epochDay > today - windowDays } }
     val stats = remember(period, windowed) { NativeCore.stats(windowed.map { it.pnl }.toDoubleArray()) }
-    val candles = remember(period, windowed) { Analytics.tradeCandles(windowed, settings.startBalance, 60) }
+    val openingEquity = accountStartBalance + trades.filter { it.epochDay <= today - windowDays }.sumOf { it.pnl }
+    val candles = remember(period, windowed, accountStartBalance, openingEquity) { Analytics.tradeCandles(windowed, openingEquity, 60) }
     val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
     val inWindow = dayPnl.filterKeys { it > today - windowDays }
     val heatScale = (dayPnl.filterKeys { it > today - 35 && it <= today }.values.maxOfOrNull { abs(it) } ?: 0.0).coerceAtLeast(1.0)
@@ -82,7 +84,7 @@ fun PerformanceScreen(nav: NavController) {
                         Column(Modifier.weight(1f)) {
                             Text("سود خالص $windowDays روز اخیر", color = Tx.Muted, fontSize = 11.sp)
                             Text(
-                                if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", stats.net / settings.startBalance * 100),
+                                if (settings.hideBalance) "•••" else String.format(java.util.Locale.US, "%+.2f%%", stats.net / accountStartBalance * 100),
                                 color = netColor,
                                 fontSize = 26.sp,
                                 fontWeight = FontWeight.ExtraBold,
