@@ -67,7 +67,7 @@ object TxAiEngine {
             .map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }
         val outside = ordered.filter { isOutsideStrategy(it) }
         val monthlyProgress = ordered.groupBy { java.time.YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) }
-            .toSortedMap().values.mapIndexed { index, rows ->
+            .toSortedMap().values.map { rows ->
                 val monthKey = java.time.YearMonth.from(LocalDate.ofEpochDay(rows.first().epochDay))
                 scoreMonth(rows, account, riskPercent, monthKey.toString())
             }.takeLast(6)
@@ -83,20 +83,41 @@ object TxAiEngine {
             weekdays.firstOrNull()?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}.") }
             strategySlices.firstOrNull()?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ قبل از نتیجه‌گیری تعداد نمونه را بررسی کن.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
-            if (knownRisk.size < 3) add("برای امتیاز دقیق مدیریت ریسک، ریسک برنامه‌ریزی‌شده را هنگام ثبت هر معامله وارد کن.")
+            if (monthTrades.count { it.plannedRisk != null && it.plannedRisk > 0.0 } < 3) add("برای امتیاز دقیق مدیریت ریسک، ریسک برنامه‌ریزی‌شده را هنگام ثبت هر معامله وارد کن.")
         }
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
             bestSession = sessions.firstOrNull(), sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,
             withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },
-            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
+            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.maxOfOrNull { it.trades }?.toDouble()?.div(ordered.size.coerceAtLeast(1))?.let { it >= 0.5 } == true -> "معامله‌گر سشن‌محور"; monthTrades.count { it.strategy.isNotBlank() }.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
             scores = scores,
             insights = insights, monthlyProgress = monthlyProgress,
         )
+    }
+
+
+    private fun scoreMonth(rows: List<Trade>, account: TradingAccount, riskPercent: Double, label: String): TxAiScores {
+        val tagged = rows.filter { it.tags.isNotEmpty() }
+        val discipline = if (rows.size >= 5 && tagged.size >= 3) {
+            val violations = tagged.count { hasBehaviorFlag(it) }
+            ((1.0 - violations.toDouble() / tagged.size) * 100).roundToInt().coerceIn(0, 100)
+        } else null
+        val strategy = if (rows.size >= 5) {
+            (rows.count { it.strategy.isNotBlank() }.toDouble() / rows.size * 100).roundToInt()
+        } else null
+        val knownRisk = rows.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
+        val risk = if (knownRisk.size >= 3) {
+            val allowed = account.startingBalance * riskPercent.coerceAtLeast(0.1) / 100.0 * 1.25
+            (knownRisk.count { it.plannedRisk!! <= allowed }.toDouble() / knownRisk.size * 100).roundToInt()
+        } else null
+        val decision = if (rows.size >= 5) {
+            (rows.count { it.entryPrice != null && it.exitPrice != null && it.stopLossPrice != null && it.strategy.isNotBlank() }.toDouble() / rows.size * 100).roundToInt()
+        } else null
+        return TxAiScores(discipline, risk, strategy, decision, label, rows.size)
     }
 
     private fun sessionOf(millis: Long): String {
