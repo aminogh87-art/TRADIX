@@ -20,6 +20,12 @@ class TxAiTradeRecord {
     this.timeframe,
     this.marketCondition,
     this.strategyFollowed,
+    this.strategyVersion = 1,
+    this.session,
+    this.entryPrice,
+    this.exitPrice,
+    this.stopLossPrice,
+    this.takeProfitPrice,
   });
 
   final int id;
@@ -37,6 +43,12 @@ class TxAiTradeRecord {
   final String? timeframe;
   final String? marketCondition;
   final bool? strategyFollowed;
+  final int strategyVersion;
+  final String? session;
+  final double? entryPrice;
+  final double? exitPrice;
+  final double? stopLossPrice;
+  final double? takeProfitPrice;
 
   static TxAiTradeRecord? fromMap(
     Map<Object?, Object?> map, {
@@ -72,6 +84,12 @@ class TxAiTradeRecord {
       timeframe: map['timeframe'] is String ? map['timeframe'] as String : null,
       marketCondition: map['marketCondition'] is String ? map['marketCondition'] as String : null,
       strategyFollowed: map['strategyFollowed'] is bool ? map['strategyFollowed'] as bool : null,
+      strategyVersion: map['strategyVersion'] is int ? map['strategyVersion'] as int : 1,
+      session: map['session'] is String ? map['session'] as String : null,
+      entryPrice: _finiteNumber(map['entryPrice']),
+      exitPrice: _finiteNumber(map['exitPrice']),
+      stopLossPrice: _finiteNumber(map['stopLossPrice']),
+      takeProfitPrice: _finiteNumber(map['takeProfitPrice']),
     );
   }
 }
@@ -82,6 +100,8 @@ class TxAiAccountSnapshot {
     required this.accountName,
     required this.currency,
     required this.trades,
+    this.startingBalance = 0,
+    this.riskPercent = 1.0,
     this.episodeReviews = const <String, String>{},
     this.pinnedInsights = const <String>{},
   });
@@ -90,6 +110,8 @@ class TxAiAccountSnapshot {
   final String accountName;
   final String currency;
   final List<TxAiTradeRecord> trades;
+  final double startingBalance;
+  final double riskPercent;
   final Map<String, String> episodeReviews;
   final Set<String> pinnedInsights;
 
@@ -139,6 +161,8 @@ class TxAiAccountSnapshot {
       accountName: map['accountName'] is String ? map['accountName'] as String : '',
       currency: map['currency'] is String ? map['currency'] as String : '',
       trades: List<TxAiTradeRecord>.unmodifiable(trades),
+      startingBalance: _finiteNumber(map['startingBalance']) ?? 0,
+      riskPercent: _finiteNumber(map['riskPercent']) ?? 1.0,
       episodeReviews: Map<String, String>.unmodifiable(reviews),
       pinnedInsights: Set<String>.unmodifiable(pins),
     );
