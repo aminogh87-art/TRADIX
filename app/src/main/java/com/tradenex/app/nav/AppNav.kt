@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.tradenex.app.TxAiFlutterLaunch
 import com.tradenex.app.ui.components.TxBackground
 import com.tradenex.app.ui.components.TxBottomBar
 import com.tradenex.app.ui.screens.AccountsScreen
@@ -55,7 +58,20 @@ fun AppNav(startDestination: String = "home") {
                     composable("weekly") { WeeklyPlanScreen(nav) }
                     composable("weekly_reminder") { WeeklyPlanScreen(nav, openToday = true) }
                     composable("perf") { PerformanceScreen(nav) }
-                    composable("tx_ai") { TxAiScreen(nav) }
+                    composable("tx_ai") {
+                        val context = LocalContext.current
+                        LaunchedEffect(Unit) {
+                            val opened = TxAiFlutterLaunch.open(context)
+                            if (opened) {
+                                nav.popBackStack()
+                            } else {
+                                nav.navigate("tx_ai_legacy") {
+                                    popUpTo("tx_ai") { inclusive = true }
+                                }
+                            }
+                        }
+                    }
+                    composable("tx_ai_legacy") { TxAiScreen(nav) }
                     composable("edu") { EducationScreen(nav) }
                     composable("more") { MoreScreen(nav) }
                     composable("add") { AddTradeScreen(nav) }
