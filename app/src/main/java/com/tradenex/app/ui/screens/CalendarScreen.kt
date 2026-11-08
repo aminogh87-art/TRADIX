@@ -81,9 +81,9 @@ fun CalendarScreen(nav: NavController) {
     val monthIndex = todayJalali.year * 12 + todayJalali.month - 1 + offset
     val selectedJalaliYear = Math.floorDiv(monthIndex, 12)
     val selectedJalaliMonth = Math.floorMod(monthIndex, 12) + 1
-    val n = AppState.visibleTrades.size
-    val dayPnl = remember(n) { Analytics.dayPnl(AppState.visibleTrades) }
-    val selectedTrades = remember(n, selectedDate) { AppState.visibleTrades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis } }
+    val trades = AppState.visibleTrades.toList()
+    val dayPnl = remember(trades) { Analytics.dayPnl(trades) }
+    val selectedTrades = remember(trades, selectedDate) { trades.filter { it.epochDay == selectedDate.toEpochDay() }.sortedBy { it.openedAtMillis } }
     val settings = AppState.settings
 
     Page(title = "تقویم", onBack = { nav.popBackStack() }, trailing = {
@@ -210,7 +210,7 @@ fun CalendarScreen(nav: NavController) {
                     }
                 }
             }
-            Text("داده‌ها نمونه است؛ منبع نهایی تقویم خبری ForexFactory خواهد بود.", color = Tx.Muted, fontSize = 11.sp)
+            Text("برای نمایش رویدادهای اقتصادی واقعی، اتصال به منبع خبری معتبر لازم است.", color = Tx.Muted, fontSize = 11.sp)
         }
         Spacer(Modifier.height(12.dp))
     }
