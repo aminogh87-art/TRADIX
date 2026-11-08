@@ -28,6 +28,9 @@ data class TxAiReport(
     val winRate: Double,
     val bestSession: TxAiSlice?,
     val sessions: List<TxAiSlice>,
+    val timeframes: List<TxAiSlice>,
+    val marketConditions: List<TxAiSlice>,
+    val withoutOutsideStrategyNet: Double,
     val weekdays: List<TxAiSlice>,
     val days: List<TxAiSlice>,
     val personality: String,
@@ -49,10 +52,10 @@ object TxAiEngine {
 
     fun analyze(trades: List<Trade>, account: TradingAccount, riskPercent: Double): TxAiReport {
         val ordered = trades.sortedWith(compareBy<Trade> { it.epochDay }.thenBy { it.openedAtMillis })
-        val sessions = ordered.filter { it.openedAtMillis > 0L }.groupBy { sessionOf(it.openedAtMillis) }
+        val sessions = ordered.filter { it.openedAtMillis > 0L && Instant.ofEpochMilli(it.openedAtMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime() != java.time.LocalTime.MIDNIGHT }.groupBy { sessionOf(it.openedAtMillis) }
             .filterKeys { it != "نامشخص" }.map { (name, rows) -> slice(name, rows) }
             .sortedByDescending { it.average }
-        val weekdays = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value }
+        val timeframes = ordered.filter { it.timeframe.isNotBlank() }.groupBy { it.timeframe }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }\n        val marketConditions = ordered.filter { it.marketCondition.isNotBlank() }.groupBy { it.marketCondition }.map { (name, rows) -> slice(name, rows) }.sortedByDescending { it.average }\n        val weekdays = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value }
             .map { (day, rows) -> slice(dayName(day), rows) }.sortedByDescending { it.average }
         val days = ordered.groupBy { LocalDate.ofEpochDay(it.epochDay) }.toSortedMap().map { (date, rows) -> slice(date.toString(), rows) }
         val weeks = ordered.groupBy {
@@ -66,7 +69,7 @@ object TxAiEngine {
         val monthTrades = ordered.filter { LocalDate.ofEpochDay(it.epochDay).let { d -> d.year == month.year && d.month == month.month } }
         val knownRisk = monthTrades.filter { it.plannedRisk != null && it.plannedRisk > 0.0 }
         val strategyKnown = monthTrades.filter { it.strategy.isNotBlank() }
-        val discipline = if (monthTrades.size >= 5) {
+        val discipline = if (monthTrades.size >= 5 && monthTrades.any { it.tags.isNotEmpty() }) {
             val violations = monthTrades.count { hasBehaviorFlag(it) }
             ((1.0 - violations.toDouble() / monthTrades.size) * 100).roundToInt().coerceIn(0, 100)
         } else null
@@ -84,7 +87,7 @@ object TxAiEngine {
         val halfRisk = ordered.sumOf { it.pnl * 0.5 }
         val insights = buildList {
             if (ordered.size < 10) add("برای تشخیص الگوی پایدار، حداقل ۱۰ معامله ثبت کن؛ نتیجه فعلی مقدماتی است.")
-            sessions.firstOrNull()?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }
+            sessions.firstOrNull()?.let { add("بهترین میانگین نتیجه ثبت‌شده در سشن ${it.label} است؛ ${it.trades} معامله با میانگین ${money(it.average)}.") }\n            timeframes.firstOrNull()?.let { add("بهترین تایم‌فریم ثبت‌شده: ${it.label}؛ این نتیجه فقط از معاملات دارای برچسب تایم‌فریم محاسبه شده است.") }\n            marketConditions.firstOrNull()?.let { add("بهترین شرایط بازار ثبت‌شده: ${it.label}؛ نمونه ${it.trades} معامله.") }
             weekdays.firstOrNull()?.let { add("بهترین روز هفته از نظر میانگین هر معامله: ${it.label}.") }
             strategySlices.firstOrNull()?.let { add("استراتژی ${it.label} در داده‌های فعلی بهترین میانگین را دارد؛ قبل از نتیجه‌گیری تعداد نمونه را بررسی کن.") }
             if (outside.isNotEmpty()) add("${outside.size} معامله با نشانه‌های خارج از پلن/بدون استراتژی شناسایی شد؛ سود و زیان خالص آن‌ها ${money(outside.sumOf { it.pnl })} است.")
@@ -94,7 +97,7 @@ object TxAiEngine {
         return TxAiReport(
             totalTrades = ordered.size, net = ordered.sumOf { it.pnl },
             winRate = if (ordered.isEmpty()) 0.0 else ordered.count { it.pnl > 0 }.toDouble() / ordered.size,
-            bestSession = sessions.firstOrNull(), sessions = sessions, weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
+            bestSession = sessions.firstOrNull(), sessions = sessions, timeframes = timeframes, marketConditions = marketConditions,\n            withoutOutsideStrategyNet = ordered.filterNot { isOutsideStrategy(it) }.sumOf { it.pnl },\n            weekdays = weekdays, days = days, weeks = weeks, personality = when { ordered.size < 10 -> "داده ناکافی برای تشخیص پایدار"; sessions.firstOrNull()?.let { it.trades.toDouble() / ordered.size >= 0.5 } == true -> "معامله‌گر سشن‌محور"; strategyKnown.size.toDouble() / monthTrades.size.coerceAtLeast(1) >= 0.8 -> "معامله‌گر استراتژی‌محور"; else -> "سبک ترکیبی و انعطاف‌پذیر" },
             bestStrategy = strategySlices.firstOrNull(), outsideStrategyCount = outside.size,
             outsideStrategyNet = outside.sumOf { it.pnl }, allNet = ordered.sumOf { it.pnl },
             halfRiskNet = halfRisk, halfRiskDelta = halfRisk - ordered.sumOf { it.pnl },
