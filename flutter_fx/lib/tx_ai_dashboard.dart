@@ -132,6 +132,17 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
         return dayOrder != 0 ? dayOrder : a.id.compareTo(b.id);
       });
     final pnls = trades.map((trade) => trade.pnl).toList(growable: false);
+    final currentDate = DateTime.tryParse(account.currentDisplayDateKey ?? '') ?? DateTime.now().toUtc();
+    final currentDay = DateTime.utc(currentDate.year, currentDate.month, currentDate.day);
+    final weekTrades = trades.where((trade) {
+      final date = DateTime.tryParse(trade.displayDateKey ?? '');
+      if (date == null) return false;
+      final ageDays = currentDay.difference(DateTime.utc(date.year, date.month, date.day)).inDays;
+      return ageDays >= 0 && ageDays < 7;
+    }).toList(growable: false);
+    final monthTrades = trades
+        .where((trade) => trade.displayClosedMonthKey == account.currentMonthKey)
+        .toList(growable: false);
     final metrics = analytics.calculate(pnls);
     final revengeEpisodes = _revengeEpisodes(account, analytics, trades);
     final sessionSlices = _sessionSlices(trades);
@@ -198,10 +209,35 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       disciplineAxis,
       sessionEdgeAxis,
     ];
-    final processScore = discipline != null &&
-            riskScore != null &&
-            decisionScore != null
-        ? ((discipline + riskScore + decisionScore) / 3).round()
+    final monthCompliance = monthTrades.where((trade) => trade.strategyFollowed != null).toList();
+    final monthComplianceCoverage = monthCompliance.length / math.max(1, monthTrades.length);
+    final monthDiscipline = monthTrades.length >= 5 &&
+            monthCompliance.length >= 3 &&
+            monthComplianceCoverage >= 0.70
+        ? monthCompliance.where((trade) => trade.strategyFollowed == true).length /
+            monthCompliance.length * 100
+        : null;
+    final monthRiskTrades = monthTrades
+        .where((trade) => trade.plannedRisk != null && trade.plannedRisk! > 0)
+        .toList();
+    final monthRiskScore = monthTrades.length >= 5 &&
+            monthRiskTrades.length >= 3 &&
+            allowedRisk != null
+        ? monthRiskTrades.where((trade) => trade.plannedRisk! <= allowedRisk).length /
+            monthRiskTrades.length * 100
+        : null;
+    final monthDecisionScore = monthTrades.length >= 5
+        ? monthTrades.where((trade) =>
+              trade.entryPrice != null &&
+              trade.exitPrice != null &&
+              trade.stopLossPrice != null &&
+              trade.strategy.trim().isNotEmpty).length /
+            monthTrades.length * 100
+        : null;
+    final processScore = monthDiscipline != null &&
+            monthRiskScore != null &&
+            monthDecisionScore != null
+        ? ((monthDiscipline + monthRiskScore + monthDecisionScore) / 3).round()
         : null;
     final tiltEvidence = revengeEpisodes.isEmpty
         ? null
@@ -283,7 +319,7 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
 
     final heatmap = _heatmap(trades);
     final processMonths = _processMonths(trades);
-    final insights = _insights(account, metrics, trades, discipline);
+    final insights = _insights(account, analytics, weekTrades, monthTrades, monthDiscipline);
     final offPlanMask = trades.map(_isOffPlan).toList(growable: false);
 
     return TabBarView(
@@ -548,7 +584,8 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
       grouped.putIfAbsent(key, () => []).add(trade);
     }
     final keys = grouped.keys.toList()..sort();
-    return keys.take(6).map((key) {
+    final recentKeys = keys.reversed.take(6).toList().reversed;
+    return recentKeys.map((key) {
       final rows = grouped[key]!;
       final known = rows.where((trade) => trade.strategyFollowed != null).toList();
       final coverage = known.length / math.max(1, rows.length);
@@ -564,36 +601,40 @@ class _TxAiDashboardState extends State<TxAiDashboard> {
 
   List<TxInsight> _insights(
     TxAiAccountSnapshot account,
-    TxRustMetrics metrics,
-    List<TxAiTradeRecord> trades,
-    double? discipline,
+    TxRustAnalytics analytics,
+    List<TxAiTradeRecord> weeklyTrades,
+    List<TxAiTradeRecord> monthlyTrades,
+    double? monthlyDiscipline,
   ) {
-    if (metrics.sampleSize < 5) return const [];
-    final ids = trades.take(20).map((trade) => trade.id).toList(growable: false);
     final result = <TxInsight>[];
-    const winId = 'summary-win-rate';
-    result.add(TxInsight(
-      id: winId,
-      period: TxInsightPeriod.weekly,
-      title: 'خلاصه عملکرد ثبت‌شده',
-      reason: 'این کارت فقط از معاملات بسته‌شده و P&L معتبر حساب انتخاب‌شده محاسبه شده است.',
-      metricLabel: 'Win rate',
-      metricValue: '${(metrics.winRate * 100).toStringAsFixed(1)}٪',
-      action: 'معاملات پشتیبان را مرور کن و نمونه را با بازه‌های دیگر مقایسه کن.',
-      supportingTradeIds: ids,
-      pinned: account.pinnedInsights.contains(winId),
-    ));
-    if (discipline != null) {
+    if (weeklyTrades.length >= 5) {
+      final weeklyMetrics = analytics.calculate(
+        weeklyTrades.map((trade) => trade.pnl).toList(growable: false),
+      );
+      const winId = 'summary-win-rate';
+      result.add(TxInsight(
+        id: winId,
+        period: TxInsightPeriod.weekly,
+        title: 'خلاصه عملکرد هفت روز اخیر',
+        reason: 'فقط معاملات دارای تاریخ ورود در هفت روز اخیر و P&L معتبر حساب انتخاب‌شده.',
+        metricLabel: 'Win rate',
+        metricValue: '${(weeklyMetrics.winRate * 100).toStringAsFixed(1)}٪',
+        action: 'معاملات پشتیبان را مرور کن و نتیجه را با هفته‌های دیگر مقایسه کن.',
+        supportingTradeIds: weeklyTrades.take(20).map((trade) => trade.id).toList(growable: false),
+        pinned: account.pinnedInsights.contains(winId),
+      ));
+    }
+    if (monthlyDiscipline != null) {
       const disciplineId = 'summary-plan-adherence';
       result.add(TxInsight(
         id: disciplineId,
         period: TxInsightPeriod.monthly,
-        title: 'پایبندی ثبت‌شده به پلن',
-        reason: 'فقط معاملات دارای وضعیت صریح طبق پلن / خارج از پلن در محاسبه آمده‌اند.',
+        title: 'پایبندی ثبت‌شده به پلن در ماه جاری',
+        reason: 'فقط معاملات بسته‌شده ماه جاری با وضعیت صریح طبق پلن / خارج از پلن.',
         metricLabel: 'Plan adherence',
-        metricValue: '${discipline.toStringAsFixed(0)}٪',
-        action: 'معاملات بدون وضعیت را هنگام ثبت بعدی کامل کن.',
-        supportingTradeIds: trades
+        metricValue: '${monthlyDiscipline.toStringAsFixed(0)}٪',
+        action: 'وضعیت معاملات بدون ثبت پلن را کامل کن.',
+        supportingTradeIds: monthlyTrades
             .where((trade) => trade.strategyFollowed != null)
             .take(20)
             .map((trade) => trade.id)
