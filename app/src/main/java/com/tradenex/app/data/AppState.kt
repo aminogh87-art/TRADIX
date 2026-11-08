@@ -145,7 +145,7 @@ object AppState {
     fun stats(): TradeStats = NativeCore.stats(visibleTrades.map { it.pnl }.toDoubleArray())
 
     fun addTrade(t: Trade) {
-        require(t.symbol.trim().matches(Regex("[A-Za-z0-9._/-]{1,24}"))) {
+        require(t.symbol.trim().matches(Regex("[\\p{L}\\p{N}._/-]{1,24}"))) {
             "Trade symbol must contain 1-24 letters, digits, dots, underscores, slashes or hyphens."
         }
         require(t.lot > 0.0 && t.pnl.isFinite()) { "Trade volume and P&L must be valid." }
