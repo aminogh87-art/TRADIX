@@ -82,12 +82,16 @@ class TxAiAccountSnapshot {
     required this.accountName,
     required this.currency,
     required this.trades,
+    this.episodeReviews = const <String, String>{},
+    this.pinnedInsights = const <String>{},
   });
 
   final String accountId;
   final String accountName;
   final String currency;
   final List<TxAiTradeRecord> trades;
+  final Map<String, String> episodeReviews;
+  final Set<String> pinnedInsights;
 
   factory TxAiAccountSnapshot.fromMap(Map<Object?, Object?> map) {
     final accountId = map['accountId'];
@@ -107,11 +111,36 @@ class TxAiAccountSnapshot {
         }
       }
     }
+    final reviews = <String, String>{};
+    final rawReviews = map['episodeReviews'];
+    if (rawReviews is List) {
+      for (final item in rawReviews) {
+        if (item is Map) {
+          final row = Map<Object?, Object?>.from(item);
+          final id = row['episodeId'];
+          final status = row['status'];
+          if (id is String && id.isNotEmpty && status is String) reviews[id] = status;
+        }
+      }
+    }
+    final pins = <String>{};
+    final rawPins = map['pinnedInsights'];
+    if (rawPins is List) {
+      for (final item in rawPins) {
+        if (item is Map) {
+          final row = Map<Object?, Object?>.from(item);
+          final id = row['insightId'];
+          if (id is String && id.isNotEmpty && row['pinned'] == true) pins.add(id);
+        }
+      }
+    }
     return TxAiAccountSnapshot(
       accountId: accountId,
       accountName: map['accountName'] is String ? map['accountName'] as String : '',
       currency: map['currency'] is String ? map['currency'] as String : '',
       trades: List<TxAiTradeRecord>.unmodifiable(trades),
+      episodeReviews: Map<String, String>.unmodifiable(reviews),
+      pinnedInsights: Set<String>.unmodifiable(pins),
     );
   }
 
@@ -140,5 +169,29 @@ class TxAiDataBridge {
       throw const FormatException('The host returned no TX AI account snapshot.');
     }
     return TxAiAccountSnapshot.fromMap(payload);
+  }
+
+  Future<void> saveEpisodeReview({
+    required String accountId,
+    required String episodeId,
+    required String status,
+  }) async {
+    await _channel.invokeMethod<void>('saveEpisodeReview', {
+      'accountId': accountId,
+      'episodeId': episodeId,
+      'status': status,
+    });
+  }
+
+  Future<void> setInsightPinned({
+    required String accountId,
+    required String insightId,
+    required bool pinned,
+  }) async {
+    await _channel.invokeMethod<void>('setInsightPinned', {
+      'accountId': accountId,
+      'insightId': insightId,
+      'pinned': pinned,
+    });
   }
 }
