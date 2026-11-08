@@ -101,6 +101,7 @@ internal object SnapshotCodec {
                     t.stopLossPrice?.let { put("stopLossPrice", it) }; t.takeProfitPrice?.let { put("takeProfitPrice", it) }
                     put("commission", t.commission); put("swap", t.swap); put("otherFees", t.otherFees)
                     put("notes", t.notes); t.plannedRisk?.let { put("plannedRisk", it) }
+                    put("strategyVersion", t.strategyVersion)
                 })
             }
         })
