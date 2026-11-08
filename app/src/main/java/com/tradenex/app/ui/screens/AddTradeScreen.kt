@@ -48,7 +48,7 @@ import com.tradenex.app.ui.theme.Tx
 import kotlin.math.abs
 import kotlin.math.round
 
-private val symbols = listOf("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "NAS100")
+private val symbols = listOf("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF")
 private val lotPresets = listOf(0.01, 0.05, 0.1, 0.5, 1.0, 2.0)
 private val amountPresets = listOf(50.0, 100.0, 250.0, 500.0)
 private val emotions = listOf("آرام", "ترس", "طمع", "انتقام", "خسته")
@@ -69,7 +69,7 @@ private fun stepLot(v: Double, dir: Int): Double {
 fun AddTradeScreen(nav: NavController) {
     val settings = AppState.settings
     var buy by remember { mutableStateOf(true) }
-    var symbol by remember { mutableStateOf("XAUUSD") }
+    var symbol by remember { mutableStateOf("EURUSD") }
     var lot by remember { mutableStateOf(settings.defaultLot) }
     var win by remember { mutableStateOf(true) }
     var amount by remember { mutableStateOf(250.0) }
