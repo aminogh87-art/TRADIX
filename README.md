@@ -40,3 +40,14 @@ calendar (personal trades + sample news), tags, and settings.
 - Sydney, Tokyo, London, and New York session state and overlap use IANA market timezones with daylight-saving transitions, while the existing globe/timeline components are retained.
 - Still outstanding: normalized Room schema and migrations (current store is a SQLite snapshot), full open/partial-fill trade lifecycle, full strategy revision history UI, complete block-based mixed-media academy, live economic-calendar provider, local no-trade reminders, backup/import/export, and complete Persian/English localization.
 - Existing theme tokens, colors, reusable components, and navigation styling were preserved; screens were extended additively. Run the latest Android unit tests/build and Rust tests before considering this branch release-ready.
+
+
+## Newly added trader workflow modules
+
+- **Weekly plan:** Saturday/Sunday are shown as non-trading days; Monday-Friday have separate daily records for trade count (0-100), gross profit/loss, risk cap, daily goal, discipline checklist, plan adherence, mood, notes, and no-trade reason. Week totals and rule-based review prompts are calculated from the saved daily records.
+- **Daily no-trade review:** a WorkManager reminder is scheduled for the user-selected local hour. Weekday notifications open the weekly review form directly. Android 13+ notification permission is requested at runtime. WorkManager timing is battery-optimized and is not an exact-alarm guarantee.
+- **Education library:** lessons support ordered text, image, video, and document attachments, persisted document URI permissions, open-in-app handling, progress, deletion, and QR scanning/import.
+- **QR lesson sharing:** QR payloads contain the lesson title and text blocks. Attached binary files cannot fit inside a QR; the share action sends the QR image and selected media/files together through Android's share sheet. Importing a QR alone recreates the text lesson; attached files must be shared alongside it.
+- **Forex sessions:** device-local timezone is now the default display mode. Session calculations use IANA market timezones so London/New York/Sydney DST shifts and current overlaps are reflected in the displayed local clock.
+
+The weekly and education modules use isolated local stores so existing trade journal snapshots and other feature models are not rewritten by these additions.
