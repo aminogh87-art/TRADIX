@@ -69,3 +69,6 @@ The hamburger menu includes **TX AI**, a local, account-scoped analysis view bui
 - Flutter TX AI reads only the currently selected account's journal snapshot. It never receives broker credentials; reviews and insight pins are written back through a validated host channel.
 
 TX AI is descriptive coaching, not investment advice, not a prediction engine, and it never places trades. The analytics are deterministic and explainable; no external AI service or cloud upload is used.
+
+## App icons
+Settings > آیکون‌ها lets the user pick one of 12 launcher icons (adaptive icons via `activity-alias`, see `AndroidManifest.xml` and `AppIconsSection.kt`). The golden bull (`bull`) is the default app icon.

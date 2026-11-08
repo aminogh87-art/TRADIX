@@ -127,6 +127,7 @@ fun SettingsScreen(nav: NavController) {
                 ChipsRow(listOf("همه", "متوسط به بالا", "فقط High"), s.newsImpact) { v -> update { it.copy(newsImpact = v) } }
             }
         }
+        Reveal(4) { AppIconsSection() }
         Reveal(4) {
             SettingGroup("داده و پشتیبان") {
                 Text("خروجی کامل ژورنال (JSON) همه معاملات، حساب‌ها، استراتژی‌ها و تنظیمات را ذخیره می‌کند. CSV فقط از صفحه ژورنال در دسترس است.", color = Tx.Muted, fontSize = 11.sp)
