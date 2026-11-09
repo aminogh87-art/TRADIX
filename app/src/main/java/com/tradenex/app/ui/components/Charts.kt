@@ -241,6 +241,15 @@ fun SessionTimeline(states: List<SessionState>, nowLocalMinute: Int, modifier: M
             val x0 = s.localStart / 1440f * size.width
             val w = s.length / 1440f * size.width
             val r = CornerRadius(barH / 2f)
+            if (Tx.isCandle) {
+                // the session's range as a candle wick, a little longer than the body
+                val cy = y + barH / 2f
+                val ext = w * 0.12f
+                val wickColor = color.copy(alpha = if (s.open) 0.55f else 0.3f)
+                val wickW = 1.5.dp.toPx()
+                drawLine(wickColor, Offset((x0 - ext).coerceAtLeast(0f), cy), Offset((x0 + w + ext).coerceAtMost(size.width), cy), wickW)
+                if (x0 + w > size.width) drawLine(wickColor, Offset(0f, cy), Offset((x0 + w - size.width + ext).coerceAtMost(size.width), cy), wickW)
+            }
             if (x0 + w <= size.width) {
                 drawRoundRect(color, Offset(x0, y), Size(w, barH), r)
             } else {
@@ -249,6 +258,7 @@ fun SessionTimeline(states: List<SessionState>, nowLocalMinute: Int, modifier: M
             }
         }
         val nx = nowLocalMinute / 1440f * size.width
+        if (Tx.isCandle) drawLine(Tx.Blue.copy(alpha = 0.35f), Offset(nx, 0f), Offset(nx, size.height), 6.dp.toPx())
         drawLine(Color.White, Offset(nx, 0f), Offset(nx, size.height), 2.dp.toPx())
     }
 }

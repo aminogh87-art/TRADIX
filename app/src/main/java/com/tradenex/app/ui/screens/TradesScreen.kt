@@ -38,6 +38,7 @@ import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Trade
 import java.time.LocalDate
+import com.tradenex.app.ui.components.CandleTradeBar
 import com.tradenex.app.ui.components.GlassCard
 import com.tradenex.app.ui.components.GoldButton
 import com.tradenex.app.ui.components.TxChip
@@ -129,6 +130,7 @@ fun TradesScreen(nav: NavController) {
                         Text("لات ${trade.lot} · ${trade.strategy.ifBlank { "بدون استراتژی" }} · ${jalaliText(LocalDate.ofEpochDay(trade.epochDay))}", color = Tx.Muted, fontSize = 10.sp)
                         Text("پایبندی: " + when (trade.strategyFollowed) { true -> "طبق پلن"; false -> "خارج از پلن"; null -> "ثبت نشده" }, color = when (trade.strategyFollowed) { true -> Tx.Green; false -> Tx.Red; null -> Tx.Muted }, fontSize = 10.sp)
                         if (trade.notes.isNotBlank()) Text(trade.notes, color = Tx.Muted, fontSize = 11.sp, maxLines = 2)
+                        if (Tx.isCandle) CandleTradeBar(trade, Modifier.fillMaxWidth().height(18.dp))
                     }
                     Text(Analytics.money(trade.pnl), color = if (trade.pnl >= 0) Tx.Green else Tx.Red, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

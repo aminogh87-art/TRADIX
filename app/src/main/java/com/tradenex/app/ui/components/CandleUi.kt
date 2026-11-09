@@ -397,3 +397,42 @@ fun CandleGlyph(color: Color, top: Float, height: Float, modifier: Modifier = Mo
         )
     }
 }
+
+/**
+ * A trade as a candle: wick from the lowest to the highest recorded price (stop loss, take profit, entry, exit)
+ * and a body from entry to exit coloured by the result. Draws nothing unless entry, stop loss and take profit
+ * are all recorded, so it never invents prices.
+ */
+@Composable
+fun CandleTradeBar(trade: com.tradenex.app.data.Trade, modifier: Modifier = Modifier) {
+    val entry = trade.entryPrice
+    val sl = trade.stopLossPrice
+    val tp = trade.takeProfitPrice
+    if (entry == null || sl == null || tp == null) return
+    val prices = listOfNotNull(entry, sl, tp, trade.exitPrice)
+    if (prices.any { !it.isFinite() }) return
+    val lo = prices.min()
+    val hi = prices.max()
+    if (hi - lo <= 0.0) return
+    val exit = trade.exitPrice
+    val bodyColor = if (trade.pnl >= 0) Tx.Green else Tx.Red
+    val wick = Tx.Gold
+    val slColor = Tx.Red
+    val tpColor = Tx.Green
+    Canvas(modifier.semantics { contentDescription = "کندل معامله از حد ضرر تا حد سود" }) {
+        val pad = 3.dp.toPx()
+        val w = size.width - 2 * pad
+        fun x(price: Double) = pad + ((price - lo) / (hi - lo)).toFloat() * w
+        val cy = size.height / 2f
+        drawLine(wick.copy(alpha = 0.6f), Offset(x(lo), cy), Offset(x(hi), cy), 1.5.dp.toPx(), StrokeCap.Round)
+        val tick = size.height * 0.4f
+        drawLine(slColor, Offset(x(sl), cy - tick), Offset(x(sl), cy + tick), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(tpColor, Offset(x(tp), cy - tick), Offset(x(tp), cy + tick), 2.dp.toPx(), StrokeCap.Round)
+        val a = x(entry)
+        val b = if (exit != null && exit.isFinite()) x(exit) else a
+        val left = minOf(a, b)
+        val bodyW = maxOf(kotlin.math.abs(b - a), 4.dp.toPx())
+        val bodyH = size.height * 0.55f
+        drawRoundRect(bodyColor, Offset(left, cy - bodyH / 2f), Size(bodyW, bodyH), CornerRadius(bodyH / 2f))
+    }
+}
