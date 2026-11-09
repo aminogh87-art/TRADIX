@@ -85,3 +85,6 @@ TX AI is descriptive coaching, not investment advice, not a prediction engine, a
 
 ## App icons
 Settings > آیکون‌ها lets the user pick one of 12 launcher icons (adaptive icons via `activity-alias`, see `AndroidManifest.xml` and `AppIconsSection.kt`). The golden bull (`bull`) is the default app icon.
+
+## Interactive globe (Sessions)
+`ui/components/Globe.kt` + `WorldGeo.kt` + `assets/world_borders.bin`: real country borders (simplified public-domain data), drag to rotate, auto-spin after 2.5 s idle, countries of open sessions glow in the session colour, animated orbits connect overlapping sessions, tap a country for its name/session.

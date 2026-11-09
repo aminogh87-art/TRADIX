@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,19 +91,39 @@ object AppIcons {
 fun AppIconsSection() {
     val context = LocalContext.current
     var selected by remember { mutableStateOf(AppIcons.current(context)) }
+    val prefs = remember { context.getSharedPreferences("tradix_icons", Context.MODE_PRIVATE) }
+    var hidden by remember { mutableStateOf(prefs.getStringSet("hidden", emptySet()).orEmpty().toSet()) }
+    var note by remember { mutableStateOf("") }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) note = runCatching { pinCustomIcon(context, uri) }.getOrElse { "ساخت آیکون دلخواه ممکن نشد: ${it.message}" }
+    }
     SettingGroup("آیکون‌ها") {
         Text(
             "آیکون برنامه را عوض کن. بسته به لانچر گوشی، تغییر آیکون روی صفحه‌ی اصلی چند ثانیه طول می‌کشد و ممکن است برنامه یک بار بسته شود.",
             color = Tx.Muted, fontSize = 11.sp,
         )
         Spacer(Modifier.height(10.dp))
-        AppIcons.all.chunked(3).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.tradenex.app.ui.components.TxChip("＋ آیکون دلخواه", false, { picker.launch("image/*") })
+            if (hidden.isNotEmpty()) com.tradenex.app.ui.components.TxChip("نمایش همه (${hidden.size} پنهان)", false, { hidden = emptySet(); prefs.edit().putStringSet("hidden", emptySet()).apply() })
+        }
+        Text("برای پنهان‌کردن یک آیکون از این فهرست، روی آن نگه دار. آیکون فعال و پیش‌فرض پنهان نمی‌شوند.", color = Tx.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 6.dp))
+        if (note.isNotBlank()) Text(note, color = Tx.Gold, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        Spacer(Modifier.height(8.dp))
+        AppIcons.all.filter { it.id !in hidden || it.id == selected || it.id == AppIcons.DEFAULT_ID }.chunked(3).forEach { row ->
             Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { icon ->
                     val on = icon.id == selected
                     val shape = RoundedCornerShape(percent = 22)
                     Column(
-                        Modifier.weight(1f).clickable {
+                        Modifier.weight(1f).pointerInput(icon.id, selected) {
+                            detectTapGestures(onLongPress = {
+                                if (icon.id != selected && icon.id != AppIcons.DEFAULT_ID) {
+                                    hidden = hidden + icon.id
+                                    prefs.edit().putStringSet("hidden", hidden).apply()
+                                }
+                            })
+                        }.clickable {
                             if (!on) {
                                 runCatching { AppIcons.apply(context, icon.id) }
                                     .onSuccess {
@@ -131,4 +153,22 @@ fun AppIconsSection() {
             }
         }
     }
+}
+
+/** Pins a home-screen shortcut that opens TRADIX with the chosen picture as its icon (a launcher icon can't be changed at runtime, a shortcut can). */
+private fun pinCustomIcon(context: Context, uri: android.net.Uri): String {
+    val sm = context.getSystemService(android.content.pm.ShortcutManager::class.java) ?: return "لانچر از میان‌بر پشتیبانی نمی‌کند."
+    if (!sm.isRequestPinShortcutSupported) return "لانچر گوشی افزودن میان‌بر را پشتیبانی نمی‌کند."
+    val src = context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) } ?: return "تصویر خوانده نشد."
+    val side = minOf(src.width, src.height)
+    val square = android.graphics.Bitmap.createBitmap(src, (src.width - side) / 2, (src.height - side) / 2, side, side)
+    val bmp = android.graphics.Bitmap.createScaledBitmap(square, 192, 192, true)
+    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return "راه‌اندازی برنامه ممکن نشد."
+    val info = android.content.pm.ShortcutInfo.Builder(context, "custom_" + System.currentTimeMillis())
+        .setShortLabel("TRADIX")
+        .setIcon(android.graphics.drawable.Icon.createWithAdaptiveBitmap(bmp))
+        .setIntent(intent.setAction(android.content.Intent.ACTION_MAIN))
+        .build()
+    sm.requestPinShortcut(info, null)
+    return "درخواست افزودن میان‌بر به صفحه‌ی اصلی فرستاده شد؛ آن را تأیید کن. حذفش هم مثل هر میان‌بر دیگری از صفحه‌ی اصلی است."
 }
