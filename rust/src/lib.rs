@@ -6,7 +6,7 @@
 pub mod fx;
 
 use jni::objects::{JDoubleArray, JFloatArray, JIntArray, JObject};
-use jni::sys::{jfloat, jint};
+use jni::sys::{jdouble, jfloat, jint};
 use jni::JNIEnv;
 
 /// Session table in UTC minutes of the day: (start, end).
@@ -543,4 +543,14 @@ mod tests {
         assert!((s[2] - 250.0 / 150.0).abs() < 1e-9);
         assert_eq!(s[3], -100.0);
     }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_tradenex_app_core_NativeCore_nCandleTone<'l>(
+    _env: JNIEnv<'l>,
+    _this: JObject<'l>,
+    pnl: jdouble,
+    flat_band: jdouble,
+) -> jint {
+    fx::candle_tone(pnl, flat_band) as jint
 }

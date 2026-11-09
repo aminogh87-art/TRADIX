@@ -146,6 +146,8 @@ fun TxHeader(title: String, onBack: (() -> Unit)? = null, trailing: @Composable 
         }
         Text(title, color = Tx.Text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         trailing()
+        // RTL: the last child of the Row is the top-left corner.
+        if (Tx.isCandle) CandleHamburger()
     }
 }
 
@@ -242,6 +244,11 @@ fun PulseDot(color: Color, modifier: Modifier = Modifier) {
 
 @Composable
 fun TxBottomBar(current: String, onNavigate: (String) -> Unit) {
+    if (Tx.isCandle) CandleNavBar(current, onNavigate) else ClassicBottomBar(current, onNavigate)
+}
+
+@Composable
+private fun ClassicBottomBar(current: String, onNavigate: (String) -> Unit) {
     val moreRoutes = setOf("more", "sessions", "strategies", "calendar", "settings", "tags", "accounts", "trades", "weekly", "weekly_reminder", "tx_ai", "tx_ai_legacy")
     val shape = RoundedCornerShape(26.dp)
     val t = rememberInfiniteTransition(label = "fab")
