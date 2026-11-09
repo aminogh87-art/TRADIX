@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +29,11 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalDensity
@@ -52,6 +57,7 @@ fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
     val progress = remember { Animatable(0f) }
     val scroll = rememberScrollState()
     val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
 
     LaunchedEffect(series) {
         progress.snapTo(0f)
@@ -124,6 +130,35 @@ fun TradeCandleChart(series: List<TradeCandle>, modifier: Modifier = Modifier) {
                             CornerRadius(0.8.dp.toPx()),
                         )
                     }
+                }
+            }
+            // Fixed price axis, last-price line and crosshair tag, so it reads like a real chart.
+            if (series.isNotEmpty()) {
+                val allHi = series.maxOf { it.candle.h }
+                val allLo = series.minOf { it.candle.l }
+                val selClose = series[selectedIndex.coerceIn(0, series.lastIndex)].candle.c
+                val lastClose = series.last().candle.c
+                Canvas(Modifier.fillMaxSize()) {
+                    val span = (allHi - allLo).coerceAtLeast(1e-6)
+                    fun yy(v: Double): Float = size.height - (((v - allLo) / span) * 0.88 + 0.06).toFloat() * size.height
+                    val label = TextStyle(color = Tx.Muted, fontSize = 9.sp)
+                    for (i in 0..3) {
+                        val v = allLo + span * (0.06 + 0.88 * i / 3.0 - 0.06) / 0.88
+                        val txt = measurer.measure(String.format(java.util.Locale.US, "%,.0f", v), label)
+                        drawText(txt, topLeft = Offset(size.width - txt.size.width - 2.dp.toPx(), yy(v) - txt.size.height / 2f))
+                    }
+                    fun tag(v: Double, bg: Color, dashed: Boolean) {
+                        val y = yy(v)
+                        drawLine(bg.copy(alpha = 0.55f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx(),
+                            pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(8f, 8f)) else null)
+                        val txt = measurer.measure(String.format(java.util.Locale.US, "%,.2f", v), TextStyle(color = Tx.Ink, fontSize = 9.sp))
+                        val w = txt.size.width + 8.dp.toPx()
+                        val h = txt.size.height + 3.dp.toPx()
+                        drawRoundRect(bg, Offset(size.width - w, y - h / 2f), Size(w, h), CornerRadius(4.dp.toPx()))
+                        drawText(txt, topLeft = Offset(size.width - w + 4.dp.toPx(), y - txt.size.height / 2f))
+                    }
+                    tag(lastClose, if (lastClose >= series.first().candle.o) Tx.Green else Tx.Red, true)
+                    if (selectedIndex.coerceIn(0, series.lastIndex) != series.lastIndex) tag(selClose, Tx.Gold, false)
                 }
             }
         }

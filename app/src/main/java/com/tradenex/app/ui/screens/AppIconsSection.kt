@@ -99,7 +99,7 @@ fun AppIconsSection() {
             Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { icon ->
                     val on = icon.id == selected
-                    val shape = RoundedCornerShape(18.dp)
+                    val shape = RoundedCornerShape(percent = 22)
                     Column(
                         Modifier.weight(1f).clickable {
                             if (!on) {
@@ -114,8 +114,8 @@ fun AppIconsSection() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Box(
-                            Modifier.fillMaxWidth().aspectRatio(1f).clip(shape).background(androidx.compose.ui.graphics.Color.Black)
-                                .border(if (on) 2.dp else 1.dp, if (on) Tx.Gold else Tx.Muted.copy(alpha = 0.3f), shape),
+                            Modifier.fillMaxWidth().aspectRatio(1f).clip(shape)
+                                .then(if (on) Modifier.border(2.dp, Tx.Gold, shape) else Modifier),
                         ) {
                             Image(painterResource(icon.preview), icon.title, Modifier.fillMaxWidth().aspectRatio(1f), contentScale = ContentScale.Crop)
                         }

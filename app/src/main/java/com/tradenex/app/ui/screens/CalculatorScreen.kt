@@ -118,7 +118,12 @@ fun CalculatorScreen(nav: NavController) {
                 }
             }
         } else {
-            GlassCard(Modifier.fillMaxWidth()) {
+            var forexTab by remember { mutableStateOf(0) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TxChip("حجم لات", forexTab == 0, { forexTab = 0 }, Modifier.weight(1f))
+                TxChip("ابزارهای بیشتر", forexTab == 1, { forexTab = 1 }, Modifier.weight(1f))
+            }
+            if (forexTab == 1) ForexTools() else GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text("ماشین حساب حجم معامله و ریسک", color = Tx.Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                     Text("اطلاعات را مطابق مشخصات نماد و قرارداد بروکر خودت وارد کن؛ هیچ مقدار بروکر به‌صورت پیش‌فرض فرض نمی‌شود.", color = Tx.Muted, fontSize = 11.sp)
