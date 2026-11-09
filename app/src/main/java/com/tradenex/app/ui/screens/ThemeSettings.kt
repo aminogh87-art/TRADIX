@@ -48,7 +48,7 @@ import com.tradenex.app.ui.theme.paletteOf
 import kotlin.math.abs
 import kotlin.math.sin
 
-/** Settings > تم‌ها: pick Default or Gold, accent colour, glow strength and the Gold-only effects. */
+/** Settings > تم‌ها: pick Default, Gold or Candle, accent colour, glow strength, the Gold-only effects and the Candle nav colour. */
 @Composable
 fun ThemesGroup() {
     val selected = ThemeController.theme
@@ -57,12 +57,29 @@ fun ThemesGroup() {
             Modifier.fillMaxWidth().padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ThemeId.values().filter { it == ThemeId.DEFAULT || ThemeController.goldAvailable }.forEach { id ->
+            ThemeId.values().filter { it != ThemeId.GOLD || ThemeController.goldAvailable }.forEach { id ->
                 ThemeCard(id, id == selected, Modifier.weight(1f)) { ThemeController.select(id) }
             }
         }
         if (selected == ThemeId.GOLD) {
             Text("حذف تم Gold", color = Tx.Red, fontSize = 11.sp, modifier = Modifier.clickable { ThemeController.removeGoldTheme() }.padding(vertical = 8.dp))
+        }
+        if (selected == ThemeId.CANDLE) {
+            SmallLabel("رنگ بدنه ناوبری")
+            ChipsRow(listOf("خودکار", "دستی"), if (ThemeController.candleAuto) 0 else 1) { ThemeController.useCandleAuto(it == 0) }
+            Spacer(Modifier.height(6.dp))
+            if (ThemeController.candleAuto) {
+                Text(
+                    "رنگ از نتیجه امروز تعیین می‌شود: سود سبز، ضرر قرمز، سر به سر طلایی. اکنون: " +
+                        listOf("سبز", "قرمز", "طلایی", "آبی")[ThemeController.candleTone.coerceIn(0, 3)],
+                    color = Tx.Muted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            } else {
+                ChipsRow(listOf("سبز", "قرمز", "طلایی", "آبی"), ThemeController.candleManual) { ThemeController.pickCandleColor(it) }
+            }
+            Spacer(Modifier.height(8.dp))
         }
         if (selected == ThemeId.DEFAULT) {
             SmallLabel("رنگ تأکید")
@@ -76,7 +93,7 @@ fun ThemesGroup() {
             SwitchRow("غبار طلایی", "ذرات شناور؛ حرکتشان را هسته Rust حساب می‌کند", ThemeController.particles) { ThemeController.setParticles(it) }
             SwitchRow("برق لبه‌ها", "نور طلایی که روی لبه کارت‌ها می‌چرخد", ThemeController.shimmer) { ThemeController.setShimmer(it) }
             SwitchRow("تاج روی لوگو", null, ThemeController.crown) { ThemeController.setCrown(it) }
-        } else {
+        } else if (selected == ThemeId.DEFAULT) {
             Text(
                 "غبار طلایی، برق لبه‌ها و تاج فقط در تم Gold فعال می‌شوند.",
                 color = Tx.Muted,

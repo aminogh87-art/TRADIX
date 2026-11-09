@@ -46,6 +46,16 @@ object NativeCore {
     private external fun nMixColors(a: IntArray, b: IntArray, t: Float): IntArray
     private external fun nParticlesInit(state: FloatArray, seed: Int)
     private external fun nParticlesStep(state: FloatArray, dt: Float, t: Float, seed: Int)
+    private external fun nCandleTone(pnl: Double, flatBand: Double): Int
+
+    /** Candle tones returned by [candleTone]. */
+    const val TONE_GREEN = 0
+    const val TONE_RED = 1
+    const val TONE_GOLD = 2
+
+    /** Candle theme tone for today's realized P&L (green profit, red loss, gold break-even within [flatBand]). */
+    fun candleTone(pnl: Double, flatBand: Double = 0.5): Int =
+        if (loaded) nCandleTone(pnl, flatBand) else Fallback.candleTone(pnl, flatBand)
 
     /** Floats per particle: x, y, vx, vy, phase, size, alpha. */
     const val PARTICLE_STRIDE = 7
@@ -230,6 +240,16 @@ internal object Fallback {
     fun mixColors(a: IntArray, b: IntArray, t: Float): IntArray {
         val n = minOf(a.size, b.size)
         return IntArray(n) { mixOne(a[it], b[it], t) }
+    }
+
+    fun candleTone(pnl: Double, flatBand: Double): Int {
+        if (!pnl.isFinite()) return NativeCore.TONE_GOLD
+        val band = if (flatBand.isFinite()) Math.abs(flatBand) else 0.0
+        return when {
+            pnl > band -> NativeCore.TONE_GREEN
+            pnl < -band -> NativeCore.TONE_RED
+            else -> NativeCore.TONE_GOLD
+        }
     }
 
     // ---------- gold dust (same maths as rust/src/fx.rs) ----------

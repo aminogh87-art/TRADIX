@@ -18,6 +18,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tradenex.app.TxAiFlutterLaunch
+import com.tradenex.app.data.AppState
+import com.tradenex.app.ui.components.CandleMenuOverlay
 import com.tradenex.app.ui.components.TxBackground
 import com.tradenex.app.ui.components.TxBottomBar
 import com.tradenex.app.ui.screens.AccountsScreen
@@ -35,12 +37,19 @@ import com.tradenex.app.ui.screens.TagsScreen
 import com.tradenex.app.ui.screens.TradesScreen
 import com.tradenex.app.ui.screens.TxAiScreen
 import com.tradenex.app.ui.screens.WeeklyPlanScreen
+import com.tradenex.app.ui.theme.ThemeController
+import com.tradenex.app.ui.theme.Tx
 
 @Composable
 fun AppNav(startDestination: String = "home") {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
+
+    // Candle theme, automatic colour mode: today's realized P&L decides green / red / gold (Rust core).
+    val today = AppState.today()
+    val todayPnl = AppState.visibleTrades.filter { it.epochDay == today }.sumOf { it.pnl }
+    LaunchedEffect(todayPnl) { ThemeController.updateCandleTone(todayPnl) }
 
     TxBackground {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -91,6 +100,11 @@ fun AppNav(startDestination: String = "home") {
                         popUpTo("home")
                     }
                 }
+            }
+        }
+        if (Tx.isCandle) {
+            CandleMenuOverlay { target ->
+                nav.navigate(target) { launchSingleTop = true }
             }
         }
     }

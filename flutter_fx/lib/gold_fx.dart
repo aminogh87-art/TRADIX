@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-/// Colour tokens of the two TRADENEX themes. Mirrors `Theme.kt` in the Android app.
-enum TxThemeId { standard, gold }
+/// Colour tokens of the TRADENEX themes. Mirrors `Theme.kt` in the Android app.
+enum TxThemeId { standard, gold, candle }
 
 class TxTokens {
   const TxTokens({
@@ -57,7 +57,27 @@ class TxTokens {
     gilded: true,
   );
 
-  static TxTokens of(TxThemeId id) => id == TxThemeId.gold ? goldTheme : standard;
+  /// "Candle": ink-black ground, candle green / red, gold wick and sky-blue highlights.
+  static const candleTheme = TxTokens(
+    bg: Color(0xFF06080C),
+    gold: Color(0xFFF2C14E),
+    goldHi: Color(0xFFFFE08A),
+    goldDeep: Color(0xFFC98A14),
+    panelTop: Color(0x17FFFFFF),
+    panelBottom: Color(0x05FFFFFF),
+    green: Color(0xFF19D68A),
+    red: Color(0xFFFF4D5E),
+    text: Color(0xFFEEF2F7),
+    muted: Color(0xFFA9B3C3),
+    borderAlpha: 0.42,
+    gilded: false,
+  );
+
+  static TxTokens of(TxThemeId id) => switch (id) {
+        TxThemeId.gold => goldTheme,
+        TxThemeId.candle => candleTheme,
+        TxThemeId.standard => standard,
+      };
 
   /// Smooth in-between tokens for animated theme changes.
   static TxTokens lerp(TxTokens a, TxTokens b, double t) => TxTokens(
