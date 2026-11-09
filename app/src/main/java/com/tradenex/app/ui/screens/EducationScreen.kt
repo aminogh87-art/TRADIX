@@ -5,6 +5,10 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.tradenex.app.data.TxPackage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -92,6 +96,42 @@ fun EducationScreen(nav: NavController) {
             }
         }
     }
+    var txPassword by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val txExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) {
+            busy = true; message = "در حال ساخت بسته‌ی .tx …"
+            val pass = txPassword
+            val snapshot = EducationStore.lessons.toList()
+            scope.launch {
+                val r = withContext(Dispatchers.IO) {
+                    runCatching { context.contentResolver.openOutputStream(uri)!!.use { TxPackage.export(context, snapshot, pass, it) } }
+                }
+                busy = false
+                message = r.fold(
+                    { "بسته‌ی .tx ساخته شد: ${it.lessons} درس، ${it.files} فایل" + if (it.skipped > 0) " (${it.skipped} فایل قابل خواندن نبود)" else "" },
+                    { "ساخت بسته ممکن نشد: ${it.message}" },
+                )
+            }
+        }
+    }
+    val txImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            busy = true; message = "در حال خواندن بسته‌ی .tx …"
+            val pass = txPassword
+            scope.launch {
+                val r = withContext(Dispatchers.IO) {
+                    runCatching { context.contentResolver.openInputStream(uri)!!.use { TxPackage.import(context, it, pass) } }
+                }
+                busy = false
+                message = r.fold(
+                    { "وارد شد: ${it.lessons} درس، ${it.files} فایل" + if (it.skipped > 0) " (${it.skipped} مورد ناقص)" else "" },
+                    { if (it is TxPackage.BadPackage) it.message ?: "فایل نامعتبر" else "ورود ممکن نشد: ${it.message}" },
+                )
+            }
+        }
+    }
     val scanner = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val scanned = IntentIntegrator.parseActivityResult(Activity.RESULT_OK, result.data)?.contents
@@ -122,6 +162,12 @@ fun EducationScreen(nav: NavController) {
                     SectionTitle("کتابخانه آموزشی", "درس‌ها، فایل‌ها و یادداشت‌های شخصی")
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         categories.forEach { TxChip(it, filter == it, { filter = it }) }
+                    }
+                    Text("بسته‌ی رمزنگاری‌شده‌ی .tx (آفلاین): همه‌ی درس‌ها و فایل‌هایشان را در یک فایل بگیر و برای دوستت بفرست؛ فقط TRADIX می‌تواند بازش کند. رمز اختیاری است ولی امنیت واقعی را همان می‌دهد.", color = Tx.Muted, fontSize = 10.sp)
+                    TxField(txPassword, { txPassword = it }, "رمز بسته (اختیاری)")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TxChip(if (busy) "…" else "خروجی .tx", false, { if (!busy && EducationStore.lessons.isNotEmpty()) txExport.launch("tradix-education.tx") else if (EducationStore.lessons.isEmpty()) message = "درسی برای خروجی گرفتن نیست." })
+                        TxChip("ورود .tx", false, { if (!busy) txImport.launch(arrayOf("*/*")) })
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TxChip("＋ ساخت درس", true, { creating = true })

@@ -125,10 +125,10 @@ fun GlassCard(
     }
     Box(
         modifier
-            .shadow((if (AppState.settings.animations >= 2) 8f else 2f).dp, shape, ambientColor = glow, spotColor = glow)
+            // No Modifier.shadow here: on translucent surfaces the shadow shows THROUGH the card as a grey inner rectangle.
             .clip(shape)
             .background(cardBrush)
-            .then(if (border != Color.Transparent) Modifier.border(1.dp, border, shape) else Modifier)
+            .border(1.dp, if (border != Color.Transparent) border else glow.copy(alpha = (Tx.glowAlpha * 0.9f).coerceIn(0.06f, 0.30f)), shape)
             .then(if (AppState.settings.animations >= 2) Modifier.shimmerBorder(shape) else Modifier),
         content = content,
     )

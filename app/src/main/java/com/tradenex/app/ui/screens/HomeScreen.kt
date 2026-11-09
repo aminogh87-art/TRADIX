@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import com.tradenex.app.core.NativeCore
 import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
+import com.tradenex.app.ui.components.CandleChart
 import com.tradenex.app.ui.components.TradeCandleChart
 import com.tradenex.app.ui.components.CrownMark
 import com.tradenex.app.ui.theme.ThemeController
@@ -82,7 +84,8 @@ fun HomeScreen(nav: NavController) {
     val grossWin = visibleTrades.filter { it.pnl > 0 }.sumOf { it.pnl }
     val grossLoss = visibleTrades.filter { it.pnl < 0 }.sumOf { it.pnl }
     val todayCount = visibleTrades.count { it.epochDay == today }
-    var period by remember { mutableStateOf(Period.WEEK) }
+    // null = «لحظه‌ای»: one candle per recorded trade; otherwise one candle per day / week / Jalali month / year.
+    var period by remember { mutableStateOf<Period?>(null) }
 
     val shownPct by animateFloatAsState(monthPct.toFloat(), tween(1200), label = "pct")
     val nowInstant = remember(utc) { java.time.Instant.now() }
@@ -203,30 +206,34 @@ fun HomeScreen(nav: NavController) {
             Reveal(3) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("عملکرد کندلی", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Period.entries.forEach {
-                                TxChip(it.label, period == it, { period = it }, Modifier.padding(start = 4.dp))
-                            }
+                        Text("عملکرد کندلی", color = Tx.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 6.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            TxChip("لحظه‌ای", period == null, { period = null })
+                            Period.entries.forEach { TxChip(it.label, period == it, { period = it }) }
                         }
                         Spacer(Modifier.height(8.dp))
-                        val chartWindowDays = when (period) {
-                            Period.DAY -> 1
-                            Period.WEEK -> 7
-                            Period.MONTH -> 30
-                            Period.YEAR -> 365
-                        }
-                        val chartStartDay = today - (chartWindowDays - 1L)
-                        val chartTrades = visibleTrades.filter { it.epochDay >= chartStartDay }
-                        val openingEquity = accountStartBalance + visibleTrades.filter { it.epochDay < chartStartDay }.sumOf { it.pnl }
-                        val candles = remember(period, visibleTrades, accountStartBalance, today) {
-                            Analytics.tradeCandleSeries(chartTrades, openingEquity, 60)
-                        }
-                        if (candles.isEmpty()) {
-                            Text("پس از ثبت معامله، هر معامله به یک کندل مستقل تبدیل می‌شود.", color = Tx.Muted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 18.dp))
+                        val p = period
+                        if (visibleTrades.isEmpty()) {
+                            Text("پس از ثبت معامله، چارت مثل یک چارت واقعی از معامله‌هات ساخته می‌شود.", color = Tx.Muted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 18.dp))
+                        } else if (p == null) {
+                            val series = remember(visibleTrades, accountStartBalance) { Analytics.tradeCandleSeries(visibleTrades, accountStartBalance, 120) }
+                            TradeCandleChart(series, Modifier.fillMaxWidth().height(180.dp))
+                            Text("لحظه‌ای: هر معامله یک کندل؛ روی کندل بزن تا جزئیاتش را ببینی.", color = Tx.Muted, fontSize = 9.sp)
                         } else {
-                            TradeCandleChart(candles, Modifier.fillMaxWidth().height(170.dp))
-                            Text("هر کندل باریک = یک معامله؛ روی کندل بزن تا نام و نتیجه را ببینی.", color = Tx.Muted, fontSize = 9.sp)
+                            val candles = remember(p, visibleTrades, accountStartBalance) { Analytics.candles(visibleTrades, p, accountStartBalance) }
+                            CandleChart(candles, Modifier.fillMaxWidth().height(180.dp))
+                            Text(
+                                when (p) {
+                                    Period.DAY -> "هر کندل = عملکرد یک روز"
+                                    Period.WEEK -> "هر کندل = عملکرد یک هفته (شروع از شنبه)"
+                                    Period.MONTH -> "هر کندل = عملکرد یک ماه شمسی"
+                                    Period.YEAR -> "هر کندل = عملکرد یک سال شمسی"
+                                },
+                                color = Tx.Muted, fontSize = 9.sp,
+                            )
                         }
                     }
                 }
