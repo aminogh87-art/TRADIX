@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+export 'candle_fx.dart';
 export 'gold_fx.dart';
 
 /// Spinning dotted globe with pulsing city markers.

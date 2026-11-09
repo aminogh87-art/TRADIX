@@ -25,10 +25,14 @@ import com.tradenex.app.data.AppState
 enum class ThemeId(val key: String, val title: String, val tagline: String) {
     DEFAULT("default", "Default", "شیشه‌ای و آرام؛ تم فعلی برنامه"),
     GOLD("gold", "Gold", "مشکی عمیق، لبه‌های طلایی و درخشش زنده"),
+    CANDLE("candle", "Candle", "کندل سبز و قرمز، فتیله طلایی و ناوبری افقی"),
 }
 
-/** GLASS = translucent cards (Default). GILDED = solid dark panels with gold edge, glow and shimmer (Gold). */
-enum class PanelStyle { GLASS, GILDED }
+/**
+ * GLASS = translucent cards (Default). GILDED = solid dark panels with gold edge, glow and shimmer (Gold).
+ * CANDLE = glass cards with candle-coloured edges, horizontal candle nav and candle menu (Candle).
+ */
+enum class PanelStyle { GLASS, GILDED, CANDLE }
 
 /**
  * Every colour and trait a theme controls. Screens never read this directly: they use [Tx],
@@ -161,10 +165,41 @@ val GoldPalette = Palette(
     style = PanelStyle.GILDED,
 )
 
+/** The "Candle" theme: ink-black ground, candle green / red, gold wick, sky-blue highlights. */
+val CandlePalette = Palette(
+    bg = Color(0xFF06080C),
+    gold = Color(0xFFF2C14E),
+    goldHi = Color(0xFFFFE08A),
+    goldDeep = Color(0xFFC98A14),
+    goldPale = Color(0xFFFFE7A8),
+    green = Color(0xFF19D68A),
+    greenDeep = Color(0xFF0FB874),
+    red = Color(0xFFFF4D5E),
+    redDeep = Color(0xFFE03348),
+    blue = Color(0xFF5CC8FF),
+    purple = Color(0xFFB58CFF),
+    text = Color(0xFFEEF2F7),
+    muted = Color(0xFFA9B3C3),
+    ink = Color(0xFF1A1204),
+    panelTop = Color(0x17FFFFFF),
+    panelBottom = Color(0x05FFFFFF),
+    barTop = Color(0xEB101820),
+    barBottom = Color(0xF506080C),
+    dialog = Color(0xFF0E1218),
+    fabCore = Color(0xFFF2B43C),
+    fabEdge = Color(0xFFC98A14),
+    fabIcon = Color(0xFF1A1204),
+    borderAlpha = 0.42f,
+    glow = 0.35f,
+    radius = 22f,
+    style = PanelStyle.CANDLE,
+)
+
 /** Static palette used for the little previews in Settings (does not follow the active theme). */
 fun paletteOf(id: ThemeId, accent: Int = 0): Palette = when (id) {
     ThemeId.DEFAULT -> defaultPalette(accent)
     ThemeId.GOLD -> GoldPalette
+    ThemeId.CANDLE -> CandlePalette
 }
 
 /**
@@ -201,6 +236,7 @@ object Tx {
     val borderAlpha: Float get() = palette.borderAlpha
     val radius: Float get() = palette.radius
     val isGilded: Boolean get() = palette.style == PanelStyle.GILDED
+    val isCandle: Boolean get() = palette.style == PanelStyle.CANDLE
 
     /** 0 off, 0.5 soft, 1 normal, 1.6 intense: the user's glow slider. */
     val glowLevel: Float get() = floatArrayOf(0f, 0.5f, 1f, 1.6f)[ThemeController.glow.coerceIn(0, 3)]
@@ -228,6 +264,21 @@ object ThemeController {
     var crown: Boolean by mutableStateOf(true)
         private set
 
+    /** Candle theme: true = nav colour follows today's P&L, false = [candleManual]. */
+    var candleAuto: Boolean by mutableStateOf(true)
+        private set
+
+    /** Candle theme manual tone: 0 green, 1 red, 2 gold, 3 sky blue. */
+    var candleManual: Int by mutableIntStateOf(0)
+        private set
+
+    /** Last tone computed from today's P&L (NativeCore.TONE_*). Not persisted: it is derived from the journal. */
+    var candleAutoTone: Int by mutableIntStateOf(NativeCore.TONE_GREEN)
+        private set
+
+    /** Tone in use right now: 0 green, 1 red, 2 gold, 3 sky blue. */
+    val candleTone: Int get() = if (candleAuto) candleAutoTone else candleManual
+
     /** Incremented on every theme change; the ripple overlay watches it. */
     var switchTick: Int by mutableIntStateOf(0)
         private set
@@ -247,6 +298,8 @@ object ThemeController {
         particles = p.getBoolean("particles", true)
         shimmer = p.getBoolean("shimmer", true)
         crown = p.getBoolean("crown", true)
+        candleAuto = p.getBoolean("candle_auto", true)
+        candleManual = p.getInt("candle_manual", 0).coerceIn(0, 3)
         Tx.palette = target()
     }
 
@@ -259,6 +312,8 @@ object ThemeController {
             ?.putBoolean("particles", particles)
             ?.putBoolean("shimmer", shimmer)
             ?.putBoolean("crown", crown)
+            ?.putBoolean("candle_auto", candleAuto)
+            ?.putInt("candle_manual", candleManual)
             ?.apply()
     }
 
@@ -306,7 +361,26 @@ object ThemeController {
         save()
     }
 
+    /** Candle theme: choose automatic (today's P&L) or manual nav colour. */
+    fun useCandleAuto(auto: Boolean) {
+        candleAuto = auto
+        save()
+    }
+
+    /** Candle theme: pick the manual tone (0 green, 1 red, 2 gold, 3 sky blue). */
+    fun pickCandleColor(tone: Int) {
+        candleManual = tone.coerceIn(0, 3)
+        save()
+    }
+
+    /** Feed today's realized P&L; the Rust core decides green / red / gold. */
+    fun updateCandleTone(todayPnl: Double) {
+        candleAutoTone = NativeCore.candleTone(todayPnl)
+    }
+
     fun reset() {
+        candleAuto = true
+        candleManual = 0
         theme = ThemeId.DEFAULT
         accent = 0
         glow = 2

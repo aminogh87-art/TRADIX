@@ -48,7 +48,7 @@ import com.tradenex.app.ui.theme.paletteOf
 import kotlin.math.abs
 import kotlin.math.sin
 
-/** Settings > تم‌ها: pick Default or Gold, accent colour, glow strength and the Gold-only effects. */
+/** Settings > تم‌ها: pick Default, Gold or Candle, accent colour, glow strength, the Gold-only effects and the Candle nav colour. */
 @Composable
 fun ThemesGroup() {
     val selected = ThemeController.theme
@@ -57,12 +57,29 @@ fun ThemesGroup() {
             Modifier.fillMaxWidth().padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ThemeId.values().filter { it == ThemeId.DEFAULT || ThemeController.goldAvailable }.forEach { id ->
+            ThemeId.values().filter { it != ThemeId.GOLD || ThemeController.goldAvailable }.forEach { id ->
                 ThemeCard(id, id == selected, Modifier.weight(1f)) { ThemeController.select(id) }
             }
         }
         if (selected == ThemeId.GOLD) {
             Text("حذف تم Gold", color = Tx.Red, fontSize = 11.sp, modifier = Modifier.clickable { ThemeController.removeGoldTheme() }.padding(vertical = 8.dp))
+        }
+        if (selected == ThemeId.CANDLE) {
+            SmallLabel("رنگ بدنه ناوبری")
+            ChipsRow(listOf("خودکار", "دستی"), if (ThemeController.candleAuto) 0 else 1) { ThemeController.useCandleAuto(it == 0) }
+            Spacer(Modifier.height(6.dp))
+            if (ThemeController.candleAuto) {
+                Text(
+                    "رنگ از نتیجه امروز تعیین می‌شود: سود سبز، ضرر قرمز، سر به سر طلایی. اکنون: " +
+                        listOf("سبز", "قرمز", "طلایی", "آبی")[ThemeController.candleTone.coerceIn(0, 3)],
+                    color = Tx.Muted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            } else {
+                ChipsRow(listOf("سبز", "قرمز", "طلایی", "آبی"), ThemeController.candleManual) { ThemeController.pickCandleColor(it) }
+            }
+            Spacer(Modifier.height(8.dp))
         }
         if (selected == ThemeId.DEFAULT) {
             SmallLabel("رنگ تأکید")
@@ -76,7 +93,7 @@ fun ThemesGroup() {
             SwitchRow("غبار طلایی", "ذرات شناور؛ حرکتشان را هسته Rust حساب می‌کند", ThemeController.particles) { ThemeController.setParticles(it) }
             SwitchRow("برق لبه‌ها", "نور طلایی که روی لبه کارت‌ها می‌چرخد", ThemeController.shimmer) { ThemeController.setShimmer(it) }
             SwitchRow("تاج روی لوگو", null, ThemeController.crown) { ThemeController.setCrown(it) }
-        } else {
+        } else if (selected == ThemeId.DEFAULT) {
             Text(
                 "غبار طلایی، برق لبه‌ها و تاج فقط در تم Gold فعال می‌شوند.",
                 color = Tx.Muted,
@@ -163,18 +180,31 @@ private fun ThemePreview(p: Palette, modifier: Modifier) {
             drawRoundRect(col, Offset(x - 2.5.dp.toPx(), baseY - h), Size(5.dp.toPx(), h * 0.7f), CornerRadius(1.dp.toPx()))
         }
 
-        val barH = 20.dp.toPx()
-        val barTop = size.height - pad - barH
-        drawRoundRect(Brush.verticalGradient(listOf(p.barTop, p.barBottom)), Offset(pad, barTop), Size(cardW, barH), CornerRadius(10.dp.toPx()))
-        drawRoundRect(p.gold.copy(alpha = p.borderAlpha), Offset(pad, barTop), Size(cardW, barH), CornerRadius(10.dp.toPx()), style = Stroke(1.dp.toPx()))
-        for (i in 0 until 4) {
-            val cx = pad + cardW * (if (i < 2) 0.14f + i * 0.17f else 0.62f + (i - 2) * 0.17f)
-            drawCircle(if (i == 0) p.gold else p.muted.copy(alpha = 0.6f), 2.dp.toPx(), Offset(cx, barTop + barH / 2f))
+        if (p.style == PanelStyle.CANDLE) {
+            val barH = 20.dp.toPx()
+            val barTop = size.height - pad - barH
+            val cy = barTop + barH / 2f
+            drawLine(p.gold, Offset(pad, cy), Offset(size.width - pad, cy), 1.5.dp.toPx())
+            drawLine(p.gold, Offset(pad, cy - 6.dp.toPx()), Offset(pad, cy + 6.dp.toPx()), 2.dp.toPx())
+            drawLine(p.gold, Offset(size.width - pad, cy - 6.dp.toPx()), Offset(size.width - pad, cy + 6.dp.toPx()), 2.dp.toPx())
+            val bx = pad * 2.4f
+            drawRoundRect(p.green.copy(alpha = 0.28f), Offset(bx, barTop), Size(size.width - 2 * bx, barH), CornerRadius(10.dp.toPx()))
+            drawRoundRect(p.green.copy(alpha = 0.7f), Offset(bx, barTop), Size(size.width - 2 * bx, barH), CornerRadius(10.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawRoundRect(p.goldHi, Offset(size.width / 2f - 9.dp.toPx(), cy - 6.dp.toPx()), Size(18.dp.toPx(), 12.dp.toPx()), CornerRadius(5.dp.toPx()))
+        } else {
+            val barH = 20.dp.toPx()
+            val barTop = size.height - pad - barH
+            drawRoundRect(Brush.verticalGradient(listOf(p.barTop, p.barBottom)), Offset(pad, barTop), Size(cardW, barH), CornerRadius(10.dp.toPx()))
+            drawRoundRect(p.gold.copy(alpha = p.borderAlpha), Offset(pad, barTop), Size(cardW, barH), CornerRadius(10.dp.toPx()), style = Stroke(1.dp.toPx()))
+            for (i in 0 until 4) {
+                val cx = pad + cardW * (if (i < 2) 0.14f + i * 0.17f else 0.62f + (i - 2) * 0.17f)
+                drawCircle(if (i == 0) p.gold else p.muted.copy(alpha = 0.6f), 2.dp.toPx(), Offset(cx, barTop + barH / 2f))
+            }
+            val fab = Offset(size.width / 2f, barTop)
+            drawCircle(Brush.radialGradient(listOf(p.fabCore, p.fabEdge), center = fab, radius = 11.dp.toPx()), 10.dp.toPx(), fab)
+            drawCircle(p.goldPale, 10.dp.toPx(), fab, style = Stroke(1.2.dp.toPx()))
+            drawLine(p.fabIcon, Offset(fab.x - 4.dp.toPx(), fab.y), Offset(fab.x + 4.dp.toPx(), fab.y), 1.6.dp.toPx())
+            drawLine(p.fabIcon, Offset(fab.x, fab.y - 4.dp.toPx()), Offset(fab.x, fab.y + 4.dp.toPx()), 1.6.dp.toPx())
         }
-        val fab = Offset(size.width / 2f, barTop)
-        drawCircle(Brush.radialGradient(listOf(p.fabCore, p.fabEdge), center = fab, radius = 11.dp.toPx()), 10.dp.toPx(), fab)
-        drawCircle(p.goldPale, 10.dp.toPx(), fab, style = Stroke(1.2.dp.toPx()))
-        drawLine(p.fabIcon, Offset(fab.x - 4.dp.toPx(), fab.y), Offset(fab.x + 4.dp.toPx(), fab.y), 1.6.dp.toPx())
-        drawLine(p.fabIcon, Offset(fab.x, fab.y - 4.dp.toPx()), Offset(fab.x, fab.y + 4.dp.toPx()), 1.6.dp.toPx())
     }
 }

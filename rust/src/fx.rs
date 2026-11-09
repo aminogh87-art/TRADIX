@@ -126,9 +126,56 @@ pub fn particles_step(state: &mut [f32], dt: f32, t: f32, seed: u32) {
     }
 }
 
+// ---------- candle theme ----------
+
+/// Candle tone of the horizontal nav bar and accents: profit.
+pub const TONE_GREEN: u8 = 0;
+/// Candle tone: loss.
+pub const TONE_RED: u8 = 1;
+/// Candle tone: break-even (also the safe answer for a non-finite P&L).
+pub const TONE_GOLD: u8 = 2;
+
+/// Picks the candle tone from today's realized P&L.
+/// `flat_band` is the absolute P&L that still counts as break-even (sign is ignored).
+pub fn candle_tone(pnl: f64, flat_band: f64) -> u8 {
+    if !pnl.is_finite() {
+        return TONE_GOLD;
+    }
+    let band = if flat_band.is_finite() { flat_band.abs() } else { 0.0 };
+    if pnl > band {
+        TONE_GREEN
+    } else if pnl < -band {
+        TONE_RED
+    } else {
+        TONE_GOLD
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn candle_tone_follows_the_sign_of_pnl() {
+        assert_eq!(candle_tone(98.9, 0.5), TONE_GREEN);
+        assert_eq!(candle_tone(-64.2, 0.5), TONE_RED);
+        assert_eq!(candle_tone(0.0, 0.5), TONE_GOLD);
+    }
+
+    #[test]
+    fn candle_tone_flat_band_is_symmetric_and_inclusive() {
+        assert_eq!(candle_tone(0.5, 0.5), TONE_GOLD);
+        assert_eq!(candle_tone(-0.5, 0.5), TONE_GOLD);
+        assert_eq!(candle_tone(0.51, 0.5), TONE_GREEN);
+        assert_eq!(candle_tone(-0.51, -0.5), TONE_RED);
+    }
+
+    #[test]
+    fn candle_tone_is_gold_for_non_finite_input() {
+        assert_eq!(candle_tone(f64::NAN, 0.5), TONE_GOLD);
+        assert_eq!(candle_tone(f64::INFINITY, 0.5), TONE_GOLD);
+        assert_eq!(candle_tone(5.0, f64::NAN), TONE_GREEN);
+    }
 
     #[test]
     fn mix_endpoints_are_exact() {

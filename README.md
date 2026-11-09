@@ -26,6 +26,9 @@ calendar (personal trades + cached Forex Factory weekly economic feed), tags, an
 |---|---|
 | **Default** | The original translucent glass look. Accent colour: gold / teal / violet. |
 | **Gold** | Black-gold panels with a gold edge, strong glow, shimmering borders, gold dust, crown on the logo, a dark-amber globe with night-side city lights. |
+| **Candle** | Candle-themed UI: colour is market direction (green profit, red loss), gold is the wick / brand, sky blue marks live things. Horizontal glass candle bottom bar with a gold wick, coloured shadow and a gold doji add-button; the top-left menu button is itself a candle (it becomes a green/red cross when open) and opens a menu with one candle glyph per destination. |
+
+**Candle nav colour** (Settings > تم‌ها, Candle only): *Auto* follows today's realized P&L (green profit, red loss, gold break-even within a 0.5 band; decided by `candle_tone` in `rust/src/fx.rs`, Kotlin fallback with the same maths) and *Manual* pins green / red / gold / sky. Both choices persist in SharedPreferences. In auto mode the tone is recomputed whenever today's trades change; it does not flip by itself at midnight. The Dart twin (`flutter_fx/lib/candle_fx.dart`: `CandleNavBar`, `CandleHamburger`, `CandleMenuPanel`, `CandleThemePanel`, `CandleController`) previews with `flutter run -t lib/candle_demo.dart`; the Compose implementation is `app/.../ui/components/CandleUi.kt`.
 
 The switch is animated: every colour is mixed in OKLab by the Rust core (`rust/src/fx.rs`, Kotlin fallback with the same maths)
 and a gold ripple expands over the screen. Choice, accent, glow level (off / soft / normal / intense) and the Gold-only

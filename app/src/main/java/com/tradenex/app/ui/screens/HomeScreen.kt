@@ -60,6 +60,7 @@ import com.tradenex.app.data.Analytics
 import com.tradenex.app.data.AppState
 import com.tradenex.app.data.Period
 import com.tradenex.app.ui.components.CandleChart
+import com.tradenex.app.ui.components.CandleHamburger
 import com.tradenex.app.ui.components.TradeCandleChart
 import com.tradenex.app.ui.components.CrownMark
 import com.tradenex.app.ui.theme.ThemeController
@@ -119,6 +120,10 @@ fun HomeScreen(nav: NavController) {
                 Text("Trade · Journal · Analyze · Improve", color = Tx.Muted, fontSize = 9.sp)
             }
             RoundBtn(Icons.Rounded.Notifications, "اعلان‌ها") { nav.navigate("settings") }
+            if (Tx.isCandle) {
+                Spacer(Modifier.width(8.dp))
+                CandleHamburger()
+            }
         }
 
         Column(

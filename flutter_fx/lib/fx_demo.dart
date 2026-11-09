@@ -5,7 +5,7 @@ import 'tradenex_fx.dart';
 void main() => runApp(const FxDemo());
 
 /// Standalone preview of the Dart animation kit: `flutter run` inside flutter_fx/.
-/// Tap Default / Gold to see the circular theme reveal, shimmering panel, gold dust and the crown.
+/// Tap Default / Gold / Candle to see the circular theme reveal, shimmering panel, gold dust and the crown.
 class FxDemo extends StatefulWidget {
   const FxDemo({super.key});
 
@@ -63,6 +63,7 @@ class _Screen extends StatelessWidget {
                     segments: const [
                       ButtonSegment(value: TxThemeId.standard, label: Text('Default')),
                       ButtonSegment(value: TxThemeId.gold, label: Text('Gold')),
+                      ButtonSegment(value: TxThemeId.candle, label: Text('Candle')),
                     ],
                     selected: {id},
                     onSelectionChanged: (s) => onPick(s.first),
